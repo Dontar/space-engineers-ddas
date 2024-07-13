@@ -256,11 +256,13 @@ namespace IngameScript
             public static List<object> TaskResults = new List<object>();
             public static void RunTasks(TimeSpan TimeSinceLastRun)
             {
-                for (int i = 0; i < tasks.Count; i++)
+                var executionList = new List<Task>(tasks);
+                for (int i = 0; i < executionList.Count; i++)
                 {
-                    var task = tasks[i];
+                    var task = executionList[i];
+                    if (task.IsPaused) continue;
                     task.TimeSinceLastRun += TimeSinceLastRun;
-                    if (task.TimeSinceLastRun >= task.Interval && !task.IsPaused)
+                    if (task.TimeSinceLastRun >= task.Interval)
                     {
                         CurrentTaskLastRun = task.TimeSinceLastRun;
                         if (!task.Enumerator.MoveNext())
@@ -268,7 +270,6 @@ namespace IngameScript
                             if (task.IsOnce)
                             {
                                 tasks.RemoveAt(i);
-                                i--;
                                 continue;
                             }
                             task.Enumerator = task.Ref.GetEnumerator();
@@ -333,6 +334,7 @@ namespace IngameScript
 
                 public void Render(IMyTextSurface screen)
                 {
+                    screen.ContentType = ContentType.TEXT_AND_IMAGE;
                     var size = screen.SurfaceSize / screen.MeasureStringInPixels(new StringBuilder("="), screen.Font, screen.FontSize);
 
                     var output = new StringBuilder();
