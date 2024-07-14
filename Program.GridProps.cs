@@ -120,5 +120,17 @@ namespace IngameScript
         double GridUnsprungMass => Memo.Of(() => gridProps.Mass.PhysicalMass - MyWheels.Concat(SubWheels).Sum(w => w.Wheel.Top.Mass), "GridUnsprungWeight", Memo.Refs(gridProps.Mass.PhysicalMass, MyWheels));
 
         List<IMyShipController> Controllers => Memo.Of(() => Util.GetBlocks<IMyShipController>(b => Util.IsNotIgnored(b, Config["IgnoreTag"])), "controllers", 100);
+
+        List<IMyPowerProducer> PowerProducers => Memo.Of(() =>
+        {
+            var blocks = Util.GetBlocks<IMyPowerProducer>(b =>
+            {
+                return b.Enabled && !(b is IMyBatteryBlock)
+                    || (b.Enabled && b is IMyBatteryBlock && !(b as IMyBatteryBlock).IsCharging);
+            });
+            return blocks;
+
+        }, "myPowerProducers", 10);
+
     }
 }

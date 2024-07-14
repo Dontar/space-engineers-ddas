@@ -135,6 +135,7 @@ namespace IngameScript
                                 break;
                         }
                     }
+                    menuSystem.ProcessMenuCommands(argument);
                     break;
             }
         }
@@ -257,12 +258,12 @@ namespace IngameScript
             var screenText = new StringBuilder();
             var ini = Config;
             var tag = ini.GetValueOrDefault("Tag", "{DDAS}");
-            var statusScreens = Util.GetScreens(b => Util.IsTagged(b, tag) && b.CustomData.Contains("ddas=status"));
-            var menuScreens = Util.GetScreens(b => Util.IsTagged(b, tag) && b.CustomData.Contains("ddas=menu"));
             while (ini.Equals(Config))
             {
+                var statusScreens = Util.GetScreens(b => Util.IsTagged(b, tag) && b.CustomData.Contains("ddas=status"));
+                var menuScreens = Util.GetScreens(b => Util.IsTagged(b, tag) && b.CustomData.Contains("ddas=menu"));
                 var propulsion = TaskManager.TaskResults.OfType<CruiseTaskResult>().FirstOrDefault().Propulsion;
-                var power = TaskManager.TaskResults.OfType<PowerTaskResult>().FirstOrDefault().Power;
+                var power = TaskManager.TaskResults.OfType<PowerTaskResult>().FirstOrDefault();
                 var autopilot = TaskManager.TaskResults.OfType<AutopilotTaskResult>().FirstOrDefault();
 
                 screenText.Clear();
@@ -270,15 +271,17 @@ namespace IngameScript
                 screenText.AppendLine($"CruiseSpeed: {gridProps.CruiseSpeed:N2} km/h");
                 screenText.AppendLine($"Speed:       {gridProps.Speed * 3.6:N2} km/h");
                 screenText.AppendLine($"Flipping:    {gridProps.Flipping}");
-                screenText.AppendLine($"Power:       {power:N2}");
+                screenText.AppendLine($"Power:       {power.Power:N2}");
+                screenText.AppendLine($"WheelPower:  {power.WheelMaxPower:N2}");
+                screenText.AppendLine($"GridPower:   {power.GridMaxPower:N2}");
                 screenText.AppendLine($"Propulsion:  {propulsion:N2}");
                 screenText.AppendLine($"Recording:   {gridProps.Recording}");
-                foreach (var screen in statusScreens)
+                statusScreens.ForEach(s =>
                 {
-                    screen.ContentType = ContentType.TEXT_AND_IMAGE;
-                    screen.Font = "Monospace";
-                    screen.WriteText(screenText);
-                }
+                    s.ContentType = ContentType.TEXT_AND_IMAGE;
+                    s.Font = "Monospace";
+                    s.WriteText(screenText);
+                });
                 menuScreens.ForEach(s =>
                 {
                     s.ContentType = ContentType.TEXT_AND_IMAGE;
@@ -331,6 +334,9 @@ namespace IngameScript
         struct PowerTaskResult
         {
             public float Power;
+            public float WheelMaxPower;
+            public float GridMaxPower;
+
         }
         IEnumerable<PowerTaskResult> PowerTask()
         {
@@ -338,13 +344,15 @@ namespace IngameScript
             var PID = new PID(ini.GetValueOrDefault("PIDPower", "4/4/0/1"));
             while (ini.Equals(Config))
             {
+                var wheelPower = MyWheels.Concat(SubWheels).Sum(w => w.MaxPower);
+                var vehicleMaxPower = PowerProducers.Sum(p => p.MaxOutput);
+                var powerMaxPercent = MathHelper.Clamp((vehicleMaxPower - 0.15) / wheelPower, 0, 1);
                 var dt = TaskManager.CurrentTaskLastRun.TotalSeconds;
                 var currentSpeedKmh = gridProps.Speed * 3.6;
                 var targetSpeed = gridProps.Cruise ? gridProps.CruiseSpeed : (gridProps.ForwardBackward != 0 ? MyWheels.First().SpeedLimit : 0);
                 var error = targetSpeed - currentSpeedKmh;
-
-                var power = MathHelper.Clamp(PID.Signal(error, dt), 5, 100);
-                yield return new PowerTaskResult { Power = (float)power };
+                var power = MathHelper.Clamp(PID.Signal(error, dt), 5, 100 * powerMaxPercent);
+                yield return new PowerTaskResult { Power = (float)power, WheelMaxPower = (float)wheelPower, GridMaxPower = vehicleMaxPower };
             }
         }
 

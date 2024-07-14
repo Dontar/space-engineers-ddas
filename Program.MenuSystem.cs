@@ -23,37 +23,37 @@ namespace IngameScript
                 menu.Add(new OptionItem
                 {
                     Label = "Add wheels",
-                    Value = (m, i) => program._AddWheelsTask.IsPaused.ToString(),
+                    Value = (m, i) => (!program._AddWheelsTask.IsPaused).ToString(),
                     Action = (m, i) => program._AddWheelsTask.IsPaused = !program._AddWheelsTask.IsPaused
                 });
                 menu.Add(new OptionItem
                 {
                     Label = "Suspension strength",
-                    Value = (m, i) => program._SuspensionStrengthTask.IsPaused.ToString(),
+                    Value = (m, i) => (!program._SuspensionStrengthTask.IsPaused).ToString(),
                     Action = (m, i) => program._SuspensionStrengthTask.IsPaused = !program._SuspensionStrengthTask.IsPaused
                 });
                 menu.Add(new OptionItem
                 {
                     Label = "Suspension power",
-                    Value = (m, i) => program._PowerTask.IsPaused.ToString(),
+                    Value = (m, i) => (!program._PowerTask.IsPaused).ToString(),
                     Action = (m, i) => program._PowerTask.IsPaused = !program._PowerTask.IsPaused
                 });
                 menu.Add(new OptionItem
                 {
                     Label = "Suspension friction",
-                    Value = (m, i) => program._FrictionTask.IsPaused.ToString(),
+                    Value = (m, i) => (!program._FrictionTask.IsPaused).ToString(),
                     Action = (m, i) => program._FrictionTask.IsPaused = !program._FrictionTask.IsPaused
                 });
                 menu.Add(new OptionItem
                 {
                     Label = "Sub Suspension strength",
-                    Value = (m, i) => program._SubSuspensionStrengthTask.IsPaused.ToString(),
+                    Value = (m, i) => (!program._SubSuspensionStrengthTask.IsPaused).ToString(),
                     Action = (m, i) => program._SubSuspensionStrengthTask.IsPaused = !program._SubSuspensionStrengthTask.IsPaused
                 });
                 menu.Add(new OptionItem
                 {
                     Label = "Stop lights",
-                    Value = (m, i) => program._StopLightsTask.IsPaused.ToString(),
+                    Value = (m, i) => (!program._StopLightsTask.IsPaused).ToString(),
                     Action = (m, i) => program._StopLightsTask.IsPaused = !program._StopLightsTask.IsPaused
                 });
             }

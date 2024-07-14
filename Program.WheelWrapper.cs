@@ -52,6 +52,19 @@ namespace IngameScript
                 }
             }
 
+            public double MaxPower
+            {
+                get
+                {
+                    var isSmall = Wheel.CubeGrid.GridSizeEnum == MyCubeSize.Small;
+                    return
+                        Wheel.BlockDefinition.SubtypeName.Contains("5x5") ? (isSmall ? 0.3 : 1.5) :
+                        Wheel.BlockDefinition.SubtypeName.Contains("3x3") ? (isSmall ? 0.2 : 1) :
+                        Wheel.BlockDefinition.SubtypeName.Contains("2x2") ? (isSmall ? 0.15 : 0.8) :
+                        Wheel.BlockDefinition.SubtypeName.Contains("1x1") ? (isSmall ? 0.1 : 0.5) : 0;
+                }
+            }
+
             public WheelWrapper(IMyMotorSuspension wheel, IMyShipController controller, Dictionary<string, string> ini)
             {
                 Wheel = wheel;

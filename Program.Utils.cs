@@ -150,7 +150,7 @@ namespace IngameScript
                 {
                     if (s is IMyTextSurface)
                         return s as IMyTextSurface;
-                    var screenIndex = s.CustomData.StartsWith("@") ? int.Parse(s.CustomData.Substring(1)) - 1 : 0;
+                    var screenIndex = s.CustomData.StartsWith("@") ? int.Parse(s.CustomData.Substring(1, 1)) - 1 : 0;
                     var provider = s as IMyTextSurfaceProvider;
                     return provider.GetSurface(screenIndex);
                 }).ToList();
@@ -162,7 +162,7 @@ namespace IngameScript
                 {
                     if (s is IMyTextSurface)
                         return s as IMyTextSurface;
-                    var screenIndex = s.CustomData.StartsWith("@") ? int.Parse(s.CustomData.Substring(1)) - 1 : 0;
+                    var screenIndex = s.CustomData.StartsWith("@") ? int.Parse(s.CustomData.Substring(1, 1)) - 1 : 0;
                     var provider = s as IMyTextSurfaceProvider;
                     return provider.GetSurface(screenIndex);
                 }).ToList();
@@ -253,7 +253,7 @@ namespace IngameScript
             }
 
             public static TimeSpan CurrentTaskLastRun;
-            public static List<object> TaskResults = new List<object>();
+            public static List<object> TaskResults => tasks.Select(t => t.TaskResult).ToList();
             public static void RunTasks(TimeSpan TimeSinceLastRun)
             {
                 var executionList = new List<Task>(tasks);
@@ -286,9 +286,9 @@ namespace IngameScript
             protected class OptionItem
             {
                 public string Label;
-                public Func<Menu, int, string> Value;
-                public Action<Menu, int> Action;
-                public Action<Menu, int, int> IncDec;
+                public Func<Menu, int, string> Value = (m, j) => "";
+                public Action<Menu, int> Action = null;
+                public Action<Menu, int, int> IncDec = null;
             }
 
             protected class Menu : List<OptionItem>
