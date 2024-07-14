@@ -129,7 +129,6 @@ namespace IngameScript
                     || (b.Enabled && b is IMyBatteryBlock && !(b as IMyBatteryBlock).IsCharging);
             });
             return blocks;
-
         }, "myPowerProducers", 10);
 
     }

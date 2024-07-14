@@ -88,7 +88,7 @@ namespace IngameScript
                     TaskManager.AddTaskOnce(HighModeTask());
                     break;
                 case "flip":
-                    TaskManager.AddTaskOnce(FlipGridTask(), 3f);
+                    TaskManager.AddTaskOnce(FlipGridTask(), 2f);
                     break;
                 case "cruise":
                     TaskManager.AddTaskOnce(CruiseTask());
@@ -272,8 +272,7 @@ namespace IngameScript
                 screenText.AppendLine($"Speed:       {gridProps.Speed * 3.6:N2} km/h");
                 screenText.AppendLine($"Flipping:    {gridProps.Flipping}");
                 screenText.AppendLine($"Power:       {power.Power:N2}");
-                screenText.AppendLine($"WheelPower:  {power.WheelMaxPower:N2}");
-                screenText.AppendLine($"GridPower:   {power.GridMaxPower:N2}");
+                screenText.AppendLine($"WheelPower:  {power.MaxPowerPercent:N2}");
                 screenText.AppendLine($"Propulsion:  {propulsion:N2}");
                 screenText.AppendLine($"Recording:   {gridProps.Recording}");
                 statusScreens.ForEach(s =>
@@ -336,23 +335,35 @@ namespace IngameScript
             public float Power;
             public float WheelMaxPower;
             public float GridMaxPower;
+            public float MaxPowerPercent;
 
         }
         IEnumerable<PowerTaskResult> PowerTask()
         {
             var ini = Config;
             var PID = new PID(ini.GetValueOrDefault("PIDPower", "4/4/0/1"));
+            float passivePower = 0;
             while (ini.Equals(Config))
             {
+                if (gridProps.Speed < 0.1)
+                {
+                    passivePower = PowerProducers.Sum(p => p.CurrentOutput);
+                }
                 var wheelPower = MyWheels.Concat(SubWheels).Sum(w => w.MaxPower);
                 var vehicleMaxPower = PowerProducers.Sum(p => p.MaxOutput);
-                var powerMaxPercent = MathHelper.Clamp((vehicleMaxPower - 0.15) / wheelPower, 0, 1);
+                var powerMaxPercent = MathHelper.Clamp((vehicleMaxPower - passivePower) / wheelPower, 0, 1);
                 var dt = TaskManager.CurrentTaskLastRun.TotalSeconds;
                 var currentSpeedKmh = gridProps.Speed * 3.6;
                 var targetSpeed = gridProps.Cruise ? gridProps.CruiseSpeed : (gridProps.ForwardBackward != 0 ? MyWheels.First().SpeedLimit : 0);
                 var error = targetSpeed - currentSpeedKmh;
                 var power = MathHelper.Clamp(PID.Signal(error, dt), 5, 100 * powerMaxPercent);
-                yield return new PowerTaskResult { Power = (float)power, WheelMaxPower = (float)wheelPower, GridMaxPower = vehicleMaxPower };
+                yield return new PowerTaskResult
+                {
+                    Power = (float)power,
+                    WheelMaxPower = (float)wheelPower,
+                    GridMaxPower = vehicleMaxPower,
+                    MaxPowerPercent = (float)powerMaxPercent
+                };
             }
         }
 
