@@ -121,14 +121,24 @@ namespace IngameScript
 
         List<IMyShipController> Controllers => Memo.Of(() => Util.GetBlocks<IMyShipController>(b => Util.IsNotIgnored(b, Config["IgnoreTag"])), "controllers", 100);
 
-        List<IMyPowerProducer> PowerProducers => Memo.Of(() =>
+        struct GridPower
+        {
+            public float MaxOutput;
+            public float CurrentOutput;
+        }
+
+        GridPower PowerProducersPower => Memo.Of(() =>
         {
             var blocks = Util.GetBlocks<IMyPowerProducer>(b =>
             {
                 return b.Enabled && !(b is IMyBatteryBlock)
                     || (b.Enabled && b is IMyBatteryBlock && !(b as IMyBatteryBlock).IsCharging);
             });
-            return blocks;
+            return new GridPower
+            {
+                MaxOutput = blocks.Sum(b => b.MaxOutput),
+                CurrentOutput = blocks.Sum(b => b.CurrentOutput)
+            };
         }, "myPowerProducers", 10);
 
     }

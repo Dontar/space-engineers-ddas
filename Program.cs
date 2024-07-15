@@ -341,20 +341,21 @@ namespace IngameScript
         IEnumerable<PowerTaskResult> PowerTask()
         {
             var ini = Config;
+            var wheels = MyWheels;
             var PID = new PID(ini.GetValueOrDefault("PIDPower", "4/4/0/1"));
+            var wheelPower = wheels.Concat(SubWheels).Sum(w => w.MaxPower);
             float passivePower = 0;
-            while (ini.Equals(Config))
+            while (ini.Equals(Config) && wheels.Equals(MyWheels))
             {
                 if (gridProps.Speed < 0.1)
                 {
-                    passivePower = PowerProducers.Sum(p => p.CurrentOutput);
+                    passivePower = PowerProducersPower.CurrentOutput;
                 }
-                var wheelPower = MyWheels.Concat(SubWheels).Sum(w => w.MaxPower);
-                var vehicleMaxPower = PowerProducers.Sum(p => p.MaxOutput);
+                var vehicleMaxPower = PowerProducersPower.MaxOutput;
                 var powerMaxPercent = MathHelper.Clamp((vehicleMaxPower - passivePower) / wheelPower, 0, 1);
                 var dt = TaskManager.CurrentTaskLastRun.TotalSeconds;
                 var currentSpeedKmh = gridProps.Speed * 3.6;
-                var targetSpeed = gridProps.Cruise ? gridProps.CruiseSpeed : (gridProps.ForwardBackward != 0 ? MyWheels.First().SpeedLimit : 0);
+                var targetSpeed = gridProps.Cruise ? gridProps.CruiseSpeed : (gridProps.ForwardBackward != 0 ? wheels.First().SpeedLimit : 0);
                 var error = targetSpeed - currentSpeedKmh;
                 var power = MathHelper.Clamp(PID.Signal(error, dt), 5, 100 * powerMaxPercent);
                 yield return new PowerTaskResult
