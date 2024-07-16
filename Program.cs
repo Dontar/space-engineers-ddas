@@ -43,14 +43,21 @@ namespace IngameScript
             _StopLightsTask = TaskManager.AddTask(StopLightsTask());
             _FrictionTask = TaskManager.AddTask(FrictionTask());
             TaskManager.AddTask(MainTask());
+
+            _AddWheelsTask.IsPaused = !Ini.Get("Options", "AddWheels").ToBoolean();
+            _SuspensionStrengthTask.IsPaused = !Ini.Get("Options", "SuspensionStrength").ToBoolean();
+            _SubSuspensionStrengthTask.IsPaused = !Ini.Get("Options", "SubSuspensionStrength").ToBoolean();
+            _PowerTask.IsPaused = !Ini.Get("Options", "Power").ToBoolean();
+            _StopLightsTask.IsPaused = !Ini.Get("Options", "StopLights").ToBoolean();
+            _FrictionTask.IsPaused = !Ini.Get("Options", "Friction").ToBoolean();
         }
 
-        TaskManager.Task _AddWheelsTask;
-        TaskManager.Task _SuspensionStrengthTask;
-        TaskManager.Task _SubSuspensionStrengthTask;
-        TaskManager.Task _PowerTask;
-        TaskManager.Task _StopLightsTask;
-        TaskManager.Task _FrictionTask;
+        readonly TaskManager.Task _AddWheelsTask;
+        readonly TaskManager.Task _SuspensionStrengthTask;
+        readonly TaskManager.Task _SubSuspensionStrengthTask;
+        readonly TaskManager.Task _PowerTask;
+        readonly TaskManager.Task _StopLightsTask;
+        readonly TaskManager.Task _FrictionTask;
 
         public void Main(string argument, UpdateType updateSource)
         {
@@ -117,23 +124,30 @@ namespace IngameScript
                         {
                             case "addwheels":
                                 _AddWheelsTask.IsPaused = !_AddWheelsTask.IsPaused;
+                                Ini.Set("Options", "AddWheels", (!_AddWheelsTask.IsPaused).ToString());
                                 break;
                             case "suspensionstrength":
                                 _SuspensionStrengthTask.IsPaused = !_SuspensionStrengthTask.IsPaused;
+                                Ini.Set("Options", "SuspensionStrength", (!_SuspensionStrengthTask.IsPaused).ToString());
                                 break;
                             case "subsuspensionstrength":
                                 _SubSuspensionStrengthTask.IsPaused = !_SubSuspensionStrengthTask.IsPaused;
+                                Ini.Set("Options", "SubWheelsStrength", (!_SubSuspensionStrengthTask.IsPaused).ToString());
                                 break;
                             case "power":
                                 _PowerTask.IsPaused = !_PowerTask.IsPaused;
+                                Ini.Set("Options", "Power", (!_PowerTask.IsPaused).ToString());
                                 break;
                             case "stoplights":
                                 _StopLightsTask.IsPaused = !_StopLightsTask.IsPaused;
+                                Ini.Set("Options", "StopLights", (!_StopLightsTask.IsPaused).ToString());
                                 break;
                             case "friction":
                                 _FrictionTask.IsPaused = !_FrictionTask.IsPaused;
+                                Ini.Set("Options", "Friction", (!_FrictionTask.IsPaused).ToString());
                                 break;
                         }
+                        Me.CustomData = Ini.ToString();
                     }
                     menuSystem.ProcessMenuCommands(argument);
                     break;
@@ -142,7 +156,13 @@ namespace IngameScript
 
         IEnumerable MainTask()
         {
-            while (true)
+            var ini = Config;
+            var strength = ini.GetValueOrDefault("SuspensionStrength", "true").ToLower() == "true";
+            var subWheels = ini.GetValueOrDefault("SubWheelsStrength", "true").ToLower() == "true";
+            var powerFlag = ini.GetValueOrDefault("Power", "true").ToLower() == "true";
+            var frictionFlag = ini.GetValueOrDefault("Friction", "true").ToLower() == "true";
+
+            while (ini.Equals(Config))
             {
                 var taskResults = TaskManager.TaskResults;
                 var updateStrength = taskResults.OfType<StrengthTaskResult>().FirstOrDefault().action;
@@ -155,9 +175,13 @@ namespace IngameScript
                 foreach (var w in MyWheels)
                 {
                     // update strength
-                    updateStrength?.Invoke(w, GridUnsprungMass * gridProps.GravityMagnitude);
-                    friction?.Invoke(w);
-                    w.Wheel.Power = power;
+                    if (strength)
+                        updateStrength?.Invoke(w, GridUnsprungMass * gridProps.GravityMagnitude);
+                    if (frictionFlag)
+                        friction?.Invoke(w);
+                    if (powerFlag)
+                        w.Wheel.Power = power;
+
                     w.Wheel.PropulsionOverride = w.IsLeft ? propulsion : -propulsion;
 
                     // update height
@@ -190,17 +214,18 @@ namespace IngameScript
                         w.Wheel.SteeringOverride = w.IsFrontFocal ? autopilot.Steer : -autopilot.Steer;
                     }
                     else
-                    {
                         w.Wheel.SteeringOverride = 0;
-                    }
                 }
                 foreach (var w in SubWheels)
                 {
-                    updateSubStrength?.Invoke(w, GridUnsprungMass * gridProps.GravityMagnitude);
-                    friction?.Invoke(w);
                     w.SpeedLimit = MyWheels.First().SpeedLimit;
-                    w.Wheel.Height += (w.TargetHeight - w.Wheel.Height) * 0.3f;
-                    w.Wheel.Power = power;
+
+                    if (subWheels)
+                        updateSubStrength?.Invoke(w, GridUnsprungMass * gridProps.GravityMagnitude);
+                    if (frictionFlag)
+                        friction?.Invoke(w);
+                    if (powerFlag)
+                        w.Wheel.Power = power;
 
                     if ((gridProps.Roll > 3 && w.IsLeft) || (gridProps.Roll < -3 && !w.IsLeft))
                     {
@@ -216,9 +241,7 @@ namespace IngameScript
                         w.Wheel.PropulsionOverride = w.IsLeft ? p : -p;
                     }
                     else
-                    {
                         w.Wheel.PropulsionOverride = 0;
-                    }
                 }
                 yield return null;
             }
@@ -252,16 +275,31 @@ namespace IngameScript
                 yield return null;
             }
         }
-
+        List<IMyTerminalBlock> Screens => Memo.Of(() =>
+        {
+            var tag = Config.GetValueOrDefault("Tag", "{DDAS}");
+            var screensBlocks = Util.GetBlocks<IMyTerminalBlock>(b => Util.IsTagged(b, tag) && b is IMyTextSurfaceProvider && (b as IMyTextSurfaceProvider).SurfaceCount > 0);
+            return screensBlocks;
+        }, "screens", 100);
         IEnumerable ScreensTask()
         {
             var screenText = new StringBuilder();
-            var ini = Config;
-            var tag = ini.GetValueOrDefault("Tag", "{DDAS}");
-            while (ini.Equals(Config))
+            var screens = Screens;
+            var statusScreens = screens.Where(s => s.CustomData.Contains("ddas-status")).Select(s =>
             {
-                var statusScreens = Util.GetScreens(b => Util.IsTagged(b, tag) && b.CustomData.Contains("ddas=status"));
-                var menuScreens = Util.GetScreens(b => Util.IsTagged(b, tag) && b.CustomData.Contains("ddas=menu"));
+                var start = s.CustomData.IndexOf("ddas-status", StringComparison.OrdinalIgnoreCase);
+                var idx = s.CustomData.Substring(start, 13).Split('=').Last();
+                return (s as IMyTextSurfaceProvider).GetSurface(int.Parse(idx) - 1);
+            }).ToList();
+            var menuScreens = screens.Where(s => s.CustomData.Contains("ddas-menu")).Select(s =>
+            {
+                var start = s.CustomData.IndexOf("ddas-menu", StringComparison.OrdinalIgnoreCase);
+                var idx = s.CustomData.Substring(start, 11).Split('=').Last();
+                return (s as IMyTextSurfaceProvider).GetSurface(int.Parse(idx) - 1);
+            }).ToList();
+
+            while (screens.Equals(Screens))
+            {
                 var propulsion = TaskManager.TaskResults.OfType<CruiseTaskResult>().FirstOrDefault().Propulsion;
                 var power = TaskManager.TaskResults.OfType<PowerTaskResult>().FirstOrDefault();
                 var autopilot = TaskManager.TaskResults.OfType<AutopilotTaskResult>().FirstOrDefault();

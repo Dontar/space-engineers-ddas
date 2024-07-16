@@ -61,7 +61,15 @@ namespace IngameScript
                 _program = program;
             }
         }
+
         Dictionary<string, string> Config => Memo.Of(() =>
+        {
+            var keys = new List<MyIniKey>();
+            Ini.GetKeys(keys);
+            return keys.ToDictionary(k => k.Name, k => Ini.Get(k.Section, k.Name).ToString());
+        }, "config", Memo.Refs(Ini));
+
+        MyIni Ini => Memo.Of(() =>
         {
             var myIni = new MyIni();
             if (!myIni.TryParse(Me.CustomData) || Me.CustomData == "")
@@ -88,12 +96,17 @@ namespace IngameScript
                 myIni.Set("Options", "PIDFlip", "10/0/0/0");
                 myIni.Set("Options", "PIDPower", "4/4/0/1");
 
+                myIni.Set("Options", "AddWheels", "true");
+                myIni.Set("Options", "SuspensionStrength", "true");
+                myIni.Set("Options", "SubWheelsStrength", "true");
+                myIni.Set("Options", "Power", "true");
+                myIni.Set("Options", "StopLights", "true");
+                myIni.Set("Options", "Friction", "true");
+
                 Me.CustomData = myIni.ToString();
             };
-            var keys = new List<MyIniKey>();
-            myIni.GetKeys(keys);
-            return keys.ToDictionary(k => k.Name, k => myIni.Get(k.Section, k.Name).ToString());
-        }, "config", Memo.Refs(Me.CustomData));
+            return myIni;
+        }, "myIni", Memo.Refs(Me.CustomData));
 
         readonly GridProps gridProps;
 
@@ -117,6 +130,7 @@ namespace IngameScript
                 .Select(w => new WheelWrapper(w, gridProps))
                 .ToList(),
             "subWheels", Memo.Refs(AllWheels));
+
         double GridUnsprungMass => Memo.Of(() => gridProps.Mass.PhysicalMass - MyWheels.Concat(SubWheels).Sum(w => w.Wheel.Top.Mass), "GridUnsprungWeight", Memo.Refs(gridProps.Mass.PhysicalMass, MyWheels));
 
         List<IMyShipController> Controllers => Memo.Of(() => Util.GetBlocks<IMyShipController>(b => Util.IsNotIgnored(b, Config["IgnoreTag"])), "controllers", 100);
