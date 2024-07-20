@@ -46,7 +46,7 @@ namespace IngameScript
 
             _AddWheelsTask.IsPaused = !Ini.Get("Options", "AddWheels").ToBoolean();
             _SuspensionStrengthTask.IsPaused = !Ini.Get("Options", "SuspensionStrength").ToBoolean();
-            _SubSuspensionStrengthTask.IsPaused = !Ini.Get("Options", "SubSuspensionStrength").ToBoolean();
+            _SubSuspensionStrengthTask.IsPaused = !Ini.Get("Options", "SubWheelsStrength").ToBoolean();
             _PowerTask.IsPaused = !Ini.Get("Options", "Power").ToBoolean();
             _StopLightsTask.IsPaused = !Ini.Get("Options", "StopLights").ToBoolean();
             _FrictionTask.IsPaused = !Ini.Get("Options", "Friction").ToBoolean();
@@ -305,14 +305,13 @@ namespace IngameScript
                 var autopilot = TaskManager.TaskResults.OfType<AutopilotTaskResult>().FirstOrDefault();
 
                 screenText.Clear();
-                screenText.AppendLine($"Cruise:      {gridProps.Cruise}");
-                screenText.AppendLine($"CruiseSpeed: {gridProps.CruiseSpeed:N2} km/h");
                 screenText.AppendLine($"Speed:       {gridProps.Speed * 3.6:N2} km/h");
+                screenText.AppendLine($"CruiseSpeed: {gridProps.CruiseSpeed:N2} km/h");
+                screenText.AppendLine($"Cruise:      {gridProps.Cruise}");
+                screenText.AppendLine($"Recording:   {gridProps.Recording}");
                 screenText.AppendLine($"Flipping:    {gridProps.Flipping}");
                 screenText.AppendLine($"Power:       {power.Power:N2}");
-                screenText.AppendLine($"WheelPower:  {power.MaxPowerPercent:N2}");
                 screenText.AppendLine($"Propulsion:  {propulsion:N2}");
-                screenText.AppendLine($"Recording:   {gridProps.Recording}");
                 statusScreens.ForEach(s =>
                 {
                     s.ContentType = ContentType.TEXT_AND_IMAGE;
