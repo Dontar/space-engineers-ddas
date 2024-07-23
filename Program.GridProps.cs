@@ -145,8 +145,8 @@ namespace IngameScript
         {
             var blocks = Util.GetBlocks<IMyPowerProducer>(b =>
             {
-                return b.Enabled && !(b is IMyBatteryBlock)
-                    || (b.Enabled && b is IMyBatteryBlock && !(b as IMyBatteryBlock).IsCharging);
+                return (b.Enabled && !(b is IMyBatteryBlock))
+                    || (b.Enabled && b is IMyBatteryBlock && (b as IMyBatteryBlock).ChargeMode != ChargeMode.Recharge);
             });
             return new GridPower
             {
