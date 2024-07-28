@@ -101,7 +101,10 @@ namespace IngameScript
                     TaskManager.AddTaskOnce(CruiseTask());
                     break;
                 case "record":
-                    TaskManager.AddTaskOnce(RecordPathTask(), 1.7f);
+                    if (!gridProps.Recording)
+                        TaskManager.AddTaskOnce(RecordPathTask(), 1.7f);
+                    else
+                        gridProps.Recording = false;
                     break;
                 case "import":
                     TaskManager.AddTaskOnce(ImportPathTask());
@@ -111,10 +114,6 @@ namespace IngameScript
                     break;
                 case "export":
                     TaskManager.AddTaskOnce(ExportPathTask());
-                    break;
-                case "stop_recording":
-                case "stop_record":
-                    gridProps.Recording = false;
                     break;
                 default:
                     if (argument.ToLower().StartsWith("toggle"))
@@ -574,14 +573,24 @@ namespace IngameScript
             var wayPoints = new List<MyWaypointInfo>();
             autopilot.GetWaypointInfo(wayPoints);
 
+            Action movePointToEnd = () =>
+            {
+                var waypointData = new List<MyWaypointInfo>();
+                autopilot.GetWaypointInfo(waypointData);
+                waypointData.Add(waypointData.FirstOrDefault());
+                waypointData.RemoveAt(0);
+                autopilot.ClearWaypoints();
+                waypointData.ForEach(w => autopilot.AddWaypoint(w));
+            };
+
             while (ini.Equals(Config) && autopilot.IsAutoPilotEnabled)
             {
                 if (!gridProps.Cruise)
                 {
-                    TaskManager.AddTask(CruiseTask(autopilot.SpeedLimit * 3.6f, () => autopilot.IsAutoPilotEnabled));
+                    TaskManager.AddTaskOnce(CruiseTask(autopilot.SpeedLimit * 3.6f, () => autopilot.IsAutoPilotEnabled));
                 }
-
-                gridProps.CruiseSpeed = autopilot.SpeedLimit * 3.6f;
+                else
+                    gridProps.CruiseSpeed = autopilot.SpeedLimit * 3.6f;
 
                 var currentPosition = autopilot.GetPosition();
                 var destinationVector = autopilot.CurrentWaypoint.Coords - currentPosition;
@@ -617,7 +626,8 @@ namespace IngameScript
                         switch (autopilot.FlightMode)
                         {
                             case FlightMode.OneWay:
-                                autopilot.SetAutoPilotEnabled(false);
+                                movePointToEnd();
+                                autopilot.HandBrake = true;
                                 break;
                             case FlightMode.Patrol:
                                 autopilot.ClearWaypoints();
@@ -625,16 +635,15 @@ namespace IngameScript
                                 wayPoints.ForEach(w => autopilot.AddWaypoint(w));
                                 autopilot.SetAutoPilotEnabled(true);
                                 break;
+                            default:
+                                movePointToEnd();
+                                autopilot.SetAutoPilotEnabled(true);
+                                break;
                         }
                     }
                     else
                     {
-                        var waypointData = new List<MyWaypointInfo>();
-                        autopilot.GetWaypointInfo(waypointData);
-                        waypointData.Add(waypointData.FirstOrDefault());
-                        waypointData.RemoveAt(0);
-                        autopilot.ClearWaypoints();
-                        waypointData.ForEach(w => autopilot.AddWaypoint(w));
+                        movePointToEnd();
                         autopilot.SetAutoPilotEnabled(true);
                     }
                 }
