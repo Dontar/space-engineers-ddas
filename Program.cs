@@ -264,12 +264,12 @@ namespace IngameScript
                     yield break;
                 }
                 var dt = TaskManager.CurrentTaskLastRun.TotalSeconds;
-                var power = Util.NormalizeValue(Math.Abs(gridProps.Roll), 0, 180, 5, 100);
+                // var power = Util.NormalizeValue(Math.Abs(gridProps.Roll), 0, 180, 5, 100);
                 var rollSpeed = MathHelper.Clamp(pidRoll.Signal(gridProps.Roll, dt), -60, 60);
                 gyroList.ForEach(g =>
                 {
-                    g.GyroPower = (float)power;
-                    Util.ApplyGyroOverride(0, 0, rollSpeed, g, gridProps.MainController.WorldMatrix);
+                    // g.GyroPower = (float)power;
+                    Util.ApplyGyroOverride(0, 0, -rollSpeed, g, gridProps.MainController.WorldMatrix);
                 });
                 yield return null;
             }

@@ -110,7 +110,7 @@ namespace IngameScript
 
         readonly GridProps gridProps;
 
-        List<IMyMotorSuspension> AllWheels => Memo.Of(() => Util.GetBlocks<IMyMotorSuspension>(b => Util.IsNotIgnored(b, Config["IgnoreTag"])), "wheels", Memo.Refs(gridProps.Mass.BaseMass));
+        List<IMyMotorSuspension> AllWheels => Memo.Of(() => Util.GetBlocks<IMyMotorSuspension>(b => Util.IsNotIgnored(b, Config["IgnoreTag"]) && b.Enabled), "wheels", Memo.Refs(gridProps.Mass.BaseMass));
 
         List<WheelWrapper> MyWheels => Memo.Of(() =>
             {
