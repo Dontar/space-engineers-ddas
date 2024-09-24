@@ -471,8 +471,9 @@ namespace IngameScript
                     action = (w, GridUnsprungWeight) =>
                     {
                         w.TargetStrength = Memo.Of(() =>
-                            MathHelper.Clamp(Math.Sqrt(w.WeightRatio / normalizeFactor * GridUnsprungWeight) / w.BlackMagicFactor, 5, 100)
-                        , $"TargetStrength-{w.Wheel.EntityId}", Memo.Refs(GridUnsprungWeight));
+                            MathHelper.Clamp(Math.Sqrt(w.WeightRatio / normalizeFactor * GridUnsprungWeight) / w.BlackMagicFactor, 5, 100),
+                            $"TargetStrength-{w.Wheel.EntityId}", Memo.Refs(GridUnsprungWeight)
+                        );
                         w.Wheel.Strength += (float)((w.TargetStrength - w.Wheel.Strength) * 0.5);
                     }
                 };
