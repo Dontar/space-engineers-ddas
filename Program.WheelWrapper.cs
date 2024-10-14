@@ -13,8 +13,8 @@ namespace IngameScript
         class WheelWrapper
         {
             public IMyMotorSuspension Wheel;
-            public float SpeedLimit { get { return Wheel.GetValueFloat("Speed Limit"); } set { Wheel.SetValueFloat("Speed Limit", (float)value); } }
-            public float SteerOverride { get { return Wheel.GetValueFloat("Steer override"); } set { Wheel.SetValueFloat("Steer override", (float)value); } }
+            public float SpeedLimit { get { return Wheel.GetValueFloat("Speed Limit"); } set { Wheel.SetValueFloat("Speed Limit", value); } }
+            public float SteerOverride { get { return Wheel.GetValueFloat("Steer override"); } set { Wheel.SetValueFloat("Steer override", value); } }
             public Vector3D ToCoM = Vector3D.Zero;
             public Vector3D ToFocalPoint = Vector3D.Zero;
             public double Radius;
@@ -57,11 +57,12 @@ namespace IngameScript
                 get
                 {
                     var isSmall = Wheel.CubeGrid.GridSizeEnum == MyCubeSize.Small;
+                    var subType = Wheel.BlockDefinition.SubtypeName;
                     return
-                        Wheel.BlockDefinition.SubtypeName.Contains("5x5") ? (isSmall ? 0.3 : 1.5) :
-                        Wheel.BlockDefinition.SubtypeName.Contains("3x3") ? (isSmall ? 0.2 : 1) :
-                        Wheel.BlockDefinition.SubtypeName.Contains("2x2") ? (isSmall ? 0.15 : 0.8) :
-                        Wheel.BlockDefinition.SubtypeName.Contains("1x1") ? (isSmall ? 0.1 : 0.5) : 0;
+                        subType.Contains("5x5") ? (isSmall ? 0.3 : 1.5) :
+                        subType.Contains("3x3") ? (isSmall ? 0.2 : 1) :
+                        subType.Contains("2x2") ? (isSmall ? 0.15 : 0.8) :
+                        subType.Contains("1x1") ? (isSmall ? 0.1 : 0.5) : 0;
                 }
             }
 
@@ -75,18 +76,20 @@ namespace IngameScript
                 ToCoM = Vector3D.TransformNormal(wheelPos - controller.CenterOfMass, transposition);
                 ToFocalPoint = RC ? Vector3D.TransformNormal(wheelPos - controller.GetPosition(), transposition) : ToCoM;
                 ToFocalPoint.Z += double.Parse(ini.GetValueOrDefault("AckermanFocalPointOffset", "0"));
+                var isBigWheel = Wheel.BlockDefinition.SubtypeName.Contains("5x5");
                 BlackMagicFactor = Wheel.CubeGrid.GridSizeEnum == MyCubeSize.Small
-                    ? Wheel.BlockDefinition.SubtypeName.Contains("5x5") ? 18.5 : 15
-                    : Wheel.BlockDefinition.SubtypeName.Contains("5x5") ? 55 : 52.5;
+                    ? isBigWheel ? 18.5 : 15
+                    : isBigWheel ? 55 : 52.5;
             }
             public WheelWrapper(IMyMotorSuspension wheel, GridProps props)
             {
                 Wheel = wheel;
                 TargetHeight = HeightOffsetMin;
                 ToCoM = Vector3D.TransformNormal(wheel.Top.GetPosition() - props.SubController.CenterOfMass, MatrixD.Transpose(props.MainController.WorldMatrix));
+                var isBigWheel = Wheel.BlockDefinition.SubtypeName.Contains("5x5");
                 BlackMagicFactor = Wheel.CubeGrid.GridSizeEnum == MyCubeSize.Small
-                    ? Wheel.BlockDefinition.SubtypeName.Contains("5x5") ? 18.5 : 15
-                    : Wheel.BlockDefinition.SubtypeName.Contains("5x5") ? 55 : 52.5;
+                    ? isBigWheel ? 18.5 : 15
+                    : isBigWheel ? 55 : 52.5;
             }
 
         }
