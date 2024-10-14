@@ -277,7 +277,7 @@ namespace IngameScript
         List<IMyTerminalBlock> Screens => Memo.Of(() =>
         {
             var tag = Config.GetValueOrDefault("Tag", "{DDAS}");
-            var screensBlocks = Util.GetBlocks<IMyTerminalBlock>(b => Util.IsTagged(b, tag) && b is IMyTextSurfaceProvider && (b as IMyTextSurfaceProvider).SurfaceCount > 0);
+            var screensBlocks = Util.GetBlocks<IMyTerminalBlock>(b => Util.IsTagged(b, tag) && Util.HasScreens(b));
             return screensBlocks;
         }, "screens", 100);
         IEnumerable ScreensTask()

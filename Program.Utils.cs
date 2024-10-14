@@ -190,6 +190,11 @@ namespace IngameScript
                 return block.CustomName.Contains(tag);
             }
 
+            public static bool HasScreens(IMyTerminalBlock block)
+            {
+                return block is IMyTextSurfaceProvider && (block as IMyTextSurfaceProvider).SurfaceCount > 0;
+            }
+
             public static void ApplyGyroOverride(double pitchSpeed, double yawSpeed, double rollSpeed, IMyGyro gyro, MatrixD worldMatrix)
             {
                 var rotationVec = new Vector3D(pitchSpeed, yawSpeed, rollSpeed);
