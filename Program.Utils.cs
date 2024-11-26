@@ -190,6 +190,11 @@ namespace IngameScript
                 return block.CustomName.Contains(tag);
             }
 
+            public static bool IsBetween(double value, double min, double max)
+            {
+                return value >= min && value <= max;
+            }
+
             public static bool HasScreens(IMyTerminalBlock block)
             {
                 return block is IMyTextSurfaceProvider && (block as IMyTextSurfaceProvider).SurfaceCount > 0;

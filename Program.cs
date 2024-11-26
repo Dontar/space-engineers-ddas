@@ -257,7 +257,7 @@ namespace IngameScript
             gridProps.Flipping = true;
             while (ini.Equals(Config))
             {
-                if ((gridProps.Roll > -25 && gridProps.Roll < 25) || gridProps.UpDown < 0)
+                if (Util.IsBetween(gridProps.Roll, -25, 25) || gridProps.UpDown < 0)
                 {
                     gyroList.ForEach(g => { g.GyroPower = 100; g.Roll = g.Yaw = g.Pitch = 0; g.GyroOverride = false; });
                     gridProps.Flipping = false;
