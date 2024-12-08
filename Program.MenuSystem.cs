@@ -14,8 +14,7 @@ namespace IngameScript
                 var menu = CreateMenu("DDAS");
                 menu.Add(new OptionItem { Label = "Systems >", Action = (m, i) => BuildSystemsMenu() });
                 menu.Add(new OptionItem { Label = "Path recorder >", Action = (m, i) => BuildRecorderMenu() });
-                menu.Add(new OptionItem { Label = "Lower vehicle", Action = (m, i) => TaskManager.AddTaskOnce(program.LowModeTask()) });
-                menu.Add(new OptionItem { Label = "Raise vehicle", Action = (m, i) => TaskManager.AddTaskOnce(program.HighModeTask()) });
+                menu.Add(new OptionItem { Label = "Toggle hight", Action = (m, i) => TaskManager.AddTaskOnce(program.ToggleHightModeTask()) });
             }
             void BuildSystemsMenu()
             {

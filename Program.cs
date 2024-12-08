@@ -89,10 +89,9 @@ namespace IngameScript
             switch (argument.ToLower())
             {
                 case "low":
-                    TaskManager.AddTaskOnce(LowModeTask());
-                    break;
                 case "high":
-                    TaskManager.AddTaskOnce(HighModeTask());
+                case "toggle_hight":
+                    TaskManager.AddTaskOnce(ToggleHightModeTask());
                     break;
                 case "flip":
                     TaskManager.AddTaskOnce(FlipGridTask(), 2f);
@@ -544,19 +543,16 @@ namespace IngameScript
             }
         }
 
-        IEnumerable HighModeTask()
-        {
+        IEnumerable ToggleHightModeTask() {
             var targetHigh = Config.GetValueOrDefault("HighModeHight", "Max");
-            MyWheels.ForEach(w => w.TargetHeight = targetHigh == "Max" ? w.HeightOffsetMin : float.Parse(targetHigh));
-            SubWheels.ForEach(w => w.TargetHeight = targetHigh == "Max" ? w.HeightOffsetMin : float.Parse(targetHigh));
-            yield return null;
-        }
-
-        IEnumerable LowModeTask()
-        {
             var targetLow = float.Parse(Config.GetValueOrDefault("LowModeHight", "0"));
-            MyWheels.ForEach(w => w.TargetHeight = targetLow);
-            SubWheels.ForEach(w => w.TargetHeight = targetLow);
+            Action<WheelWrapper> handler = (WheelWrapper w) => {
+                var calcHigh = targetHigh == "Max" ? w.HeightOffsetMin : float.Parse(targetHigh);
+                w.TargetHeight = w.TargetHeight == calcHigh ? targetLow : calcHigh; 
+            };
+            MyWheels.ForEach(handler);
+            SubWheels.ForEach(handler);
+
             yield return null;
         }
 
