@@ -69,7 +69,7 @@ namespace IngameScript
             public WheelWrapper(IMyMotorSuspension wheel, IMyShipController controller, Dictionary<string, string> ini)
             {
                 Wheel = wheel;
-                TargetHeight = HeightOffsetMin;
+                TargetHeight = default(float);
                 var RC = ini.GetValueOrDefault("AckermanFocalPoint", "CoM") == "RC" && controller is IMyRemoteControl;
                 var transposition = MatrixD.Transpose(controller.WorldMatrix);
                 var wheelPos = wheel.Top.GetPosition();

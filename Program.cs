@@ -185,11 +185,15 @@ namespace IngameScript
                     // update height
                     if ((gridProps.Roll > 3 && w.IsLeft) || (gridProps.Roll < -3 && !w.IsLeft))
                     {
-                        var value = Util.NormalizeClamp(Math.Abs(gridProps.Roll), 0, 25, w.HeightOffsetMin, 0);
+                        var high = Config.GetValueOrDefault("HighModeHight", "Max");
+                        var calcHigh = high == "Max" ? w.HeightOffsetMin : float.Parse(high);
+                        var low = float.Parse(Config.GetValueOrDefault("LowModeHight", "0"));
+                        var value = Util.NormalizeClamp(Math.Abs(gridProps.Roll), 0, 25, calcHigh, low);
                         w.Wheel.Height += (float)((value - w.Wheel.Height) * 0.5f);
                     }
-                    else
+                    else if (w.TargetHeight != default(float)) {
                         w.Wheel.Height += (w.TargetHeight - w.Wheel.Height) * 0.3f;
+                    }
 
                     // update steering
                     if (gridProps.LeftRight != 0)
@@ -543,12 +547,14 @@ namespace IngameScript
             }
         }
 
-        IEnumerable ToggleHightModeTask() {
+        IEnumerable ToggleHightModeTask()
+        {
             var targetHigh = Config.GetValueOrDefault("HighModeHight", "Max");
             var targetLow = float.Parse(Config.GetValueOrDefault("LowModeHight", "0"));
-            Action<WheelWrapper> handler = (WheelWrapper w) => {
+            Action<WheelWrapper> handler = (WheelWrapper w) =>
+            {
                 var calcHigh = targetHigh == "Max" ? w.HeightOffsetMin : float.Parse(targetHigh);
-                w.TargetHeight = w.TargetHeight == calcHigh ? targetLow : calcHigh; 
+                w.TargetHeight = w.TargetHeight == calcHigh ? targetLow : calcHigh;
             };
             MyWheels.ForEach(handler);
             SubWheels.ForEach(handler);
