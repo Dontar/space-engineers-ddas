@@ -81,9 +81,11 @@ namespace IngameScript
                 myIni.Set("Options", "HighModeHight", "Max");
                 myIni.SetComment("Options", "LowModeHight", "Height in meters. Same for HighModeHight, but Max will set the height to the maximum possible value");
 
+                myIni.Set("Options", "StrengthFactor", 1);
+
                 myIni.Set("Options", "MaxSteeringAngle", 25);
                 myIni.Set("Options", "AckermanFocalPoint", "CoM");
-                myIni.SetComment("Options", "AckermanFocalPoint", "Possible values RC, CoM");
+                myIni.SetComment("Options", "AckermanFocalPoint", "Possible values RC, CoM - (Remote Control, Center of Mass)");
                 myIni.Set("Options", "AckermanFocalPointOffset", 0);
                 myIni.SetComment("Options", "AckermanFocalPointOffset", "Offset from the reference point in meters");
 
@@ -102,6 +104,7 @@ namespace IngameScript
                 myIni.Set("Options", "Power", "true");
                 myIni.Set("Options", "StopLights", "true");
                 myIni.Set("Options", "Friction", "true");
+                myIni.Set("Options", "SuspensionHight", "true");
 
                 Me.CustomData = myIni.ToString();
             };

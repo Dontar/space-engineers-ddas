@@ -159,6 +159,7 @@ namespace IngameScript
             var subWheels = ini.GetValueOrDefault("SubWheelsStrength", "true").ToLower() == "true";
             var powerFlag = ini.GetValueOrDefault("Power", "true").ToLower() == "true";
             var frictionFlag = ini.GetValueOrDefault("Friction", "true").ToLower() == "true";
+            var suspensionHight = ini.GetValueOrDefault("SuspensionHight", "true").ToLower() == "true";
 
             while (ini.Equals(Config))
             {
@@ -183,7 +184,7 @@ namespace IngameScript
                     w.Wheel.PropulsionOverride = w.IsLeft ? propulsion : -propulsion;
 
                     // update height
-                    if ((gridProps.Roll > 3 && w.IsLeft) || (gridProps.Roll < -3 && !w.IsLeft))
+                    if ((gridProps.Roll > 5 && w.IsLeft) || (gridProps.Roll < -5 && !w.IsLeft))
                     {
                         var high = Config.GetValueOrDefault("HighModeHight", "Max");
                         var calcHigh = high == "Max" ? w.HeightOffsetMin : float.Parse(high);
@@ -444,6 +445,7 @@ namespace IngameScript
         {
             var myWheels = MyWheels;
             if (myWheels.Count == 0) yield return default(StrengthTaskResult);
+            var strengthFactor = float.Parse(Config.GetValueOrDefault("StrengthFactor", "1"));
             double normalizeFactor = CalcStrength(myWheels);
             while (myWheels.Equals(MyWheels))
             {
@@ -452,7 +454,7 @@ namespace IngameScript
                     action = (w, GridUnsprungWeight) =>
                     {
                         w.TargetStrength = Memo.Of(() =>
-                            MathHelper.Clamp(Math.Sqrt(w.WeightRatio / normalizeFactor * GridUnsprungWeight) / w.BlackMagicFactor, 5, 100)
+                            MathHelper.Clamp(Math.Sqrt(w.WeightRatio / normalizeFactor * GridUnsprungWeight) / w.BlackMagicFactor, 5, 100) * strengthFactor
                         , $"TargetStrength-{w.Wheel.EntityId}", Memo.Refs(GridUnsprungWeight));
                         w.Wheel.Strength += (float)((w.TargetStrength - w.Wheel.Strength) * 0.5);
                     }
@@ -468,6 +470,7 @@ namespace IngameScript
         {
             var subWheels = SubWheels;
             if (subWheels.Count == 0) yield return default(SubStrengthTaskResult);
+            var strengthFactor = float.Parse(Config.GetValueOrDefault("StrengthFactor", "1"));
             double normalizeFactor = CalcStrength(subWheels);
             while (subWheels.Equals(SubWheels))
             {
@@ -476,7 +479,7 @@ namespace IngameScript
                     action = (w, GridUnsprungWeight) =>
                     {
                         w.TargetStrength = Memo.Of(() =>
-                            MathHelper.Clamp(Math.Sqrt(w.WeightRatio / normalizeFactor * GridUnsprungWeight) / w.BlackMagicFactor, 5, 100),
+                            MathHelper.Clamp(Math.Sqrt(w.WeightRatio / normalizeFactor * GridUnsprungWeight) / w.BlackMagicFactor, 5, 100) * strengthFactor,
                             $"TargetStrength-{w.Wheel.EntityId}", Memo.Refs(GridUnsprungWeight)
                         );
                         w.Wheel.Strength += (float)((w.TargetStrength - w.Wheel.Strength) * 0.5);
@@ -553,10 +556,12 @@ namespace IngameScript
         {
             var targetHigh = Config.GetValueOrDefault("HighModeHight", "Max");
             var targetLow = float.Parse(Config.GetValueOrDefault("LowModeHight", "0"));
+            var controlWheel = MyWheels.FirstOrDefault();
+            var targetHeight = controlWheel.TargetHeight;
+            var calcHigh = targetHigh == "Max" ? controlWheel.HeightOffsetMin : float.Parse(targetHigh);
             Action<WheelWrapper> handler = (WheelWrapper w) =>
             {
-                var calcHigh = targetHigh == "Max" ? w.HeightOffsetMin : float.Parse(targetHigh);
-                w.TargetHeight = w.TargetHeight == calcHigh ? targetLow : calcHigh;
+                w.TargetHeight = targetHeight == calcHigh ? targetLow : calcHigh;
             };
             MyWheels.ForEach(handler);
             SubWheels.ForEach(handler);
