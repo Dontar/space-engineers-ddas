@@ -32,6 +32,7 @@ namespace IngameScript
             public Vector3D Direction;
             public float Steer;
         }
+
         IEnumerable AutopilotTask()
         {
             var ini = Config;
@@ -93,9 +94,9 @@ namespace IngameScript
                     {
                         switch (autopilot.FlightMode)
                         {
-                            case FlightMode.OneWay:
+                            case FlightMode.Circle:
                                 movePointToEnd();
-                                autopilot.HandBrake = true;
+                                autopilot.SetAutoPilotEnabled(true);
                                 break;
                             case FlightMode.Patrol:
                                 autopilot.ClearWaypoints();
@@ -105,7 +106,8 @@ namespace IngameScript
                                 break;
                             default:
                                 movePointToEnd();
-                                autopilot.SetAutoPilotEnabled(true);
+                                autopilot.HandBrake = true;
+                                autopilot.SetAutoPilotEnabled(false);
                                 break;
                         }
                     }
