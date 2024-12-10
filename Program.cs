@@ -160,6 +160,7 @@ namespace IngameScript
             var powerFlag = ini.GetValueOrDefault("Power", "true").ToLower() == "true";
             var frictionFlag = ini.GetValueOrDefault("Friction", "true").ToLower() == "true";
             var suspensionHight = ini.GetValueOrDefault("SuspensionHight", "true").ToLower() == "true";
+            var suspensionHightRoll = double.Parse( ini.GetValueOrDefault("SuspensionHightRoll", "15"));
 
             while (ini.Equals(Config))
             {
@@ -184,7 +185,7 @@ namespace IngameScript
                     w.Wheel.PropulsionOverride = w.IsLeft ? propulsion : -propulsion;
 
                     // update height
-                    if (suspensionHight && ((gridProps.Roll > 5 && w.IsLeft) || (gridProps.Roll < -5 && !w.IsLeft)))
+                    if (suspensionHight && ((gridProps.Roll > suspensionHightRoll && w.IsLeft) || (gridProps.Roll < -suspensionHightRoll && !w.IsLeft)))
                     {
                         var high = Config.GetValueOrDefault("HighModeHight", "Max");
                         var calcHigh = high == "Max" ? w.HeightOffsetMin : float.Parse(high);
