@@ -82,7 +82,7 @@ namespace IngameScript
                 myIni.SetComment("Options", "LowModeHight", "Height in meters. Same for HighModeHight, but Max will set the height to the maximum possible value");
 
                 myIni.Set("Options", "StrengthFactor", 1);
-                myIni.Set("Options", "SuspensionHightRoll", 15);
+                myIni.Set("Options", "SuspensionHightRoll", 45);
 
                 myIni.Set("Options", "MaxSteeringAngle", 25);
                 myIni.Set("Options", "AckermanFocalPoint", "CoM");

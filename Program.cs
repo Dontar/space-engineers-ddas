@@ -160,7 +160,11 @@ namespace IngameScript
             var powerFlag = ini.GetValueOrDefault("Power", "true").ToLower() == "true";
             var frictionFlag = ini.GetValueOrDefault("Friction", "true").ToLower() == "true";
             var suspensionHight = ini.GetValueOrDefault("SuspensionHight", "true").ToLower() == "true";
-            var suspensionHightRoll = double.Parse( ini.GetValueOrDefault("SuspensionHightRoll", "15"));
+            var suspensionHightRoll = double.Parse(ini.GetValueOrDefault("SuspensionHightRoll", "45"));
+
+            var high = Config.GetValueOrDefault("HighModeHight", "Max");
+            var low = float.Parse(Config.GetValueOrDefault("LowModeHight", "0"));
+            var calcHigh = high == "Max" ? MyWheels.FirstOrDefault().HeightOffsetMin : float.Parse(high);
 
             while (ini.Equals(Config))
             {
@@ -187,9 +191,6 @@ namespace IngameScript
                     // update height
                     if (suspensionHight && ((gridProps.Roll > suspensionHightRoll && w.IsLeft) || (gridProps.Roll < -suspensionHightRoll && !w.IsLeft)))
                     {
-                        var high = Config.GetValueOrDefault("HighModeHight", "Max");
-                        var calcHigh = high == "Max" ? w.HeightOffsetMin : float.Parse(high);
-                        var low = float.Parse(Config.GetValueOrDefault("LowModeHight", "0"));
                         var value = Util.NormalizeClamp(Math.Abs(gridProps.Roll), 0, 25, calcHigh, low);
                         w.Wheel.Height += (float)((value - w.Wheel.Height) * 0.5f);
                     }
@@ -232,9 +233,6 @@ namespace IngameScript
 
                     if (suspensionHight && ((gridProps.Roll > 5 && w.IsLeft) || (gridProps.Roll < -5 && !w.IsLeft)))
                     {
-                        var high = Config.GetValueOrDefault("HighModeHight", "Max");
-                        var calcHigh = high == "Max" ? w.HeightOffsetMin : float.Parse(high);
-                        var low = float.Parse(Config.GetValueOrDefault("LowModeHight", "0"));
                         var value = Util.NormalizeClamp(Math.Abs(gridProps.Roll), 0, 25, calcHigh, low);
                         w.Wheel.Height += (float)((value - w.Wheel.Height) * 0.5f);
                     }
