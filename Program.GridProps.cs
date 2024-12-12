@@ -21,7 +21,9 @@ namespace IngameScript
             public double Speed => MainController.GetShipSpeed();
             public bool Cruise = false;
             public bool Flipping = false;
+            public bool RollCompensating = false;
             public bool Recording = false;
+            public bool AutoLevel = false;
             public float CruiseSpeed = 0;
             public float ForwardBackward => Controller.MoveIndicator.Z;
             public float LeftRight => Controller.MoveIndicator.X;
@@ -43,10 +45,7 @@ namespace IngameScript
                     .FirstOrDefault(c => c.Orientation.Forward == MainController.Orientation.Forward)
                     ?? subControllers.FirstOrDefault();
 
-                if (MainController == null)
-                {
-                    return;
-                };
+                if (MainController == null) return;
 
                 var T = MatrixD.Transpose(MainController.WorldMatrix);
                 var gravityLocal = Vector3D.TransformNormal(MainController.GetTotalGravity(), T);
@@ -59,6 +58,7 @@ namespace IngameScript
             public GridProps(Program program)
             {
                 _program = program;
+                AutoLevel = bool.Parse(_program.Config.GetValueOrDefault("AutoLevel", "false"));
             }
         }
 
@@ -81,8 +81,8 @@ namespace IngameScript
                 myIni.Set("Options", "HighModeHight", "Max");
                 myIni.SetComment("Options", "LowModeHight", "Height in meters. Same for HighModeHight, but Max will set the height to the maximum possible value");
 
-                myIni.Set("Options", "StrengthFactor", 1);
-                myIni.Set("Options", "SuspensionHightRoll", 45);
+                myIni.Set("Options", "StrengthFactor", 0.6);
+                myIni.Set("Options", "SuspensionHightRoll", 30);
 
                 myIni.Set("Options", "MaxSteeringAngle", 25);
                 myIni.Set("Options", "AckermanFocalPoint", "CoM");
@@ -96,8 +96,10 @@ namespace IngameScript
                 myIni.SetComment("Options", "FrictionMinSpeed", "Speed in m/s where the friction adjustment will be applied");
 
                 myIni.Set("Options", "PIDCruise", "10/0/0/0");
-                myIni.Set("Options", "PIDFlip", "10/0/0/0");
+                myIni.Set("Options", "PIDFlip", "8/0/0/0");
                 myIni.Set("Options", "PIDPower", "4/4/0/1");
+                myIni.Set("Options", "PIDRoll", "6/0/0/0");
+                myIni.Set("Options", "PIDPitch", "3/0/0/0");
 
                 myIni.Set("Options", "AddWheels", "true");
                 myIni.Set("Options", "SuspensionStrength", "true");
@@ -106,6 +108,7 @@ namespace IngameScript
                 myIni.Set("Options", "StopLights", "true");
                 myIni.Set("Options", "Friction", "true");
                 myIni.Set("Options", "SuspensionHight", "true");
+                myIni.Set("Options", "AutoLevel", "false");
 
                 Me.CustomData = myIni.ToString();
             };
@@ -124,16 +127,29 @@ namespace IngameScript
                     .ToList();
                 var maxSteerAngle = double.Parse(Config.GetValueOrDefault("MaxSteeringAngle", "25"));
                 var distance = wh.Max(w => Math.Abs(w.ToFocalPoint.Z));
+                var hight = wh.Min(w => w.Wheel.Height);
                 var radius = distance / Math.Tan(MathHelper.ToRadians(maxSteerAngle));
-                wh.ForEach(w => w.Radius = radius);
+                wh.ForEach(w =>
+                {
+                    w.Radius = radius;
+                    w.TargetHeight = hight;
+                });
                 return wh;
             }, "myWheels", Memo.Refs(AllWheels, Config));
 
-        List<WheelWrapper> SubWheels => Memo.Of(() => AllWheels
+        List<WheelWrapper> SubWheels => Memo.Of(() =>
+        {
+            var sw = AllWheels
                 .Where(w => w.CubeGrid != Me.CubeGrid)
                 .Select(w => new WheelWrapper(w, gridProps))
-                .ToList(),
-            "subWheels", Memo.Refs(AllWheels));
+                .ToList();
+            if (sw.Count > 0)
+            {
+                var hight = sw.Min(w => w.Wheel.Height);
+                sw.ForEach(w => w.TargetHeight = hight);
+            }
+            return sw;
+        }, "subWheels", Memo.Refs(AllWheels));
 
         double GridUnsprungMass => Memo.Of(() => gridProps.Mass.PhysicalMass - MyWheels.Concat(SubWheels).Sum(w => w.Wheel.Top.Mass), "GridUnsprungWeight", Memo.Refs(gridProps.Mass.PhysicalMass, MyWheels));
 

@@ -58,10 +58,13 @@ namespace IngameScript
 
                 screenText.Clear();
                 screenText.AppendLine($"Speed:       {gridProps.Speed * 3.6:N2} km/h");
+                screenText.AppendLine($"Roll:        {gridProps.Roll:N2} Degrees");
+                screenText.AppendLine($"Pitch:       {gridProps.Pitch:N2} Degrees");
                 screenText.AppendLine($"CruiseSpeed: {gridProps.CruiseSpeed:N2} km/h");
                 screenText.AppendLine($"Cruise:      {gridProps.Cruise}");
                 screenText.AppendLine($"Recording:   {gridProps.Recording}");
                 screenText.AppendLine($"Flipping:    {gridProps.Flipping}");
+                screenText.AppendLine($"AutoLevel:   {gridProps.AutoLevel}");
                 screenText.AppendLine($"Power:       {power.Power:N2}");
                 screenText.AppendLine($"Propulsion:  {propulsion:N2}");
                 statusScreens.ForEach(s =>

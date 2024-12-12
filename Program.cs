@@ -36,6 +36,7 @@ namespace IngameScript
             TaskManager.AddTask(Util.DisplayLogo("DDAS", Me.GetSurface(0)));
             TaskManager.AddTask(ScreensTask());
             TaskManager.AddTask(AutopilotTask());
+            TaskManager.AddTask(AutoLevelTask());
             _AddWheelsTask = TaskManager.AddTask(AddWheelsTask());
             _SuspensionStrengthTask = TaskManager.AddTask(SuspensionStrengthTask());
             _SubSuspensionStrengthTask = TaskManager.AddTask(SubSuspensionStrengthTask());
@@ -94,10 +95,14 @@ namespace IngameScript
                     TaskManager.AddTaskOnce(ToggleHightModeTask());
                     break;
                 case "flip":
+                    gridProps.AutoLevel = false;
                     TaskManager.AddTaskOnce(FlipGridTask(), 2f);
                     break;
                 case "cruise":
                     TaskManager.AddTaskOnce(CruiseTask());
+                    break;
+                case "level":
+                    gridProps.AutoLevel = !gridProps.AutoLevel;
                     break;
                 case "record":
                     if (!gridProps.Recording)
@@ -152,6 +157,7 @@ namespace IngameScript
             }
         }
 
+
         IEnumerable MainTask()
         {
             var ini = Config;
@@ -176,6 +182,8 @@ namespace IngameScript
                 var updateSubStrength = taskResults.OfType<SubStrengthTaskResult>().FirstOrDefault().action;
                 var autopilot = taskResults.OfType<AutopilotTaskResult>().FirstOrDefault();
 
+                var roll = gridProps.Roll + (gridProps.RollCompensating ? (gridProps.Roll > 0 ? 6 : -6) : 0);
+
                 foreach (var w in MyWheels)
                 {
                     // update strength
@@ -189,13 +197,17 @@ namespace IngameScript
                     w.Wheel.PropulsionOverride = w.IsLeft ? propulsion : -propulsion;
 
                     // update height
-                    if (suspensionHight && ((gridProps.Roll > suspensionHightRoll && w.IsLeft) || (gridProps.Roll < -suspensionHightRoll && !w.IsLeft)))
+                    if (suspensionHight && ((roll > suspensionHightRoll && w.IsLeft) || (roll < -suspensionHightRoll && !w.IsLeft)))
                     {
                         var value = Util.NormalizeClamp(Math.Abs(gridProps.Roll), 0, 25, calcHigh, low);
                         w.Wheel.Height += (float)((value - w.Wheel.Height) * 0.5f);
+                        gridProps.RollCompensating = true;
                     }
                     else
+                    {
                         w.Wheel.Height += (w.TargetHeight - w.Wheel.Height) * 0.3f;
+                        gridProps.RollCompensating = false;
+                    }
 
                     // update steering
                     if (gridProps.LeftRight != 0)
@@ -220,6 +232,10 @@ namespace IngameScript
                     else
                         w.Wheel.SteeringOverride = 0;
                 }
+                if (SubWheels.Count > 0)
+                {
+                    calcHigh = high == "Max" ? SubWheels.FirstOrDefault().HeightOffsetMin : float.Parse(high);
+                }
                 foreach (var w in SubWheels)
                 {
                     w.SpeedLimit = MyWheels.First().SpeedLimit;
@@ -231,7 +247,7 @@ namespace IngameScript
                     if (powerFlag)
                         w.Wheel.Power = power;
 
-                    if (suspensionHight && ((gridProps.Roll > 5 && w.IsLeft) || (gridProps.Roll < -5 && !w.IsLeft)))
+                    if (suspensionHight && ((roll > suspensionHightRoll && w.IsLeft) || (roll < -suspensionHightRoll && !w.IsLeft)))
                     {
                         var value = Util.NormalizeClamp(Math.Abs(gridProps.Roll), 0, 25, calcHigh, low);
                         w.Wheel.Height += (float)((value - w.Wheel.Height) * 0.5f);
@@ -329,15 +345,23 @@ namespace IngameScript
         {
             var targetHigh = Config.GetValueOrDefault("HighModeHight", "Max");
             var targetLow = float.Parse(Config.GetValueOrDefault("LowModeHight", "0"));
+
             var controlWheel = MyWheels.FirstOrDefault();
             var targetHeight = controlWheel.TargetHeight;
+
             var calcHigh = targetHigh == "Max" ? controlWheel.HeightOffsetMin : float.Parse(targetHigh);
-            Action<WheelWrapper> handler = (WheelWrapper w) =>
-            {
-                w.TargetHeight = targetHeight == calcHigh ? targetLow : calcHigh;
-            };
-            MyWheels.ForEach(handler);
-            SubWheels.ForEach(handler);
+            var closeHigh = calcHigh - targetHeight;
+            var closeLow = targetHeight - targetLow;
+            MyWheels.ForEach(w => w.TargetHeight = Math.Abs(closeHigh) < Math.Abs(closeLow) ? targetLow : calcHigh);
+
+            if (SubWheels.Count == 0) yield break;
+            var controlSubWheel = SubWheels.FirstOrDefault();
+            targetHeight = controlSubWheel.TargetHeight;
+
+            calcHigh = targetHigh == "Max" ? controlSubWheel.HeightOffsetMin : float.Parse(targetHigh);
+            closeHigh = calcHigh - targetHeight;
+            closeLow = targetHeight - targetLow;
+            SubWheels.ForEach(w => w.TargetHeight = Math.Abs(closeHigh) < Math.Abs(closeLow) ? targetLow : calcHigh);
 
             yield return null;
         }

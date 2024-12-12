@@ -69,7 +69,6 @@ namespace IngameScript
             public WheelWrapper(IMyMotorSuspension wheel, IMyShipController controller, Dictionary<string, string> ini)
             {
                 Wheel = wheel;
-                TargetHeight = wheel.Height;
                 var RC = ini.GetValueOrDefault("AckermanFocalPoint", "CoM") == "RC" && controller is IMyRemoteControl;
                 var transposition = MatrixD.Transpose(controller.WorldMatrix);
                 var wheelPos = wheel.Top.GetPosition();
@@ -84,7 +83,6 @@ namespace IngameScript
             public WheelWrapper(IMyMotorSuspension wheel, GridProps props)
             {
                 Wheel = wheel;
-                TargetHeight = wheel.Height;
                 ToCoM = Vector3D.TransformNormal(wheel.Top.GetPosition() - props.SubController.CenterOfMass, MatrixD.Transpose(props.MainController.WorldMatrix));
                 var isBigWheel = Wheel.BlockDefinition.SubtypeName.Contains("5x5");
                 BlackMagicFactor = Wheel.CubeGrid.GridSizeEnum == MyCubeSize.Small
