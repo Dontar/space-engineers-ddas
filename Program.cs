@@ -66,15 +66,16 @@ namespace IngameScript
 
             if (!updateSource.HasFlag(UpdateType.Update10)) return;
 
+            if (gridProps.MainController == null)
+            {
+                Echo("No controller found");
+                return;
+            };
+            
             try
             {
                 gridProps.UpdateGridProps(Config, Controllers);
 
-                if (gridProps.MainController == null)
-                {
-                    Echo("No controller found");
-                    return;
-                };
                 TaskManager.RunTasks(Runtime.TimeSinceLastRun);
 
             }
