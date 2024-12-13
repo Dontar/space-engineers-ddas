@@ -166,7 +166,7 @@ namespace IngameScript
             var powerFlag = ini.GetValueOrDefault("Power", "true").ToLower() == "true";
             var frictionFlag = ini.GetValueOrDefault("Friction", "true").ToLower() == "true";
             var suspensionHight = ini.GetValueOrDefault("SuspensionHight", "true").ToLower() == "true";
-            var suspensionHightRoll = double.Parse(ini.GetValueOrDefault("SuspensionHightRoll", "45"));
+            var suspensionHightRoll = double.Parse(ini.GetValueOrDefault("SuspensionHightRoll", "30"));
 
             var high = Config.GetValueOrDefault("HighModeHight", "Max");
             var low = float.Parse(Config.GetValueOrDefault("LowModeHight", "0"));
@@ -272,7 +272,10 @@ namespace IngameScript
             var allWheels = AllWheels;
             while (allWheels.Equals(AllWheels))
             {
-                allWheels.Where(w => !w.IsAttached).ToList().ForEach(w => w.ApplyAction("Add Top Part"));
+                foreach (var w in allWheels.Where(w => !w.IsAttached))
+                {
+                    w.ApplyAction("Add Top Part");
+                }
                 yield return null;
             }
         }
