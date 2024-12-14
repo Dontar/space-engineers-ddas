@@ -65,20 +65,22 @@ namespace IngameScript
             var pidRoll = new PID(ini.GetValueOrDefault("PIDRoll", "6/0/0/0"));
             var pidPitch = new PID(ini.GetValueOrDefault("PIDPitch", "3/0/0/0"));
             var gyroPower = float.Parse(ini.GetValueOrDefault("AutoLevelPower", "30"));
-            if (gridProps.Speed * 3.6 > 5)
+            var isFastEnough = gridProps.Speed > 5;
+            if (isFastEnough)
             {
                 gyroList.ForEach(g => { g.GyroOverride = true; g.GyroPower = gyroPower / 100; });
-                while (ini.Equals(Config) && gridProps.AutoLevel)
+            }
+            while (ini.Equals(Config) && gridProps.AutoLevel && isFastEnough)
+            {
+                isFastEnough = gridProps.Speed > 5;
+                var dt = TaskManager.CurrentTaskLastRun.TotalSeconds;
+                var rollSpeed = MathHelper.Clamp(pidRoll.Signal(gridProps.Roll, dt), -60, 60);
+                var pitchSpeed = MathHelper.Clamp(pidPitch.Signal(gridProps.Pitch - 5, dt), -60, 60);
+                gyroList.ForEach(g =>
                 {
-                    var dt = TaskManager.CurrentTaskLastRun.TotalSeconds;
-                    var rollSpeed = MathHelper.Clamp(pidRoll.Signal(gridProps.Roll, dt), -60, 60);
-                    var pitchSpeed = MathHelper.Clamp(pidPitch.Signal(gridProps.Pitch - 5, dt), -60, 60);
-                    gyroList.ForEach(g =>
-                    {
-                        Util.ApplyGyroOverride(pitchSpeed, 0, -rollSpeed, g, gridProps.MainController.WorldMatrix);
-                    });
-                    yield return null;
-                }
+                    Util.ApplyGyroOverride(pitchSpeed, 0, -rollSpeed, g, gridProps.MainController.WorldMatrix);
+                });
+                yield return null;
             }
             gyroList.ForEach(g => { g.GyroPower = 1; g.Roll = g.Yaw = g.Pitch = 0; g.GyroOverride = false; });
         }
