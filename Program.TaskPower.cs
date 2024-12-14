@@ -39,7 +39,7 @@ namespace IngameScript
         {
             var ini = Config;
             var wheels = MyWheels;
-            var PID = new PID(ini.GetValueOrDefault("PIDPower", "4/4/0/1"));
+            var PID = new PID(ini.GetValueOrDefault("PIDPower", "10/0/0/0"));
             var wheelPower = wheels.Concat(SubWheels).Sum(w => w.MaxPower);
             float passivePower = 0;
             while (ini.Equals(Config) && wheels.Equals(MyWheels))

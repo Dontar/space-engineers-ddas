@@ -83,6 +83,7 @@ namespace IngameScript
 
                 myIni.Set("Options", "StrengthFactor", 0.6);
                 myIni.Set("Options", "SuspensionHightRoll", 30);
+                myIni.Set("Options", "AutoLevelPower", 30);
 
                 myIni.Set("Options", "MaxSteeringAngle", 25);
                 myIni.Set("Options", "AckermanFocalPoint", "CoM");
@@ -95,9 +96,9 @@ namespace IngameScript
                 myIni.Set("Options", "FrictionMinSpeed", 5);
                 myIni.SetComment("Options", "FrictionMinSpeed", "Speed in m/s where the friction adjustment will be applied");
 
-                myIni.Set("Options", "PIDCruise", "10/0/0/0");
+                myIni.Set("Options", "PIDCruise", "0.5/0/0/0");
                 myIni.Set("Options", "PIDFlip", "8/0/0/0");
-                myIni.Set("Options", "PIDPower", "4/4/0/1");
+                myIni.Set("Options", "PIDPower", "10/0/0/0");
                 myIni.Set("Options", "PIDRoll", "6/0/0/0");
                 myIni.Set("Options", "PIDPitch", "3/0/0/0");
 

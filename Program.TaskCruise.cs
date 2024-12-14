@@ -38,7 +38,7 @@ namespace IngameScript
             gridProps.Cruise = true;
             gridProps.CruiseSpeed = cruiseSpeed > -1 ? cruiseSpeed : (float)(gridProps.Speed * 3.6);
             cruiseWhile = cruiseWhile ?? (() => gridProps.UpDown == 0);
-            var pid = new PID(ini.GetValueOrDefault("PIDCruise", "10/0/0/0"));
+            var pid = new PID(ini.GetValueOrDefault("PIDCruise", "0.5/0/0/0"));
             while (ini.Equals(Config) && cruiseWhile())
             {
                 if (cruiseSpeed == -1)
@@ -49,7 +49,7 @@ namespace IngameScript
                 var currentSpeedKmh = gridProps.Speed * 3.6;
                 var targetSpeed = gridProps.CruiseSpeed;
                 var error = targetSpeed - currentSpeedKmh;
-                var propulsion = Util.NormalizeClamp(pid.Signal(error, dt), 0, targetSpeed, 0, 1);
+                var propulsion = MathHelper.Clamp(pid.Signal(error, dt), -1, 1);
 
                 yield return new CruiseTaskResult { Propulsion = (float)propulsion };
             }
