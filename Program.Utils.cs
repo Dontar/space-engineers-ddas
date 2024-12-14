@@ -372,17 +372,17 @@ namespace IngameScript
                     screen.WriteText(output.ToString());
                 }
 
-                Vector2 ScreenSize(IMyTextSurface screen, string Char)
+                VRageMath.Vector2 ScreenSize(IMyTextSurface screen, string Char)
                 {
-                    Vector2 refSize = screen.SurfaceSize;
+                    VRageMath.Vector2 refSize = screen.SurfaceSize;
                     float height = screen.TextureSize.Y;
                     float width = screen.TextureSize.X;
                     refSize.Y *= 512 / height;
                     refSize.X *= 512 / width;
                     float noPaddingY = refSize.Y * (100 - screen.TextPadding * 2) / 100;
                     float noPaddingX = refSize.X * (100 - screen.TextPadding * 2) / 100;
-                    Vector2 size = screen.MeasureStringInPixels(new StringBuilder(Char), screen.Font, screen.FontSize);
-                    return new Vector2(noPaddingX / size.X, noPaddingY / size.Y);
+                    VRageMath.Vector2 size = screen.MeasureStringInPixels(new StringBuilder(Char), screen.Font, screen.FontSize);
+                    return new VRageMath.Vector2(noPaddingX / size.X, noPaddingY / size.Y);
                 }
             }
 
