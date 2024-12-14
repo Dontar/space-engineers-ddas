@@ -31,7 +31,7 @@ namespace IngameScript
     {
         static class Memo
         {
-            class CacheValue
+            public class CacheValue
             {
                 public int Age;
                 public object Value;
@@ -52,7 +52,7 @@ namespace IngameScript
                     Value = value;
                 }
             }
-            static readonly Dictionary<string, CacheValue> _dependencyCache = new Dictionary<string, CacheValue>();
+            public static readonly Dictionary<string, CacheValue> _dependencyCache = new Dictionary<string, CacheValue>();
 
             public static object[] Refs(object p1, object p2 = null, object p3 = null)
             {
@@ -190,11 +190,6 @@ namespace IngameScript
                 return block.CustomName.Contains(tag);
             }
 
-            public static bool IsBetween(double value, double min, double max)
-            {
-                return value >= min && value <= max;
-            }
-
             public static bool HasScreens(IMyTerminalBlock block)
             {
                 return block is IMyTextSurfaceProvider && (block as IMyTextSurfaceProvider).SurfaceCount > 0;
@@ -227,7 +222,8 @@ namespace IngameScript
                     var size = screen.MeasureStringInPixels(new StringBuilder(pbLabel), screen.Font, screen.FontSize);
                     screen.Alignment = TextAlignment.CENTER;
                     screen.ContentType = ContentType.TEXT_AND_IMAGE;
-                    screen.WriteText(string.Join("", Enumerable.Repeat("\n", (int)(screen.TextureSize.Y / size.Y))) + pbLabel + progress.Current);
+                    screen.TextPadding = 0f;
+                    screen.WriteText(string.Join("", Enumerable.Repeat("\n", (int)(screen.SurfaceSize.Y / size.Y))) + pbLabel + progress.Current);
                     yield return null;
                 }
             }
