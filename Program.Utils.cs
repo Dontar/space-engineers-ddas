@@ -31,7 +31,7 @@ namespace IngameScript
     {
         static class Memo
         {
-            public class CacheValue
+            class CacheValue
             {
                 public int Age;
                 public object Value;
@@ -52,7 +52,7 @@ namespace IngameScript
                     Value = value;
                 }
             }
-            public static readonly Dictionary<string, CacheValue> _dependencyCache = new Dictionary<string, CacheValue>();
+            static readonly Dictionary<string, CacheValue> _dependencyCache = new Dictionary<string, CacheValue>();
 
             public static object[] Refs(object p1, object p2 = null, object p3 = null)
             {
@@ -189,10 +189,12 @@ namespace IngameScript
             {
                 return block.CustomName.Contains(tag) || block.CustomData.Contains(tag);
             }
+
             public static bool IsBetween(double value, double min, double max)
             {
                 return value >= min && value <= max;
             }
+
             public static bool HasScreens(IMyTerminalBlock block)
             {
                 return block is IMyTextSurfaceProvider && (block as IMyTextSurfaceProvider).SurfaceCount > 0;
@@ -225,7 +227,6 @@ namespace IngameScript
                     var size = screen.MeasureStringInPixels(new StringBuilder(pbLabel), screen.Font, screen.FontSize);
                     screen.Alignment = TextAlignment.CENTER;
                     screen.ContentType = ContentType.TEXT_AND_IMAGE;
-                    screen.TextPadding = 0f;
                     screen.WriteText(string.Join("", Enumerable.Repeat("\n", (int)(screen.SurfaceSize.Y / size.Y))) + pbLabel + progress.Current);
                     yield return null;
                 }
@@ -344,7 +345,9 @@ namespace IngameScript
                 public void Render(IMyTextSurface screen)
                 {
                     screen.ContentType = ContentType.TEXT_AND_IMAGE;
-                    var size = screen.SurfaceSize / screen.MeasureStringInPixels(new StringBuilder("="), screen.Font, screen.FontSize);
+                    screen.Alignment = TextAlignment.LEFT;
+                    // var size = screen.SurfaceSize / screen.MeasureStringInPixels(new StringBuilder("="), screen.Font, screen.FontSize);
+                    var size = ScreenSize(screen, "=");
 
                     var output = new StringBuilder();
                     output.AppendLine(_title);
@@ -364,10 +367,22 @@ namespace IngameScript
                     {
                         output.AppendLine();
                     }
-
-                    size = screen.SurfaceSize / screen.MeasureStringInPixels(new StringBuilder("-"), screen.Font, screen.FontSize);
+                    size = ScreenSize(screen, "-");
                     output.AppendLine(string.Join("", Enumerable.Repeat("-", (int)size.X)));
                     screen.WriteText(output.ToString());
+                }
+
+                Vector2 ScreenSize(IMyTextSurface screen, string Char)
+                {
+                    Vector2 refSize = screen.SurfaceSize;
+                    float height = screen.TextureSize.Y;
+                    float width = screen.TextureSize.X;
+                    refSize.Y *= 512 / height;
+                    refSize.X *= 512 / width;
+                    float noPaddingY = refSize.Y * (100 - screen.TextPadding * 2) / 100;
+                    float noPaddingX = refSize.X * (100 - screen.TextPadding * 2) / 100;
+                    Vector2 size = screen.MeasureStringInPixels(new StringBuilder(Char), screen.Font, screen.FontSize);
+                    return new Vector2(noPaddingX / size.X, noPaddingY / size.Y);
                 }
             }
 
