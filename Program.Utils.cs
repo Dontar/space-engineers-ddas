@@ -211,6 +211,19 @@ namespace IngameScript
                 gyro.Yaw = (float)transformedRotationVec.Y;
                 gyro.Roll = (float)transformedRotationVec.Z;
             }
+            public static void ApplyGyroOverride(double pitchSpeed, double yawSpeed, double rollSpeed, List<IMyGyro> gyros, MatrixD worldMatrix)
+            {
+                var rotationVec = new Vector3D(pitchSpeed, yawSpeed, rollSpeed);
+                var relativeRotationVec = Vector3D.TransformNormal(rotationVec, worldMatrix);
+
+                gyros.ForEach(g =>
+                {
+                    var transformedRotationVec = Vector3D.TransformNormal(relativeRotationVec, Matrix.Transpose(g.WorldMatrix));
+                    g.Pitch = (float)transformedRotationVec.X;
+                    g.Yaw = (float)transformedRotationVec.Y;
+                    g.Roll = (float)transformedRotationVec.Z;
+                });
+            }
 
             public static IEnumerable DisplayLogo(string logo, IMyTextSurface screen)
             {

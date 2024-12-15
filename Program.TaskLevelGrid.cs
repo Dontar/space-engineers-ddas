@@ -44,11 +44,7 @@ namespace IngameScript
                 var dt = TaskManager.CurrentTaskLastRun.TotalSeconds;
                 // var power = Util.NormalizeValue(Math.Abs(gridProps.Roll), 0, 180, 5, 100);
                 var rollSpeed = MathHelper.Clamp(pidRoll.Signal(gridProps.Roll, dt), -60, 60);
-                gyroList.ForEach(g =>
-                {
-                    // g.GyroPower = (float)power;
-                    Util.ApplyGyroOverride(0, 0, -rollSpeed, g, gridProps.MainController.WorldMatrix);
-                });
+                Util.ApplyGyroOverride(0, 0, -rollSpeed, gyroList, gridProps.MainController.WorldMatrix);
                 yield return null;
             }
             gyroList.ForEach(g => { g.GyroPower = 1; g.Roll = g.Yaw = g.Pitch = 0; g.GyroOverride = false; });
@@ -76,10 +72,7 @@ namespace IngameScript
                 var dt = TaskManager.CurrentTaskLastRun.TotalSeconds;
                 var rollSpeed = MathHelper.Clamp(pidRoll.Signal(gridProps.Roll, dt), -60, 60);
                 var pitchSpeed = MathHelper.Clamp(pidPitch.Signal(gridProps.Pitch - 5, dt), -60, 60);
-                gyroList.ForEach(g =>
-                {
-                    Util.ApplyGyroOverride(pitchSpeed, 0, -rollSpeed, g, gridProps.MainController.WorldMatrix);
-                });
+                Util.ApplyGyroOverride(pitchSpeed, 0, -rollSpeed, gyroList, gridProps.MainController.WorldMatrix);
                 yield return null;
             }
             gyroList.ForEach(g => { g.GyroPower = 1; g.Roll = g.Yaw = g.Pitch = 0; g.GyroOverride = false; });
