@@ -83,7 +83,8 @@ namespace IngameScript
             public WheelWrapper(IMyMotorSuspension wheel, GridProps props)
             {
                 Wheel = wheel;
-                ToCoM = Vector3D.TransformNormal(wheel.Top.GetPosition() - props.SubController.CenterOfMass, MatrixD.Transpose(props.MainController.WorldMatrix));
+                var center = props.SubController == null ? wheel.CubeGrid.WorldVolume.Center : props.SubController.CenterOfMass;
+                ToCoM = Vector3D.TransformNormal(wheel.Top.GetPosition() - center, MatrixD.Transpose(props.MainController.WorldMatrix));
                 var isBigWheel = Wheel.BlockDefinition.SubtypeName.Contains("5x5");
                 BlackMagicFactor = Wheel.CubeGrid.GridSizeEnum == MyCubeSize.Small
                     ? isBigWheel ? 18.5 : 15
