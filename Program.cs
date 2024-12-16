@@ -255,13 +255,16 @@ namespace IngameScript
                     else
                         w.Wheel.Height += (w.TargetHeight - w.Wheel.Height) * 0.3f;
 
-                    if (gridProps.ForwardBackward != 0 && !(gridProps.UpDown > 0))
+                    w.Wheel.PropulsionOverride = 0;
+                    if (gridProps.Cruise)
                     {
-                        var p = gridProps.Cruise ? propulsion : (gridProps.ForwardBackward < 0 ? 1 : -1);
+                        w.Wheel.PropulsionOverride = w.IsLeft ? propulsion : -propulsion;
+                    }
+                    else if (gridProps.ForwardBackward != 0 && !(gridProps.UpDown > 0))
+                    {
+                        var p = gridProps.ForwardBackward < 0 ? 1 : -1;
                         w.Wheel.PropulsionOverride = w.IsLeft ? p : -p;
                     }
-                    else
-                        w.Wheel.PropulsionOverride = 0;
                 }
                 yield return null;
             }
