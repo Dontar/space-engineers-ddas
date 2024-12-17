@@ -118,7 +118,7 @@ namespace IngameScript
 
         readonly GridProps gridProps;
 
-        List<IMyMotorSuspension> AllWheels => Memo.Of(() => Util.GetBlocks<IMyMotorSuspension>(b => Util.IsNotIgnored(b, Config["IgnoreTag"]) && b.Enabled), "wheels", Memo.Refs(gridProps.Mass.BaseMass));
+        List<IMyMotorSuspension> AllWheels => Memo.Of(() => Util.GetBlocks<IMyMotorSuspension>(b => Util.IsNotIgnored(b, Config["IgnoreTag"]) && b.Enabled && b.IsSameConstructAs(Me)), "wheels", Memo.Refs(gridProps.Mass.BaseMass));
 
         List<WheelWrapper> MyWheels => Memo.Of(() =>
             {
@@ -154,7 +154,7 @@ namespace IngameScript
 
         double GridUnsprungMass => Memo.Of(() => gridProps.Mass.PhysicalMass - MyWheels.Concat(SubWheels).Sum(w => w.Wheel.Top.Mass), "GridUnsprungWeight", Memo.Refs(gridProps.Mass.PhysicalMass, MyWheels));
 
-        List<IMyShipController> Controllers => Memo.Of(() => Util.GetBlocks<IMyShipController>(b => Util.IsNotIgnored(b, Config["IgnoreTag"])), "controllers", 100);
+        List<IMyShipController> Controllers => Memo.Of(() => Util.GetBlocks<IMyShipController>(b => Util.IsNotIgnored(b, Config["IgnoreTag"]) && b.IsSameConstructAs(Me)), "controllers", 100);
 
         struct GridPower
         {
@@ -166,8 +166,8 @@ namespace IngameScript
         {
             var blocks = Util.GetBlocks<IMyPowerProducer>(b =>
             {
-                return (b.Enabled && !(b is IMyBatteryBlock))
-                    || (b.Enabled && b is IMyBatteryBlock && (b as IMyBatteryBlock).ChargeMode != ChargeMode.Recharge);
+                return b.IsSameConstructAs(Me) && ((b.Enabled && !(b is IMyBatteryBlock))
+                    || (b.Enabled && b is IMyBatteryBlock && (b as IMyBatteryBlock).ChargeMode != ChargeMode.Recharge));
             });
             return new GridPower
             {

@@ -290,7 +290,14 @@ namespace IngameScript
             var orientation = gridProps.MainController.Orientation;
             var tag = ini.GetValueOrDefault("Tag", "{DDAS}");
             var ignoreTag = ini.GetValueOrDefault("IgnoreTag", "{Ignore}");
-            var lights = Util.GetBlocks<IMyLightingBlock>(b => Util.IsTagged(b, tag) || (Util.IsNotIgnored(b, ignoreTag) && orientation.TransformDirectionInverse(b.Orientation.Forward) == Base6Directions.Direction.Backward));
+            var lights = Util.GetBlocks<IMyLightingBlock>(b =>
+                b.IsSameConstructAs(Me) && (
+                    Util.IsTagged(b, tag) || (
+                        Util.IsNotIgnored(b, ignoreTag) &&
+                        orientation.TransformDirectionInverse(b.Orientation.Forward) == Base6Directions.Direction.Backward
+                    )
+                )
+            );
 
             while (gridMass.Equals(gridProps.Mass.BaseMass) && ini.Equals(Config))
             {
