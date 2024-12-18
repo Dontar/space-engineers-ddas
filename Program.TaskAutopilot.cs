@@ -61,6 +61,12 @@ namespace IngameScript
                 else
                     gridProps.CruiseSpeed = autopilot.SpeedLimit * 3.6f;
 
+
+                if (gridProps.UpDown > 0) {
+                    autopilot.SetAutoPilotEnabled(false);
+                    yield break;
+                }
+
                 var currentPosition = autopilot.GetPosition();
                 var destinationVector = autopilot.CurrentWaypoint.Coords - currentPosition;
 
