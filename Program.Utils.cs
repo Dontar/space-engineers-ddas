@@ -145,14 +145,21 @@ namespace IngameScript
 
             public static List<IMyTextSurface> GetScreens(string screenTag = "")
             {
-                var screens = GetBlocks<IMyTerminalBlock>(b => (b is IMyTextSurface || (b is IMyTextSurfaceProvider && (b as IMyTextSurfaceProvider).SurfaceCount > 0)) && b.CustomName.Contains(screenTag));
+                var screens = GetBlocks<IMyTerminalBlock>(b => (b is IMyTextSurface || (b is IMyTextSurfaceProvider && (b as IMyTextSurfaceProvider).SurfaceCount > 0)) && IsTagged(b, screenTag));
                 return screens.Select(s =>
                 {
                     if (s is IMyTextSurface)
                         return s as IMyTextSurface;
-                    var screenIndex = s.CustomData.StartsWith("@") ? int.Parse(s.CustomData.Substring(1, 1)) - 1 : 0;
-                    var provider = s as IMyTextSurfaceProvider;
-                    return provider.GetSurface(screenIndex);
+
+                    var regex = new System.Text.RegularExpressions.Regex(@"^@(\d+)$", System.Text.RegularExpressions.RegexOptions.Multiline);
+                    var match = regex.Match(s.CustomData);
+                    if (match.Success)
+                    {
+                        var screenIndex = int.Parse(match.Groups[1].Value) - 1;
+                        var provider = s as IMyTextSurfaceProvider;
+                        return provider.GetSurface(screenIndex);
+                    }
+                    return (s as IMyTextSurfaceProvider).GetSurface(0);
                 }).ToList();
             }
             public static List<IMyTextSurface> GetScreens(Func<IMyTerminalBlock, bool> collect)
@@ -309,7 +316,7 @@ namespace IngameScript
             protected class OptionItem
             {
                 public string Label;
-                public Func<Menu, int, string> Value = (m, j) => "";
+                public Func<Menu, int, string> Value = (m, j) => null;
                 public Action<Menu, int> Action = null;
                 public Action<Menu, int, int> IncDec = null;
             }
