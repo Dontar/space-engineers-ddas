@@ -62,7 +62,10 @@ namespace IngameScript
 
         public void Main(string argument, UpdateType updateSource)
         {
-            ProcessCommands(argument);
+            if (updateSource.HasFlag(UpdateType.Terminal | UpdateType.Trigger | UpdateType.Script) && argument != null && argument.Length > 0)
+            {
+                ProcessCommands(argument);
+            }
 
             if (!updateSource.HasFlag(UpdateType.Update10)) return;
 
