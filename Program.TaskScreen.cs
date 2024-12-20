@@ -55,6 +55,7 @@ namespace IngameScript
                 var propulsion = TaskManager.TaskResults.OfType<CruiseTaskResult>().FirstOrDefault().Propulsion;
                 var power = TaskManager.TaskResults.OfType<PowerTaskResult>().FirstOrDefault();
                 var autopilot = TaskManager.TaskResults.OfType<AutopilotTaskResult>().FirstOrDefault();
+                var waypoint = gridProps.Autopilot.CurrentWaypoint;
 
                 screenText.Clear();
                 screenText.AppendLine($"Speed:       {gridProps.Speed * 3.6:N2} km/h");
@@ -67,6 +68,8 @@ namespace IngameScript
                 screenText.AppendLine($"AutoLevel:   {gridProps.AutoLevel}");
                 screenText.AppendLine($"Power:       {power.Power:N2}");
                 screenText.AppendLine($"Propulsion:  {propulsion:N2}");
+                screenText.AppendLine($"Waypoint:    {waypoint.Name ?? "None"}");
+
                 statusScreens.ForEach(s =>
                 {
                     s.ContentType = ContentType.TEXT_AND_IMAGE;
