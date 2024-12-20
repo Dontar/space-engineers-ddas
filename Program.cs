@@ -184,6 +184,11 @@ namespace IngameScript
 
                 var roll = gridProps.Roll + (gridProps.RollCompensating ? (gridProps.Roll > 0 ? 6 : -6) : 0);
 
+                if (gridProps.SubController != null)
+                {
+                    gridProps.SubController.HandBrake = gridProps.Controller.HandBrake;
+                }
+
                 foreach (var w in MyWheels)
                 {
                     // update strength

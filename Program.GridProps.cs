@@ -42,7 +42,7 @@ namespace IngameScript
 
                 var subControllers = controllers.Where(c => c.CubeGrid != _program.Me.CubeGrid);
                 SubController = subControllers
-                    .FirstOrDefault(c => c.Orientation.Forward == MainController.Orientation.Forward)
+                    .FirstOrDefault(c => Util.IsTagged(c, config["Tag"]) && c is IMyRemoteControl)
                     ?? subControllers.FirstOrDefault();
 
                 if (MainController == null) return;
