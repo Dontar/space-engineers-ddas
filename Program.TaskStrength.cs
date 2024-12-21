@@ -27,9 +27,8 @@ namespace IngameScript
 {
     partial class Program : MyGridProgram
     {
-        double CalcStrength(List<WheelWrapper> wheels)
+        double CalcStrength(IEnumerable<WheelWrapper> wheels)
         {
-            if (wheels.Count == 0) return 0;
             var frontMostAxel = wheels.Min(w => w.ToCoM.Z);
             var rearMostAxel = wheels.Max(w => w.ToCoM.Z);
             var chassisLength = rearMostAxel - frontMostAxel;
@@ -43,14 +42,14 @@ namespace IngameScript
             }
 
             double normalizeFactor = 0;
-            wheels.ForEach(w =>
+            foreach (var w in wheels)
             {
-                if (chassisLength < 0.1) return;
+                if (chassisLength < 0.1) break;
                 w.WeightRatio = w.IsFront
                     ? Math.Abs(Util.NormalizeValue(w.ToCoM.Z, rearMostAxel, frontMostAxel, 0, rearMostAxel / chassisLength))
                     : Math.Abs(Util.NormalizeValue(w.ToCoM.Z, frontMostAxel, rearMostAxel, 0, frontMostAxel / chassisLength));
                 normalizeFactor += w.WeightRatio * (isTrailer ? 2 : 1);
-            });
+            }
             return normalizeFactor;
         }
 
@@ -61,7 +60,7 @@ namespace IngameScript
         IEnumerable<StrengthTaskResult> SuspensionStrengthTask()
         {
             var myWheels = MyWheels;
-            if (myWheels.Count == 0) yield return default(StrengthTaskResult);
+            if (myWheels.Count() == 0) yield return default(StrengthTaskResult);
             var strengthFactor = float.Parse(Config.GetValueOrDefault("StrengthFactor", "1"));
             double normalizeFactor = CalcStrength(myWheels);
             while (myWheels.Equals(MyWheels))
@@ -86,7 +85,7 @@ namespace IngameScript
         IEnumerable<SubStrengthTaskResult> SubSuspensionStrengthTask()
         {
             var subWheels = SubWheels;
-            if (subWheels.Count == 0) yield return default(SubStrengthTaskResult);
+            if (subWheels.Count() == 0) yield return default(SubStrengthTaskResult);
             var strengthFactor = float.Parse(Config.GetValueOrDefault("StrengthFactor", "1"));
             double normalizeFactor = CalcStrength(subWheels);
             while (subWheels.Equals(SubWheels))
