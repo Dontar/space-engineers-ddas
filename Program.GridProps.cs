@@ -32,7 +32,7 @@ namespace IngameScript
             public IMyShipController MainController;
             public IMyShipController SubController;
             public IMyRemoteControl Autopilot => MainController is IMyRemoteControl ? MainController as IMyRemoteControl : null;
-            public void UpdateGridProps(Dictionary<string, string> config, List<IMyShipController> controllers)
+            public void UpdateGridProps(Dictionary<string, string> config, IEnumerable<IMyShipController> controllers)
             {
                 var myControllers = controllers.Where(c => c.CubeGrid == _program.Me.CubeGrid && c.CanControlShip);
                 MainController = myControllers.FirstOrDefault(c => Util.IsTagged(c, config["Tag"]) && c is IMyRemoteControl)
@@ -109,7 +109,7 @@ namespace IngameScript
                 myIni.Set("Options", "StopLights", "true");
                 myIni.Set("Options", "Friction", "true");
                 myIni.Set("Options", "SuspensionHight", "true");
-                myIni.Set("Options", "AutoLevel", "false");
+                myIni.Set("Options", "AutoLevel", "true");
 
                 Me.CustomData = myIni.ToString();
             };
@@ -118,43 +118,44 @@ namespace IngameScript
 
         readonly GridProps gridProps;
 
-        List<IMyMotorSuspension> AllWheels => Memo.Of(() => Util.GetBlocks<IMyMotorSuspension>(b => Util.IsNotIgnored(b, Config["IgnoreTag"]) && b.Enabled && b.IsSameConstructAs(Me)), "wheels", Memo.Refs(gridProps.Mass.BaseMass));
+        IEnumerable<IMyMotorSuspension> AllWheels => Memo.Of(() => Util.GetBlocks<IMyMotorSuspension>(b => Util.IsNotIgnored(b, Config["IgnoreTag"]) && b.Enabled && b.IsSameConstructAs(Me)), "wheels", Memo.Refs(gridProps.Mass.BaseMass));
 
-        List<WheelWrapper> MyWheels => Memo.Of(() =>
+        IEnumerable<WheelWrapper> MyWheels => Memo.Of(() =>
             {
                 var wh = AllWheels
                     .Where(w => w.CubeGrid == Me.CubeGrid && w.IsAttached)
-                    .Select(w => new WheelWrapper(w, gridProps.MainController, Config))
-                    .ToList();
+                    .Select(w => new WheelWrapper(w, gridProps.MainController, Config));
                 var maxSteerAngle = double.Parse(Config.GetValueOrDefault("MaxSteeringAngle", "25"));
                 var distance = wh.Max(w => Math.Abs(w.ToFocalPoint.Z));
                 var hight = wh.Min(w => w.Wheel.Height);
                 var radius = distance / Math.Tan(MathHelper.ToRadians(maxSteerAngle));
-                wh.ForEach(w =>
-                {
+                return wh.Select(w => {
                     w.Radius = radius;
                     w.TargetHeight = hight;
+                    return w;
                 });
-                return wh;
             }, "myWheels", Memo.Refs(AllWheels, Config));
 
-        List<WheelWrapper> SubWheels => Memo.Of(() =>
+        IEnumerable<WheelWrapper> SubWheels => Memo.Of(() =>
         {
             var sw = AllWheels
                 .Where(w => w.CubeGrid != Me.CubeGrid)
-                .Select(w => new WheelWrapper(w, gridProps))
-                .ToList();
-            if (sw.Count > 0)
+                .Select(w => new WheelWrapper(w, gridProps));
+            if (sw.Count() > 0)
             {
                 var hight = sw.Min(w => w.Wheel.Height);
-                sw.ForEach(w => w.TargetHeight = hight);
+                return sw.Select(w =>
+                {
+                    w.TargetHeight = hight;
+                    return w;
+                });
             }
             return sw;
         }, "subWheels", Memo.Refs(AllWheels));
 
         double GridUnsprungMass => Memo.Of(() => gridProps.Mass.PhysicalMass - MyWheels.Concat(SubWheels).Sum(w => w.Wheel.Top.Mass), "GridUnsprungWeight", Memo.Refs(gridProps.Mass.PhysicalMass, MyWheels));
 
-        List<IMyShipController> Controllers => Memo.Of(() => Util.GetBlocks<IMyShipController>(b => Util.IsNotIgnored(b, Config["IgnoreTag"]) && b.IsSameConstructAs(Me)), "controllers", 100);
+        IEnumerable<IMyShipController> Controllers => Memo.Of(() => Util.GetBlocks<IMyShipController>(b => Util.IsNotIgnored(b, Config["IgnoreTag"]) && b.IsSameConstructAs(Me)), "controllers", 100);
 
         struct GridPower
         {

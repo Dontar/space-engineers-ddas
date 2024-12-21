@@ -27,35 +27,23 @@ namespace IngameScript
 {
     partial class Program : MyGridProgram
     {
-        List<IMyTerminalBlock> Screens => Memo.Of(() =>
-        {
-            var tag = Config.GetValueOrDefault("Tag", "{DDAS}");
-            var screensBlocks = Util.GetBlocks<IMyTerminalBlock>(b => Util.IsTagged(b, tag) && Util.HasScreens(b));
-            return screensBlocks;
-        }, "screens", 100);
+        IEnumerable<IMyTextSurface> ScreensStat => Memo.Of(() => Util.GetScreens("ddas-status"), "screensStatus", 100);
+        IEnumerable<IMyTextSurface> ScreensMenu => Memo.Of(() => Util.GetScreens("ddas-menu"), "screensMenus", 100);
         IEnumerable ScreensTask()
         {
             var screenText = new StringBuilder();
-            var screens = Screens;
-            var statusScreens = screens.Where(s => s.CustomData.Contains("ddas-status")).Select(s =>
-            {
-                var start = s.CustomData.IndexOf("ddas-status", StringComparison.OrdinalIgnoreCase);
-                var idx = s.CustomData.Substring(start, 13).Split('=').Last();
-                return (s as IMyTextSurfaceProvider).GetSurface(int.Parse(idx) - 1);
-            }).ToList();
-            var menuScreens = screens.Where(s => s.CustomData.Contains("ddas-menu")).Select(s =>
-            {
-                var start = s.CustomData.IndexOf("ddas-menu", StringComparison.OrdinalIgnoreCase);
-                var idx = s.CustomData.Substring(start, 11).Split('=').Last();
-                return (s as IMyTextSurfaceProvider).GetSurface(int.Parse(idx) - 1);
-            }).ToList();
 
-            while (screens.Equals(Screens))
+            while (true)
             {
                 var propulsion = TaskManager.TaskResults.OfType<CruiseTaskResult>().FirstOrDefault().Propulsion;
                 var power = TaskManager.TaskResults.OfType<PowerTaskResult>().FirstOrDefault();
                 var autopilot = TaskManager.TaskResults.OfType<AutopilotTaskResult>().FirstOrDefault();
-                var waypoint = gridProps.Autopilot.CurrentWaypoint;
+                var waypoint = "None";
+
+                if (gridProps.Autopilot != null)
+                {
+                    waypoint = gridProps.Autopilot.CurrentWaypoint.Name ?? "None";
+                }
 
                 screenText.Clear();
                 screenText.AppendLine($"Speed:       {gridProps.Speed * 3.6:N2} km/h");
@@ -68,19 +56,19 @@ namespace IngameScript
                 screenText.AppendLine($"AutoLevel:   {gridProps.AutoLevel}");
                 screenText.AppendLine($"Power:       {power.Power:N2}");
                 screenText.AppendLine($"Propulsion:  {propulsion:N2}");
-                screenText.AppendLine($"Waypoint:    {waypoint.Name ?? "None"}");
+                screenText.AppendLine($"Waypoint:    {waypoint}");
 
-                statusScreens.ForEach(s =>
+                foreach (var s in ScreensStat)
                 {
                     s.ContentType = ContentType.TEXT_AND_IMAGE;
                     s.Font = "Monospace";
                     s.WriteText(screenText);
-                });
-                menuScreens.ForEach(s =>
+                }
+                foreach (var s in ScreensMenu)
                 {
                     s.ContentType = ContentType.TEXT_AND_IMAGE;
                     menuSystem.Render(s);
-                });
+                }
                 yield return null;
             }
         }

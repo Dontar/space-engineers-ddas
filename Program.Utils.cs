@@ -73,12 +73,8 @@ namespace IngameScript
                 CacheValue value;
                 if (_dependencyCache.TryGetValue(context, out value))
                 {
-                    if (value.Dependency.SequenceEqual(dep))
-                    {
-                        return (R)value.Value;
-                    }
+                    if (value.Dependency.SequenceEqual(dep)) return (R)value.Value;
                 }
-
                 var result = f();
                 _dependencyCache[context] = new CacheValue(dep, result);
                 return result;
@@ -106,21 +102,19 @@ namespace IngameScript
                 Util.p = p;
             }
 
-            public static List<T> GetBlocks<T>(Func<T, bool> collect = null) where T : class
+            public static IEnumerable<T> GetBlocks<T>(Func<T, bool> collect = null) where T : class
             {
                 List<T> blocks = new List<T>();
                 p.GridTerminalSystem.GetBlocksOfType(blocks, collect);
                 return blocks;
             }
 
-            public static List<T> GetBlocks<T>(string blockTag) where T : class
+            public static IEnumerable<T> GetBlocks<T>(string blockTag) where T : class
             {
-                List<IMyTerminalBlock> blocks = new List<IMyTerminalBlock>();
-                p.GridTerminalSystem.GetBlocksOfType(blocks, b => b.CustomName.Contains(blockTag) && b is T);
-                return blocks.Cast<T>().ToList();
+                return GetBlocks<IMyTerminalBlock>(b => IsTagged(b, blockTag)).Cast<T>();
             }
 
-            public static List<T> GetGroup<T>(string name, Func<T, bool> collect = null) where T : class
+            public static IEnumerable<T> GetGroup<T>(string name, Func<T, bool> collect = null) where T : class
             {
                 var groupBlocks = new List<T>();
                 var group = p.GridTerminalSystem.GetBlockGroupWithName(name);
@@ -128,7 +122,7 @@ namespace IngameScript
                 return groupBlocks;
             }
 
-            public static List<T> GetGroupOrBlocks<T>(string name, Func<T, bool> collect = null) where T : class
+            public static IEnumerable<T> GetGroupOrBlocks<T>(string name, Func<T, bool> collect = null) where T : class
             {
                 var groupBlocks = new List<IMyTerminalBlock>();
                 var group = p.GridTerminalSystem.GetBlockGroupWithName(name);
@@ -140,40 +134,33 @@ namespace IngameScript
                 {
                     p.GridTerminalSystem.GetBlocksOfType(groupBlocks, b => b.CustomName == name && b is T && (collect == null || collect(b as T)));
                 }
-                return groupBlocks.Cast<T>().ToList();
+                return groupBlocks.Cast<T>();
             }
 
-            public static List<IMyTextSurface> GetScreens(string screenTag = "")
+            public static IEnumerable<IMyTextSurface> GetScreens(string screenTag = "")
             {
-                var screens = GetBlocks<IMyTerminalBlock>(b => (b is IMyTextSurface || (b is IMyTextSurfaceProvider && (b as IMyTextSurfaceProvider).SurfaceCount > 0)) && IsTagged(b, screenTag));
+                return GetScreens(b => IsTagged(b, screenTag));
+            }
+
+            public static IEnumerable<IMyTextSurface> GetScreens(Func<IMyTerminalBlock, bool> collect)
+            {
+                var screens = GetBlocks<IMyTerminalBlock>(b => (b is IMyTextSurface || HasScreens(b)) && collect(b));
                 return screens.Select(s =>
                 {
                     if (s is IMyTextSurface)
                         return s as IMyTextSurface;
-
+                    var provider = s as IMyTextSurfaceProvider;
                     var regex = new System.Text.RegularExpressions.Regex(@"^@(\d+)$", System.Text.RegularExpressions.RegexOptions.Multiline);
                     var match = regex.Match(s.CustomData);
                     if (match.Success)
                     {
                         var screenIndex = int.Parse(match.Groups[1].Value) - 1;
-                        var provider = s as IMyTextSurfaceProvider;
                         return provider.GetSurface(screenIndex);
                     }
-                    return (s as IMyTextSurfaceProvider).GetSurface(0);
-                }).ToList();
+                    return provider.GetSurface(0);
+                });
             }
-            public static List<IMyTextSurface> GetScreens(Func<IMyTerminalBlock, bool> collect)
-            {
-                var screens = GetBlocks<IMyTerminalBlock>(b => (b is IMyTextSurface || (b is IMyTextSurfaceProvider && (b as IMyTextSurfaceProvider).SurfaceCount > 0)) && collect(b));
-                return screens.Select(s =>
-                {
-                    if (s is IMyTextSurface)
-                        return s as IMyTextSurface;
-                    var screenIndex = s.CustomData.StartsWith("@") ? int.Parse(s.CustomData.Substring(1, 1)) - 1 : 0;
-                    var provider = s as IMyTextSurfaceProvider;
-                    return provider.GetSurface(screenIndex);
-                }).ToList();
-            }
+
             public static double NormalizeValue(double value, double oldMin, double oldMax, double min, double max)
             {
                 double originalRange = oldMax - oldMin;
@@ -209,27 +196,22 @@ namespace IngameScript
 
             public static void ApplyGyroOverride(double pitchSpeed, double yawSpeed, double rollSpeed, IMyGyro gyro, MatrixD worldMatrix)
             {
-                var rotationVec = new Vector3D(pitchSpeed, yawSpeed, rollSpeed);
-                var relativeRotationVec = Vector3D.TransformNormal(rotationVec, worldMatrix);
-
-                var transformedRotationVec = Vector3D.TransformNormal(relativeRotationVec, Matrix.Transpose(gyro.WorldMatrix));
-
-                gyro.Pitch = (float)transformedRotationVec.X;
-                gyro.Yaw = (float)transformedRotationVec.Y;
-                gyro.Roll = (float)transformedRotationVec.Z;
+                ApplyGyroOverride(pitchSpeed, yawSpeed, rollSpeed, new IMyGyro[] { gyro }, worldMatrix);
+            
             }
-            public static void ApplyGyroOverride(double pitchSpeed, double yawSpeed, double rollSpeed, List<IMyGyro> gyros, MatrixD worldMatrix)
+
+            public static void ApplyGyroOverride(double pitchSpeed, double yawSpeed, double rollSpeed, IEnumerable<IMyGyro> gyros, MatrixD worldMatrix)
             {
                 var rotationVec = new Vector3D(pitchSpeed, yawSpeed, rollSpeed);
                 var relativeRotationVec = Vector3D.TransformNormal(rotationVec, worldMatrix);
 
-                gyros.ForEach(g =>
+                foreach (var g in gyros)
                 {
                     var transformedRotationVec = Vector3D.TransformNormal(relativeRotationVec, Matrix.Transpose(g.WorldMatrix));
                     g.Pitch = (float)transformedRotationVec.X;
                     g.Yaw = (float)transformedRotationVec.Y;
                     g.Roll = (float)transformedRotationVec.Z;
-                });
+                }
             }
 
             public static IEnumerable DisplayLogo(string logo, IMyTextSurface screen)
@@ -416,7 +398,7 @@ namespace IngameScript
                 return menu;
             }
 
-            public bool ProcessMenuCommands(string command)
+            public bool ProcessMenuCommands(string command = "")
             {
                 switch (command.ToLower())
                 {

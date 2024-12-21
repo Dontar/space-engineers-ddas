@@ -237,7 +237,7 @@ namespace IngameScript
                     else
                         w.Wheel.SteeringOverride = 0;
                 }
-                if (SubWheels.Count > 0)
+                if (SubWheels.Count() > 0)
                 {
                     calcHigh = high == "Max" ? SubWheels.FirstOrDefault().HeightOffsetMin : float.Parse(high);
                 }
@@ -306,7 +306,7 @@ namespace IngameScript
 
             while (gridMass.Equals(gridProps.Mass.BaseMass) && ini.Equals(Config))
             {
-                lights.ForEach(l =>
+                foreach (var l in lights)
                 {
                     l.Radius = 1f;
                     l.Intensity = 1f;
@@ -328,7 +328,7 @@ namespace IngameScript
                         l.Color = Color.White;
                     }
 
-                });
+                };
                 yield return null;
             }
         }
@@ -370,16 +370,22 @@ namespace IngameScript
             var calcHigh = targetHigh == "Max" ? controlWheel.HeightOffsetMin : float.Parse(targetHigh);
             var closeHigh = calcHigh - targetHeight;
             var closeLow = targetHeight - targetLow;
-            MyWheels.ForEach(w => w.TargetHeight = Math.Abs(closeHigh) < Math.Abs(closeLow) ? targetLow : calcHigh);
+            foreach (var w in SubWheels)
+            {
+                w.TargetHeight = Math.Abs(closeHigh) < Math.Abs(closeLow) ? targetLow : calcHigh;
+            }
 
-            if (SubWheels.Count == 0) yield break;
+            if (SubWheels.Count() == 0) yield break; 
             var controlSubWheel = SubWheels.FirstOrDefault();
             targetHeight = controlSubWheel.TargetHeight;
 
             calcHigh = targetHigh == "Max" ? controlSubWheel.HeightOffsetMin : float.Parse(targetHigh);
             closeHigh = calcHigh - targetHeight;
             closeLow = targetHeight - targetLow;
-            SubWheels.ForEach(w => w.TargetHeight = Math.Abs(closeHigh) < Math.Abs(closeLow) ? targetLow : calcHigh);
+            foreach (var w in SubWheels)
+            {
+                w.TargetHeight = Math.Abs(closeHigh) < Math.Abs(closeLow) ? targetLow : calcHigh;
+            }
 
             yield return null;
         }
