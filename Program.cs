@@ -332,30 +332,27 @@ namespace IngameScript
         IEnumerable ToggleHightModeTask()
         {
             var controlWheel = MyWheels.FirstOrDefault();
-            var targetHeight = controlWheel.TargetHeight;// -31.9
+            var currentHeight = controlWheel.TargetHeight;// -31.9
 
             var high = Config["HighModeHight"].ToSingle(controlWheel.HeightOffsetMin);//Max
             var low = Config["LowModeHight"].ToSingle();//0
 
+            var closeHigh = high - currentHeight;// -32 -31.9 = -0.1
+            var closeLow = currentHeight - low;// -31.9 - 0 = -31.9
 
-            var closeHigh = high - targetHeight;// -32 -31.9 = -0.1
-            var closeLow = targetHeight - low;// -31.9 - 0 = -31.9
-            foreach (var w in MyWheels)
-            {
-                w.TargetHeight = Math.Abs(closeHigh) < Math.Abs(closeLow) ? low : high;
-            }
+            var targetHeight = Math.Abs(closeHigh) < Math.Abs(closeLow) ? low : high;
+
+            foreach (var w in MyWheels) w.TargetHeight = targetHeight;
 
             if (SubWheels.Count() == 0) yield break;
             var controlSubWheel = SubWheels.FirstOrDefault();
-            targetHeight = controlSubWheel.TargetHeight;
+            currentHeight = controlSubWheel.TargetHeight;
 
             high = Config["HighModeHight"].ToSingle(controlSubWheel.HeightOffsetMin);//Max
-            closeHigh = high - targetHeight;
-            closeLow = targetHeight - low;
-            foreach (var w in SubWheels)
-            {
-                w.TargetHeight = Math.Abs(closeHigh) < Math.Abs(closeLow) ? low : high;
-            }
+            closeHigh = high - currentHeight;
+            closeLow = currentHeight - low;
+            targetHeight = Math.Abs(closeHigh) < Math.Abs(closeLow) ? low : high;
+            foreach (var w in SubWheels) w.TargetHeight = targetHeight;
 
             yield return null;
         }

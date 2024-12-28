@@ -131,7 +131,7 @@ namespace IngameScript
                     w.Radius = radius;
                     w.TargetHeight = hight;
                     return w;
-                });
+                }).ToArray();
             }, "myWheels", Memo.Refs(AllWheels, Config));
 
         IEnumerable<WheelWrapper> SubWheels => Memo.Of(() =>
@@ -142,13 +142,13 @@ namespace IngameScript
             if (sw.Count() > 0)
             {
                 var hight = sw.Min(w => w.Wheel.Height);
-                return sw.Select(w =>
+                sw = sw.Select(w =>
                 {
                     w.TargetHeight = hight;
                     return w;
                 });
             }
-            return sw;
+            return sw.ToArray();
         }, "subWheels", Memo.Refs(AllWheels));
 
         double GridUnsprungMass => Memo.Of(() => gridProps.Mass.PhysicalMass - MyWheels.Concat(SubWheels).Sum(w => w.Wheel.Top.Mass), "GridUnsprungWeight", Memo.Refs(gridProps.Mass.PhysicalMass, MyWheels));
