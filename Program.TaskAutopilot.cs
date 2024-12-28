@@ -38,7 +38,7 @@ namespace IngameScript
             var ini = Config;
             var autopilot = gridProps.Autopilot;
             if (autopilot == null) yield break;
-            var sensor = Util.GetBlocks<IMySensorBlock>(b => Util.IsNotIgnored(b, ini["IgnoreTag"])).FirstOrDefault();
+            var sensor = Util.GetBlocks<IMySensorBlock>(b => Util.IsNotIgnored(b, ini["IgnoreTag"].ToString())).FirstOrDefault();
             var wayPoints = new List<MyWaypointInfo>();
             autopilot.GetWaypointInfo(wayPoints);
 

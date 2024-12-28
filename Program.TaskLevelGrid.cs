@@ -28,7 +28,7 @@ namespace IngameScript
     partial class Program : MyGridProgram
     {
 
-        IEnumerable<IMyGyro> Gyros => Memo.Of(() => Util.GetBlocks<IMyGyro>(b => Util.IsNotIgnored(b, Config["IgnoreTag"]) && b.Enabled), "gyros", Memo.Refs(gridProps.Mass.BaseMass, Config));
+        IEnumerable<IMyGyro> Gyros => Memo.Of(() => Util.GetBlocks<IMyGyro>(b => Util.IsNotIgnored(b, Config["IgnoreTag"].ToString()) && b.Enabled), "gyros", Memo.Refs(gridProps.Mass.BaseMass, Config));
 
         IEnumerable FlipGridTask()
         {
@@ -36,7 +36,7 @@ namespace IngameScript
             var gyroList = Gyros;
             if (gyroList.Count() == 0) yield break;
             var ini = Config;
-            var pidRoll = new PID(ini.GetValueOrDefault("PIDFlip", "8/0/0/0"));
+            var pidRoll = new PID(ini["PIDFlip"].ToString("8/0/0/0"));
             foreach (var g in gyroList)
             {
                 g.GyroOverride = true; g.GyroPower = 1;
@@ -65,9 +65,9 @@ namespace IngameScript
             var gyroList = Gyros;
             if (gyroList.Count() == 0) yield break;
 
-            var pidRoll = new PID(ini.GetValueOrDefault("PIDRoll", "6/0/0/0"));
-            var pidPitch = new PID(ini.GetValueOrDefault("PIDPitch", "3/0/0/0"));
-            var gyroPower = float.Parse(ini.GetValueOrDefault("AutoLevelPower", "30"));
+            var pidRoll = new PID(ini["PIDRoll"].ToString("6/0/0/0"));
+            var pidPitch = new PID(ini["PIDPitch"].ToString("3/0/0/0"));
+            var gyroPower = float.Parse(ini["AutoLevelPower"].ToString("30"));
             var isFastEnough = gridProps.Speed > 5;
             if (isFastEnough)
             {

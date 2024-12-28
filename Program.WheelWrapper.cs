@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using VRageMath;
 using VRage.Game;
+using VRage.Game.ModAPI.Ingame.Utilities;
 
 namespace IngameScript
 {
@@ -66,15 +67,15 @@ namespace IngameScript
                 }
             }
 
-            public WheelWrapper(IMyMotorSuspension wheel, IMyShipController controller, Dictionary<string, string> ini)
+            public WheelWrapper(IMyMotorSuspension wheel, IMyShipController controller, Dictionary<string, MyIniValue> ini)
             {
                 Wheel = wheel;
-                var RC = ini.GetValueOrDefault("AckermanFocalPoint", "CoM") == "RC" && controller is IMyRemoteControl;
+                var RC = ini["AckermanFocalPoint"].ToString("CoM") == "RC" && controller is IMyRemoteControl;
                 var transposition = MatrixD.Transpose(controller.WorldMatrix);
                 var wheelPos = wheel.Top.GetPosition();
                 ToCoM = Vector3D.TransformNormal(wheelPos - controller.CenterOfMass, transposition);
                 ToFocalPoint = RC ? Vector3D.TransformNormal(wheelPos - controller.GetPosition(), transposition) : ToCoM;
-                ToFocalPoint.Z += double.Parse(ini.GetValueOrDefault("AckermanFocalPointOffset", "0"));
+                ToFocalPoint.Z += ini["AckermanFocalPointOffset"].ToDouble();
                 var isBigWheel = Wheel.BlockDefinition.SubtypeName.Contains("5x5");
                 BlackMagicFactor = Wheel.CubeGrid.GridSizeEnum == MyCubeSize.Small
                     ? isBigWheel ? 18.5 : 15

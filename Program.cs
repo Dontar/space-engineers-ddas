@@ -45,12 +45,12 @@ namespace IngameScript
             _FrictionTask = TaskManager.AddTask(FrictionTask());
             TaskManager.AddTask(MainTask());
 
-            _AddWheelsTask.IsPaused = !Ini.Get("Options", "AddWheels").ToBoolean();
-            _SuspensionStrengthTask.IsPaused = !Ini.Get("Options", "SuspensionStrength").ToBoolean();
-            _SubSuspensionStrengthTask.IsPaused = !Ini.Get("Options", "SubWheelsStrength").ToBoolean();
-            _PowerTask.IsPaused = !Ini.Get("Options", "Power").ToBoolean();
-            _StopLightsTask.IsPaused = !Ini.Get("Options", "StopLights").ToBoolean();
-            _FrictionTask.IsPaused = !Ini.Get("Options", "Friction").ToBoolean();
+            _AddWheelsTask.IsPaused = !Config["AddWheels"].ToBoolean(true);
+            _SuspensionStrengthTask.IsPaused = !Config["SuspensionStrength"].ToBoolean(true);
+            _SubSuspensionStrengthTask.IsPaused = !Config["SubWheelsStrength"].ToBoolean(true);
+            _PowerTask.IsPaused = !Config["Power"].ToBoolean(true);
+            _StopLightsTask.IsPaused = !Config["StopLights"].ToBoolean(true);
+            _FrictionTask.IsPaused = !Config["Friction"].ToBoolean(true);
         }
 
         readonly TaskManager.Task _AddWheelsTask;
@@ -89,6 +89,9 @@ namespace IngameScript
 
             switch (argument.ToLower())
             {
+                case "info":
+                    Echo(Runtime.UpdateFrequency.ToString());
+                    break;
                 case "low":
                 case "high":
                 case "toggle_hight":
@@ -120,38 +123,6 @@ namespace IngameScript
                     TaskManager.AddTaskOnce(ExportPathTask());
                     break;
                 default:
-                    if (argument.ToLower().StartsWith("toggle"))
-                    {
-                        var parts = argument.Split(' ');
-                        switch (parts[1])
-                        {
-                            case "addwheels":
-                                _AddWheelsTask.IsPaused = !_AddWheelsTask.IsPaused;
-                                Ini.Set("Options", "AddWheels", (!_AddWheelsTask.IsPaused).ToString());
-                                break;
-                            case "suspensionstrength":
-                                _SuspensionStrengthTask.IsPaused = !_SuspensionStrengthTask.IsPaused;
-                                Ini.Set("Options", "SuspensionStrength", (!_SuspensionStrengthTask.IsPaused).ToString());
-                                break;
-                            case "subsuspensionstrength":
-                                _SubSuspensionStrengthTask.IsPaused = !_SubSuspensionStrengthTask.IsPaused;
-                                Ini.Set("Options", "SubWheelsStrength", (!_SubSuspensionStrengthTask.IsPaused).ToString());
-                                break;
-                            case "power":
-                                _PowerTask.IsPaused = !_PowerTask.IsPaused;
-                                Ini.Set("Options", "Power", (!_PowerTask.IsPaused).ToString());
-                                break;
-                            case "stoplights":
-                                _StopLightsTask.IsPaused = !_StopLightsTask.IsPaused;
-                                Ini.Set("Options", "StopLights", (!_StopLightsTask.IsPaused).ToString());
-                                break;
-                            case "friction":
-                                _FrictionTask.IsPaused = !_FrictionTask.IsPaused;
-                                Ini.Set("Options", "Friction", (!_FrictionTask.IsPaused).ToString());
-                                break;
-                        }
-                        Me.CustomData = Ini.ToString();
-                    }
                     menuSystem.ProcessMenuCommands(argument);
                     break;
             }
@@ -161,16 +132,15 @@ namespace IngameScript
         IEnumerable MainTask()
         {
             var ini = Config;
-            var strength = ini.GetValueOrDefault("SuspensionStrength", "true").ToLower() == "true";
-            var subWheels = ini.GetValueOrDefault("SubWheelsStrength", "true").ToLower() == "true";
-            var powerFlag = ini.GetValueOrDefault("Power", "true").ToLower() == "true";
-            var frictionFlag = ini.GetValueOrDefault("Friction", "true").ToLower() == "true";
-            var suspensionHight = ini.GetValueOrDefault("SuspensionHight", "true").ToLower() == "true";
-            var suspensionHightRoll = double.Parse(ini.GetValueOrDefault("SuspensionHightRoll", "30"));
+            var strength = ini["SuspensionStrength"].ToBoolean(true);
+            var subWheels = ini["SubWheelsStrength"].ToBoolean(true);
+            var powerFlag = ini["Power"].ToBoolean(true);
+            var frictionFlag = ini["Friction"].ToBoolean(true);
+            var suspensionHight = ini["SuspensionHight"].ToBoolean(true);
+            var suspensionHightRoll = ini["SuspensionHightRoll"].ToDouble(30);
 
-            var high = Config.GetValueOrDefault("HighModeHight", "Max");
-            var low = float.Parse(Config.GetValueOrDefault("LowModeHight", "0"));
-            var calcHigh = high == "Max" ? MyWheels.FirstOrDefault().HeightOffsetMin : float.Parse(high);
+            var high = ini["HighModeHight"].ToDouble(MyWheels.FirstOrDefault().HeightOffsetMin);
+            var low = ini["LowModeHight"].ToDouble();
 
             while (ini.Equals(Config))
             {
@@ -204,7 +174,7 @@ namespace IngameScript
                     // update height
                     if (suspensionHight && ((roll > suspensionHightRoll && w.IsLeft) || (roll < -suspensionHightRoll && !w.IsLeft)))
                     {
-                        var value = Util.NormalizeClamp(Math.Abs(gridProps.Roll), 0, 25, calcHigh, low);
+                        var value = Util.NormalizeClamp(Math.Abs(gridProps.Roll), 0, 25, high, low);
                         w.Wheel.Height += (float)((value - w.Wheel.Height) * 0.5f);
                         gridProps.RollCompensating = true;
                     }
@@ -239,7 +209,7 @@ namespace IngameScript
                 }
                 if (SubWheels.Count() > 0)
                 {
-                    calcHigh = high == "Max" ? SubWheels.FirstOrDefault().HeightOffsetMin : float.Parse(high);
+                    high = ini["HighModeHight"].ToDouble(SubWheels.FirstOrDefault().HeightOffsetMin);
                 }
                 foreach (var w in SubWheels)
                 {
@@ -254,7 +224,7 @@ namespace IngameScript
 
                     if (suspensionHight && ((roll > suspensionHightRoll && w.IsLeft) || (roll < -suspensionHightRoll && !w.IsLeft)))
                     {
-                        var value = Util.NormalizeClamp(Math.Abs(gridProps.Roll), 0, 25, calcHigh, low);
+                        var value = Util.NormalizeClamp(Math.Abs(gridProps.Roll), 0, 25, high, low);
                         w.Wheel.Height += (float)((value - w.Wheel.Height) * 0.5f);
                     }
                     else
@@ -293,8 +263,8 @@ namespace IngameScript
             var ini = Config;
             var gridMass = gridProps.Mass.BaseMass;
             var orientation = gridProps.MainController.Orientation;
-            var tag = ini.GetValueOrDefault("Tag", "{DDAS}");
-            var ignoreTag = ini.GetValueOrDefault("IgnoreTag", "{Ignore}");
+            var tag = ini["Tag"].ToString("{DDAS}");
+            var ignoreTag = ini["IgnoreTag"].ToString("{Ignore}");
             var lights = Util.GetBlocks<IMyLightingBlock>(b =>
                 b.IsSameConstructAs(Me) && (
                     Util.IsTagged(b, tag) || (
@@ -340,9 +310,9 @@ namespace IngameScript
         IEnumerable<FrictionTaskResult> FrictionTask()
         {
             var ini = Config;
-            var FrictionInner = float.Parse(ini.GetValueOrDefault("FrictionInner", "80"));
-            var FrictionOuter = float.Parse(ini.GetValueOrDefault("FrictionOuter", "60"));
-            var FrictionMinSpeed = float.Parse(ini.GetValueOrDefault("FrictionMinSpeed", "5"));
+            var FrictionInner = ini["FrictionInner"].ToSingle(80);
+            var FrictionOuter = ini["FrictionOuter"].ToSingle(60);
+            var FrictionMinSpeed = ini["FrictionMinSpeed"].ToSingle(5);
             while (ini.Equals(Config))
             {
                 yield return new FrictionTaskResult
@@ -361,30 +331,30 @@ namespace IngameScript
 
         IEnumerable ToggleHightModeTask()
         {
-            var targetHigh = Config.GetValueOrDefault("HighModeHight", "Max");
-            var targetLow = float.Parse(Config.GetValueOrDefault("LowModeHight", "0"));
-
             var controlWheel = MyWheels.FirstOrDefault();
-            var targetHeight = controlWheel.TargetHeight;
+            var targetHeight = controlWheel.TargetHeight;// -31.9
 
-            var calcHigh = targetHigh == "Max" ? controlWheel.HeightOffsetMin : float.Parse(targetHigh);
-            var closeHigh = calcHigh - targetHeight;
-            var closeLow = targetHeight - targetLow;
-            foreach (var w in SubWheels)
+            var high = Config["HighModeHight"].ToSingle(controlWheel.HeightOffsetMin);//Max
+            var low = Config["LowModeHight"].ToSingle();//0
+
+
+            var closeHigh = high - targetHeight;// -32 -31.9 = -0.1
+            var closeLow = targetHeight - low;// -31.9 - 0 = -31.9
+            foreach (var w in MyWheels)
             {
-                w.TargetHeight = Math.Abs(closeHigh) < Math.Abs(closeLow) ? targetLow : calcHigh;
+                w.TargetHeight = Math.Abs(closeHigh) < Math.Abs(closeLow) ? low : high;
             }
 
-            if (SubWheels.Count() == 0) yield break; 
+            if (SubWheels.Count() == 0) yield break;
             var controlSubWheel = SubWheels.FirstOrDefault();
             targetHeight = controlSubWheel.TargetHeight;
 
-            calcHigh = targetHigh == "Max" ? controlSubWheel.HeightOffsetMin : float.Parse(targetHigh);
-            closeHigh = calcHigh - targetHeight;
-            closeLow = targetHeight - targetLow;
+            high = Config["HighModeHight"].ToSingle(controlSubWheel.HeightOffsetMin);//Max
+            closeHigh = high - targetHeight;
+            closeLow = targetHeight - low;
             foreach (var w in SubWheels)
             {
-                w.TargetHeight = Math.Abs(closeHigh) < Math.Abs(closeLow) ? targetLow : calcHigh;
+                w.TargetHeight = Math.Abs(closeHigh) < Math.Abs(closeLow) ? low : high;
             }
 
             yield return null;

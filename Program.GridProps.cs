@@ -32,17 +32,18 @@ namespace IngameScript
             public IMyShipController MainController;
             public IMyShipController SubController;
             public IMyRemoteControl Autopilot => MainController is IMyRemoteControl ? MainController as IMyRemoteControl : null;
-            public void UpdateGridProps(Dictionary<string, string> config, IEnumerable<IMyShipController> controllers)
+            public void UpdateGridProps(Dictionary<string, MyIniValue> config, IEnumerable<IMyShipController> controllers)
             {
+                var tag = config["Tag"].ToString("{DDAS}");
                 var myControllers = controllers.Where(c => c.CubeGrid == _program.Me.CubeGrid && c.CanControlShip);
-                MainController = myControllers.FirstOrDefault(c => Util.IsTagged(c, config["Tag"]) && c is IMyRemoteControl)
+                MainController = myControllers.FirstOrDefault(c => Util.IsTagged(c, tag) && c is IMyRemoteControl)
                     ?? myControllers.FirstOrDefault(c => c is IMyRemoteControl)
                     ?? myControllers.FirstOrDefault();
                 Controller = myControllers.FirstOrDefault(c => c.IsUnderControl) ?? MainController;
 
                 var subControllers = controllers.Where(c => c.CubeGrid != _program.Me.CubeGrid);
                 SubController = subControllers
-                    .FirstOrDefault(c => Util.IsTagged(c, config["Tag"]) && c is IMyRemoteControl)
+                    .FirstOrDefault(c => Util.IsTagged(c, tag) && c is IMyRemoteControl)
                     ?? subControllers.FirstOrDefault();
 
                 if (MainController == null) return;
@@ -58,18 +59,11 @@ namespace IngameScript
             public GridProps(Program program)
             {
                 _program = program;
-                AutoLevel = bool.Parse(_program.Config.GetValueOrDefault("AutoLevel", "false"));
+                AutoLevel = _program.Config["AutoLevel"].ToBoolean(true);
             }
         }
 
-        Dictionary<string, string> Config => Memo.Of(() =>
-        {
-            var keys = new List<MyIniKey>();
-            Ini.GetKeys(keys);
-            return keys.ToDictionary(k => k.Name, k => Ini.Get(k.Section, k.Name).ToString());
-        }, "config", Memo.Refs(Ini));
-
-        MyIni Ini => Memo.Of(() =>
+        Dictionary<string, MyIniValue> Config => Memo.Of(() =>
         {
             var myIni = new MyIni();
             if (!myIni.TryParse(Me.CustomData) || Me.CustomData == "")
@@ -113,23 +107,27 @@ namespace IngameScript
 
                 Me.CustomData = myIni.ToString();
             };
-            return myIni;
+            var keys = new List<MyIniKey>();
+            myIni.GetKeys(keys);
+            return keys.ToDictionary(k => k.Name, k => myIni.Get(k.Section, k.Name));
+
         }, "myIni", Memo.Refs(Me.CustomData));
 
         readonly GridProps gridProps;
 
-        IEnumerable<IMyMotorSuspension> AllWheels => Memo.Of(() => Util.GetBlocks<IMyMotorSuspension>(b => Util.IsNotIgnored(b, Config["IgnoreTag"]) && b.Enabled && b.IsSameConstructAs(Me)), "wheels", Memo.Refs(gridProps.Mass.BaseMass));
+        IEnumerable<IMyMotorSuspension> AllWheels => Memo.Of(() => Util.GetBlocks<IMyMotorSuspension>(b => Util.IsNotIgnored(b, Config["IgnoreTag"].ToString()) && b.Enabled && b.IsSameConstructAs(Me)), "wheels", Memo.Refs(gridProps.Mass.BaseMass));
 
         IEnumerable<WheelWrapper> MyWheels => Memo.Of(() =>
             {
                 var wh = AllWheels
                     .Where(w => w.CubeGrid == Me.CubeGrid && w.IsAttached)
                     .Select(w => new WheelWrapper(w, gridProps.MainController, Config));
-                var maxSteerAngle = double.Parse(Config.GetValueOrDefault("MaxSteeringAngle", "25"));
+                var maxSteerAngle = Config["MaxSteeringAngle"].ToDouble(25);
                 var distance = wh.Max(w => Math.Abs(w.ToFocalPoint.Z));
                 var hight = wh.Min(w => w.Wheel.Height);
                 var radius = distance / Math.Tan(MathHelper.ToRadians(maxSteerAngle));
-                return wh.Select(w => {
+                return wh.Select(w =>
+                {
                     w.Radius = radius;
                     w.TargetHeight = hight;
                     return w;
@@ -155,7 +153,7 @@ namespace IngameScript
 
         double GridUnsprungMass => Memo.Of(() => gridProps.Mass.PhysicalMass - MyWheels.Concat(SubWheels).Sum(w => w.Wheel.Top.Mass), "GridUnsprungWeight", Memo.Refs(gridProps.Mass.PhysicalMass, MyWheels));
 
-        IEnumerable<IMyShipController> Controllers => Memo.Of(() => Util.GetBlocks<IMyShipController>(b => Util.IsNotIgnored(b, Config["IgnoreTag"]) && b.IsSameConstructAs(Me)), "controllers", 100);
+        IEnumerable<IMyShipController> Controllers => Memo.Of(() => Util.GetBlocks<IMyShipController>(b => Util.IsNotIgnored(b, Config["IgnoreTag"].ToString()) && b.IsSameConstructAs(Me)), "controllers", 100);
 
         struct GridPower
         {

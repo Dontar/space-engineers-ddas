@@ -60,8 +60,8 @@ namespace IngameScript
         IEnumerable<StrengthTaskResult> SuspensionStrengthTask()
         {
             var myWheels = MyWheels;
-            if (myWheels.Count() == 0) yield return default(StrengthTaskResult);
-            var strengthFactor = float.Parse(Config.GetValueOrDefault("StrengthFactor", "1"));
+            if (myWheels.Count() == 0) yield break;
+            var strengthFactor = Config["StrengthFactor"].ToSingle(1);
             double normalizeFactor = CalcStrength(myWheels);
             while (myWheels.Equals(MyWheels))
             {
@@ -85,8 +85,8 @@ namespace IngameScript
         IEnumerable<SubStrengthTaskResult> SubSuspensionStrengthTask()
         {
             var subWheels = SubWheels;
-            if (subWheels.Count() == 0) yield return default(SubStrengthTaskResult);
-            var strengthFactor = float.Parse(Config.GetValueOrDefault("StrengthFactor", "1"));
+            if (subWheels.Count() == 0) yield break;
+            var strengthFactor = Config["StrengthFactor"].ToSingle(1);
             double normalizeFactor = CalcStrength(subWheels);
             while (subWheels.Equals(SubWheels))
             {
