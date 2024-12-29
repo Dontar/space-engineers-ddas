@@ -27,8 +27,8 @@ namespace IngameScript
 {
     partial class Program : MyGridProgram
     {
-        IEnumerable<IMyTextSurface> ScreensStat => Memo.Of(() => Util.GetScreens("ddas-status"), "screensStatus", 100);
-        IEnumerable<IMyTextSurface> ScreensMenu => Memo.Of(() => Util.GetScreens("ddas-menu"), "screensMenus", 100);
+        IEnumerable<IMyTextSurface> ScreensStat => Memo.Of(() => Util.GetScreens("ddas-status").ToArray(), "screensStatus", 100);
+        IEnumerable<IMyTextSurface> ScreensMenu => Memo.Of(() => Util.GetScreens("ddas-menu").ToArray(), "screensMenus", 100);
         IEnumerable ScreensTask()
         {
             var screenText = new StringBuilder();
