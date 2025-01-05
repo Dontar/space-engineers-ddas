@@ -28,7 +28,7 @@ namespace IngameScript
     partial class Program : MyGridProgram
     {
         IEnumerable<IMyTextSurface> ScreensStat => Memo.Of(() => Util.GetScreens("ddas-status").ToArray(), "screensStatus", 100);
-        IEnumerable<IMyTextSurface> ScreensMenu => Memo.Of(() => Util.GetScreens("ddas-menu").ToArray(), "screensMenus", 100);
+        // IEnumerable<IMyTextSurface> ScreensMenu => Memo.Of(() => Util.GetScreens("ddas-menu").ToArray(), "screensMenus", 100);
         IEnumerable ScreensTask()
         {
             var screenText = new StringBuilder();
@@ -64,11 +64,11 @@ namespace IngameScript
                     s.Font = "Monospace";
                     s.WriteText(screenText);
                 }
-                foreach (var s in ScreensMenu)
-                {
-                    s.ContentType = ContentType.TEXT_AND_IMAGE;
-                    menuSystem.Render(s);
-                }
+                // foreach (var s in ScreensMenu)
+                // {
+                //     s.ContentType = ContentType.TEXT_AND_IMAGE;
+                //     menuSystem.Render(s);
+                // }
                 yield return null;
             }
         }

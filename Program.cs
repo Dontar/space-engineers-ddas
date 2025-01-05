@@ -32,33 +32,22 @@ namespace IngameScript
             Runtime.UpdateFrequency = UpdateFrequency.Update10;
             Util.Init(this);
             gridProps = new GridProps(this);
-            menuSystem = new MenuSystem(this);
             TaskManager.AddTask(Util.DisplayLogo("DDAS", Me.GetSurface(0)));
             TaskManager.AddTask(ScreensTask());
             TaskManager.AddTask(AutopilotTask());
             TaskManager.AddTask(AutoLevelTask());
-            _AddWheelsTask = TaskManager.AddTask(AddWheelsTask());
-            _SuspensionStrengthTask = TaskManager.AddTask(SuspensionStrengthTask());
-            _SubSuspensionStrengthTask = TaskManager.AddTask(SubSuspensionStrengthTask());
+            TaskManager.AddTask(SuspensionStrengthTask());
             _PowerTask = TaskManager.AddTask(PowerTask());
             _StopLightsTask = TaskManager.AddTask(StopLightsTask());
-            _FrictionTask = TaskManager.AddTask(FrictionTask());
             TaskManager.AddTask(MainTask());
+            TaskManager.AddTask(Util.PerformanceMonitor(this));
 
-            _AddWheelsTask.IsPaused = !Config["AddWheels"].ToBoolean(true);
-            _SuspensionStrengthTask.IsPaused = !Config["SuspensionStrength"].ToBoolean(true);
-            _SubSuspensionStrengthTask.IsPaused = !Config["SubWheelsStrength"].ToBoolean(true);
             _PowerTask.IsPaused = !Config["Power"].ToBoolean(true);
             _StopLightsTask.IsPaused = !Config["StopLights"].ToBoolean(true);
-            _FrictionTask.IsPaused = !Config["Friction"].ToBoolean(true);
         }
 
-        readonly TaskManager.Task _AddWheelsTask;
-        readonly TaskManager.Task _SuspensionStrengthTask;
-        readonly TaskManager.Task _SubSuspensionStrengthTask;
         readonly TaskManager.Task _PowerTask;
         readonly TaskManager.Task _StopLightsTask;
-        readonly TaskManager.Task _FrictionTask;
 
         public void Main(string argument, UpdateType updateSource)
         {
@@ -123,11 +112,10 @@ namespace IngameScript
                     TaskManager.AddTaskOnce(ExportPathTask());
                     break;
                 default:
-                    menuSystem.ProcessMenuCommands(argument);
+                    // menuSystem.ProcessMenuCommands(argument);
                     break;
             }
         }
-
 
         IEnumerable MainTask()
         {
@@ -138,6 +126,10 @@ namespace IngameScript
             var frictionFlag = ini["Friction"].ToBoolean(true);
             var suspensionHight = ini["SuspensionHight"].ToBoolean(true);
             var suspensionHightRoll = ini["SuspensionHightRoll"].ToDouble(30);
+            var addWheels = ini["AddWheels"].ToBoolean(true);
+            var FrictionInner = ini["FrictionInner"].ToSingle(80);
+            var FrictionOuter = ini["FrictionOuter"].ToSingle(60);
+            var FrictionMinSpeed = ini["FrictionMinSpeed"].ToSingle(5);
 
             var high = ini["HighModeHight"].ToDouble(MyWheels.FirstOrDefault().HeightOffsetMin);
             var low = ini["LowModeHight"].ToDouble();
@@ -145,11 +137,9 @@ namespace IngameScript
             while (ini.Equals(Config))
             {
                 var taskResults = TaskManager.TaskResults;
-                var updateStrength = taskResults.OfType<StrengthTaskResult>().FirstOrDefault().action;
+                var updateStrength = taskResults.OfType<StrengthTaskResult>().FirstOrDefault();
                 var propulsion = taskResults.OfType<CruiseTaskResult>().FirstOrDefault().Propulsion;
                 var power = taskResults.OfType<PowerTaskResult>().FirstOrDefault().Power;
-                var friction = taskResults.OfType<FrictionTaskResult>().FirstOrDefault().action;
-                var updateSubStrength = taskResults.OfType<SubStrengthTaskResult>().FirstOrDefault().action;
                 var autopilot = taskResults.OfType<AutopilotTaskResult>().FirstOrDefault();
 
                 var roll = gridProps.Roll + (gridProps.RollCompensating ? (gridProps.Roll > 0 ? 6 : -6) : 0);
@@ -163,9 +153,14 @@ namespace IngameScript
                 {
                     // update strength
                     if (strength)
-                        updateStrength?.Invoke(w, GridUnsprungMass * gridProps.GravityMagnitude);
+                        updateStrength.Action?.Invoke(w, GridUnsprungMass * gridProps.GravityMagnitude);
                     if (frictionFlag)
-                        friction?.Invoke(w);
+                        if (gridProps.Speed > FrictionMinSpeed && gridProps.LeftRight != 0)
+                        {
+                            w.Friction = gridProps.LeftRight < 0 ? (w.IsLeft ? FrictionInner : FrictionOuter) : (w.IsLeft ? FrictionOuter : FrictionInner);
+                        }
+                        else w.Friction = 100;
+
                     if (powerFlag)
                         w.Wheel.Power = power;
 
@@ -206,6 +201,12 @@ namespace IngameScript
                     }
                     else
                         w.Wheel.SteeringOverride = 0;
+
+                    if (addWheels && !w.Wheel.IsAttached)
+                    {
+                        w.Wheel.ApplyAction("Add Top Part");
+                    }
+
                 }
                 if (SubWheels.Count() > 0)
                 {
@@ -216,9 +217,14 @@ namespace IngameScript
                     w.SpeedLimit = MyWheels.First().SpeedLimit;
 
                     if (subWheels)
-                        updateSubStrength?.Invoke(w, GridUnsprungMass * gridProps.GravityMagnitude);
+                        updateStrength.SubAction?.Invoke(w, GridUnsprungMass * gridProps.GravityMagnitude);
                     if (frictionFlag)
-                        friction?.Invoke(w);
+                        if (gridProps.Speed > FrictionMinSpeed && gridProps.LeftRight != 0)
+                        {
+                            w.Friction = gridProps.LeftRight < 0 ? (w.IsLeft ? FrictionInner : FrictionOuter) : (w.IsLeft ? FrictionOuter : FrictionInner);
+                        }
+                        else w.Friction = 100;
+
                     if (powerFlag)
                         w.Wheel.Power = power;
 
@@ -240,32 +246,25 @@ namespace IngameScript
                         var p = gridProps.ForwardBackward < 0 ? 1 : -1;
                         w.Wheel.PropulsionOverride = w.IsLeft ? p : -p;
                     }
+
+                    if (addWheels && !w.Wheel.IsAttached)
+                    {
+                        w.Wheel.ApplyAction("Add Top Part");
+                    }
+
                 }
                 yield return null;
             }
         }
 
-        IEnumerable AddWheelsTask()
+        IEnumerable<IMyLightingBlock> Lights => Memo.Of(() =>
         {
-            var allWheels = AllWheels;
-            while (allWheels.Equals(AllWheels))
-            {
-                foreach (var w in allWheels.Where(w => !w.IsAttached))
-                {
-                    w.ApplyAction("Add Top Part");
-                }
-                yield return null;
-            }
-        }
-
-        IEnumerable StopLightsTask()
-        {
-            var ini = Config;
             var gridMass = gridProps.Mass.BaseMass;
             var orientation = gridProps.MainController.Orientation;
-            var tag = ini["Tag"].ToString("{DDAS}");
-            var ignoreTag = ini["IgnoreTag"].ToString("{Ignore}");
-            var lights = Util.GetBlocks<IMyLightingBlock>(b =>
+            var tag = Config["Tag"].ToString("{DDAS}");
+            var ignoreTag = Config["IgnoreTag"].ToString("{Ignore}");
+
+            return Util.GetBlocks<IMyLightingBlock>(b =>
                 b.IsSameConstructAs(Me) && (
                     Util.IsTagged(b, tag) || (
                         Util.IsNotIgnored(b, ignoreTag) &&
@@ -273,8 +272,14 @@ namespace IngameScript
                     )
                 )
             );
+        }, "stopLights", Memo.Refs(gridProps.Mass.BaseMass, Config));
 
-            while (gridMass.Equals(gridProps.Mass.BaseMass) && ini.Equals(Config))
+        IEnumerable StopLightsTask()
+        {
+            var ini = Config;
+            var lights = Lights;
+
+            while (lights.Equals(Lights) && ini.Equals(Config))
             {
                 foreach (var l in lights)
                 {
@@ -300,32 +305,6 @@ namespace IngameScript
 
                 };
                 yield return null;
-            }
-        }
-
-        struct FrictionTaskResult
-        {
-            public Action<WheelWrapper> action;
-        }
-        IEnumerable<FrictionTaskResult> FrictionTask()
-        {
-            var ini = Config;
-            var FrictionInner = ini["FrictionInner"].ToSingle(80);
-            var FrictionOuter = ini["FrictionOuter"].ToSingle(60);
-            var FrictionMinSpeed = ini["FrictionMinSpeed"].ToSingle(5);
-            while (ini.Equals(Config))
-            {
-                yield return new FrictionTaskResult
-                {
-                    action = w =>
-                    {
-                        if (gridProps.Speed > FrictionMinSpeed && gridProps.LeftRight != 0)
-                        {
-                            w.Friction = gridProps.LeftRight < 0 ? (w.IsLeft ? FrictionInner : FrictionOuter) : (w.IsLeft ? FrictionOuter : FrictionInner);
-                        }
-                        else w.Friction = 100;
-                    }
-                };
             }
         }
 

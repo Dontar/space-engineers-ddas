@@ -34,17 +34,27 @@ namespace IngameScript
             public IMyRemoteControl Autopilot => MainController is IMyRemoteControl ? MainController as IMyRemoteControl : null;
             public void UpdateGridProps(Dictionary<string, MyIniValue> config, IEnumerable<IMyShipController> controllers)
             {
-                var tag = config["Tag"].ToString("{DDAS}");
-                var myControllers = controllers.Where(c => c.CubeGrid == _program.Me.CubeGrid && c.CanControlShip);
-                MainController = myControllers.FirstOrDefault(c => Util.IsTagged(c, tag) && c is IMyRemoteControl)
-                    ?? myControllers.FirstOrDefault(c => c is IMyRemoteControl)
-                    ?? myControllers.FirstOrDefault();
-                Controller = myControllers.FirstOrDefault(c => c.IsUnderControl) ?? MainController;
+                var updateControllers = Memo.Of(() =>
+                {
+                    var tag = config["Tag"].ToString("{DDAS}");
+                    var myControllers = controllers.Where(c => c.CubeGrid == _program.Me.CubeGrid && c.CanControlShip);
+                    var mainController = myControllers.FirstOrDefault(c => Util.IsTagged(c, tag) && c is IMyRemoteControl)
+                        ?? myControllers.FirstOrDefault(c => c is IMyRemoteControl)
+                        ?? myControllers.FirstOrDefault();
+                    var controller = myControllers.FirstOrDefault(c => c.IsUnderControl) ?? MainController;
 
-                var subControllers = controllers.Where(c => c.CubeGrid != _program.Me.CubeGrid);
-                SubController = subControllers
-                    .FirstOrDefault(c => Util.IsTagged(c, tag) && c is IMyRemoteControl)
-                    ?? subControllers.FirstOrDefault();
+                    var subControllers = controllers.Where(c => c.CubeGrid != _program.Me.CubeGrid);
+                    var subController = subControllers
+                        .FirstOrDefault(c => Util.IsTagged(c, tag) && c is IMyRemoteControl)
+                        ?? subControllers.FirstOrDefault();
+
+                    return new { mainController, controller, subController };
+
+                }, "updateControllers", Memo.Refs(config, controllers));
+
+                MainController = updateControllers.mainController;
+                Controller = updateControllers.controller;
+                SubController = updateControllers.subController;
 
                 if (MainController == null) return;
 
@@ -119,10 +129,11 @@ namespace IngameScript
 
         IEnumerable<WheelWrapper> MyWheels => Memo.Of(() =>
             {
+                var config = Config;
                 var wh = AllWheels
-                    .Where(w => w.CubeGrid == Me.CubeGrid && w.IsAttached)
-                    .Select(w => new WheelWrapper(w, gridProps.MainController, Config));
-                var maxSteerAngle = Config["MaxSteeringAngle"].ToDouble(25);
+                    .Where(w => w.CubeGrid == Me.CubeGrid)
+                    .Select(w => new WheelWrapper(w, gridProps.MainController, config));
+                var maxSteerAngle = config["MaxSteeringAngle"].ToDouble(25);
                 var distance = wh.Max(w => Math.Abs(w.ToFocalPoint.Z));
                 var hight = wh.Min(w => w.Wheel.Height);
                 var radius = distance / Math.Tan(MathHelper.ToRadians(maxSteerAngle));
@@ -151,7 +162,7 @@ namespace IngameScript
             return sw.ToArray();
         }, "subWheels", Memo.Refs(AllWheels));
 
-        double GridUnsprungMass => Memo.Of(() => gridProps.Mass.PhysicalMass - MyWheels.Concat(SubWheels).Sum(w => w.Wheel.Top.Mass), "GridUnsprungWeight", Memo.Refs(gridProps.Mass.PhysicalMass, MyWheels));
+        double GridUnsprungMass => Memo.Of(() => gridProps.Mass.PhysicalMass - MyWheels.Concat(SubWheels).Sum(w => w.Wheel.Top.Mass), "GridUnsprungWeight", Memo.Refs(gridProps.Mass.PhysicalMass, AllWheels));
 
         IEnumerable<IMyShipController> Controllers => Memo.Of(() => Util.GetBlocks<IMyShipController>(b => Util.IsNotIgnored(b, Config["IgnoreTag"].ToString()) && b.IsSameConstructAs(Me)), "controllers", 100);
 

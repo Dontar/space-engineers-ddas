@@ -197,7 +197,7 @@ namespace IngameScript
             public static void ApplyGyroOverride(double pitchSpeed, double yawSpeed, double rollSpeed, IMyGyro gyro, MatrixD worldMatrix)
             {
                 ApplyGyroOverride(pitchSpeed, yawSpeed, rollSpeed, new IMyGyro[] { gyro }, worldMatrix);
-            
+
             }
 
             public static void ApplyGyroOverride(double pitchSpeed, double yawSpeed, double rollSpeed, IEnumerable<IMyGyro> gyros, MatrixD worldMatrix)
@@ -230,6 +230,33 @@ namespace IngameScript
                     screen.Alignment = TextAlignment.CENTER;
                     screen.ContentType = ContentType.TEXT_AND_IMAGE;
                     screen.WriteText(string.Join("", Enumerable.Repeat("\n", (int)(screen.SurfaceSize.Y / size.Y) / 2)) + pbLabel + progress.Current);
+                    yield return null;
+                }
+            }
+
+            public static IEnumerable PerformanceMonitor(Program p)
+            {
+                var runtimeText = new StringBuilder();
+                var runtime = p.Runtime;
+                var progress = (new char[] { '/', '-', '\\', '|' }).GetEnumerator();
+
+                while (true)
+                {
+                    if (!progress.MoveNext())
+                    {
+                        progress.Reset();
+                        progress.MoveNext();
+                    };
+
+                    runtimeText.Clear();
+                    runtimeText.AppendLine($"Runtime Info - {progress.Current}");
+                    runtimeText.AppendLine("----------------------------");
+                    runtimeText.AppendLine($"Last Run: {runtime.LastRunTimeMs}ms");
+                    runtimeText.AppendLine($"Time Since Last Run: {runtime.TimeSinceLastRun.TotalMilliseconds}ms");
+                    runtimeText.AppendLine($"Instruction Count: {runtime.CurrentInstructionCount}/{runtime.MaxInstructionCount}");
+                    runtimeText.AppendLine($"Call depth Count: {runtime.CurrentCallChainDepth}/{runtime.MaxCallChainDepth}");
+                    runtimeText.AppendLine();
+                    p.Echo(runtimeText.ToString());
                     yield return null;
                 }
             }
