@@ -44,11 +44,12 @@ namespace IngameScript
             float passivePower = 0;
             while (ini.Equals(Config) && wheels.Equals(MyWheels))
             {
+                var powerProducersPower = PowerProducersPower;
                 if (gridProps.Speed < 0.1)
                 {
-                    passivePower = PowerProducersPower.CurrentOutput;
+                    passivePower = powerProducersPower.CurrentOutput;
                 }
-                var vehicleMaxPower = PowerProducersPower.MaxOutput;
+                var vehicleMaxPower = powerProducersPower.MaxOutput;
                 var powerMaxPercent = MathHelper.Clamp((vehicleMaxPower - passivePower) / wheelPower, 0, 1);
                 var dt = TaskManager.CurrentTaskLastRun.TotalSeconds;
                 var currentSpeedKmh = gridProps.Speed * 3.6;

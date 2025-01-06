@@ -78,9 +78,9 @@ namespace IngameScript
 
             switch (argument.ToLower())
             {
-                case "info":
-                    Echo(Runtime.UpdateFrequency.ToString());
-                    break;
+                // case "info":
+                //     Echo($"{Runtime.UpdateFrequency}\n{updateSource}");
+                //     break;
                 case "low":
                 case "high":
                 case "toggle_hight":
