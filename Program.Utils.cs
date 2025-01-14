@@ -233,8 +233,12 @@ namespace IngameScript
                     yield return null;
                 }
             }
-
-            public static IEnumerable PerformanceMonitor(Program p)
+            public static StringBuilder StatusText = new StringBuilder();
+            public static void Echo(string text)
+            {
+                StatusText.AppendLine(text);
+            }
+            public static IEnumerable StatusMonitor(Program p)
             {
                 var runtimeText = new StringBuilder();
                 var runtime = p.Runtime;
@@ -256,7 +260,9 @@ namespace IngameScript
                     runtimeText.AppendLine($"Instruction Count: {runtime.CurrentInstructionCount}/{runtime.MaxInstructionCount}");
                     runtimeText.AppendLine($"Call depth Count: {runtime.CurrentCallChainDepth}/{runtime.MaxCallChainDepth}");
                     runtimeText.AppendLine();
+                    runtimeText.AppendStringBuilder(StatusText);
                     p.Echo(runtimeText.ToString());
+                    StatusText.Clear();
                     yield return null;
                 }
             }
@@ -300,6 +306,7 @@ namespace IngameScript
                 {
                     var task = executionList[i];
                     if (task.IsPaused) continue;
+                    task.TaskResult = null;
                     task.TimeSinceLastRun += TimeSinceLastRun;
                     if (task.TimeSinceLastRun >= task.Interval)
                     {

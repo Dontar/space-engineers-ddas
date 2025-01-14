@@ -41,7 +41,7 @@ namespace IngameScript
                     var mainController = myControllers.FirstOrDefault(c => Util.IsTagged(c, tag) && c is IMyRemoteControl)
                         ?? myControllers.FirstOrDefault(c => c is IMyRemoteControl)
                         ?? myControllers.FirstOrDefault();
-                    var controller = myControllers.FirstOrDefault(c => c.IsUnderControl) ?? MainController;
+                    var controller = myControllers.FirstOrDefault(c => c.IsUnderControl) ?? mainController;
 
                     var subControllers = controllers.Where(c => c.CubeGrid != _program.Me.CubeGrid);
                     var subController = subControllers

@@ -36,11 +36,11 @@ namespace IngameScript
             TaskManager.AddTask(ScreensTask());
             TaskManager.AddTask(AutopilotTask());
             TaskManager.AddTask(AutoLevelTask());
-            TaskManager.AddTask(SuspensionStrengthTask());
+            TaskManager.AddTask(SuspensionStrengthTask(), 3f);
             _PowerTask = TaskManager.AddTask(PowerTask());
             _StopLightsTask = TaskManager.AddTask(StopLightsTask());
             TaskManager.AddTask(MainTask());
-            TaskManager.AddTask(Util.PerformanceMonitor(this));
+            TaskManager.AddTask(Util.StatusMonitor(this));
 
             _PowerTask.IsPaused = !Config["Power"].ToBoolean(true);
             _StopLightsTask.IsPaused = !Config["StopLights"].ToBoolean(true);
@@ -60,7 +60,7 @@ namespace IngameScript
                 gridProps.UpdateGridProps(Config, Controllers);
                 if (gridProps.MainController == null)
                 {
-                    Echo("No controller found");
+                    Util.Echo("No controller found");
                     return;
                 };
 
@@ -69,7 +69,7 @@ namespace IngameScript
             }
             catch (Exception e)
             {
-                Echo(e.ToString());
+                Util.Echo(e.ToString());
             }
         }
 

@@ -15,7 +15,7 @@ namespace IngameScript
         {
             public IMyMotorSuspension Wheel;
             public float SpeedLimit { get { return Wheel.GetValueFloat("Speed Limit"); } set { Wheel.SetValueFloat("Speed Limit", value); } }
-            public float SteerOverride { get { return Wheel.GetValueFloat("Steer override"); } set { Wheel.SetValueFloat("Steer override", value); } }
+            // public float SteerOverride { get { return Wheel.GetValueFloat("Steer override"); } set { Wheel.SetValueFloat("Steer override", value); } }
             public Vector3D ToCoM = Vector3D.Zero;
             public Vector3D ToFocalPoint = Vector3D.Zero;
             public double Radius;
