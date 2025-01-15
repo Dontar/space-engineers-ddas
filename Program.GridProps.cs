@@ -2,7 +2,6 @@ using Sandbox.ModAPI.Ingame;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Numerics;
 using VRage.Game.ModAPI.Ingame.Utilities;
 using VRageMath;
 
@@ -48,7 +47,9 @@ namespace IngameScript
                         .FirstOrDefault(c => Util.IsTagged(c, tag) && c is IMyRemoteControl)
                         ?? subControllers.FirstOrDefault();
 
-                    return new { mainController, controller, subController };
+                    var T = MatrixD.Transpose(mainController.WorldMatrix);
+
+                    return new { mainController, controller, subController, T };
 
                 }, "updateControllers", Memo.Refs(config, controllers));
 
@@ -58,8 +59,7 @@ namespace IngameScript
 
                 if (MainController == null) return;
 
-                var T = MatrixD.Transpose(MainController.WorldMatrix);
-                var gravityLocal = Vector3D.TransformNormal(MainController.GetTotalGravity(), T);
+                var gravityLocal = Vector3D.TransformNormal(MainController.GetTotalGravity(), updateControllers.T);
                 var roll = Math.Atan2(gravityLocal.Dot(Vector3D.Right), gravityLocal.Dot(Vector3D.Down));
                 var pitch = Math.Atan2(gravityLocal.Dot(Vector3D.Backward), gravityLocal.Dot(Vector3D.Down));
 
@@ -124,43 +124,6 @@ namespace IngameScript
         }, "myIni", Memo.Refs(Me.CustomData));
 
         readonly GridProps gridProps;
-
-        IEnumerable<IMyMotorSuspension> AllWheels => Memo.Of(() => Util.GetBlocks<IMyMotorSuspension>(b => Util.IsNotIgnored(b, Config["IgnoreTag"].ToString()) && b.Enabled && b.IsSameConstructAs(Me)), "wheels", Memo.Refs(gridProps.Mass.BaseMass));
-
-        IEnumerable<WheelWrapper> MyWheels => Memo.Of(() =>
-            {
-                var config = Config;
-                var wh = AllWheels
-                    .Where(w => w.CubeGrid == Me.CubeGrid)
-                    .Select(w => new WheelWrapper(w, gridProps.MainController, config));
-                var maxSteerAngle = config["MaxSteeringAngle"].ToDouble(25);
-                var distance = wh.Max(w => Math.Abs(w.ToFocalPoint.Z));
-                var hight = wh.Min(w => w.Wheel.Height);
-                var radius = distance / Math.Tan(MathHelper.ToRadians(maxSteerAngle));
-                return wh.Select(w =>
-                {
-                    w.Radius = radius;
-                    w.TargetHeight = hight;
-                    return w;
-                }).ToArray();
-            }, "myWheels", Memo.Refs(AllWheels, Config));
-
-        IEnumerable<WheelWrapper> SubWheels => Memo.Of(() =>
-        {
-            var sw = AllWheels
-                .Where(w => w.CubeGrid != Me.CubeGrid)
-                .Select(w => new WheelWrapper(w, gridProps));
-            if (sw.Count() > 0)
-            {
-                var hight = sw.Min(w => w.Wheel.Height);
-                sw = sw.Select(w =>
-                {
-                    w.TargetHeight = hight;
-                    return w;
-                });
-            }
-            return sw.ToArray();
-        }, "subWheels", Memo.Refs(AllWheels));
 
         double GridUnsprungMass => Memo.Of(() => gridProps.Mass.PhysicalMass - MyWheels.Concat(SubWheels).Sum(w => w.Wheel.Top.Mass), "GridUnsprungWeight", Memo.Refs(gridProps.Mass.PhysicalMass, AllWheels));
 
