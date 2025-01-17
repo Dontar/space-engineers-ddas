@@ -40,7 +40,6 @@ namespace IngameScript
                     var mainController = myControllers.FirstOrDefault(c => Util.IsTagged(c, tag) && c is IMyRemoteControl)
                         ?? myControllers.FirstOrDefault(c => c is IMyRemoteControl)
                         ?? myControllers.FirstOrDefault();
-                    var controller = myControllers.FirstOrDefault(c => c.IsUnderControl) ?? mainController;
 
                     var subControllers = controllers.Where(c => c.CubeGrid != _program.Me.CubeGrid);
                     var subController = subControllers
@@ -49,12 +48,12 @@ namespace IngameScript
 
                     var T = MatrixD.Transpose(mainController.WorldMatrix);
 
-                    return new { mainController, controller, subController, T };
+                    return new { mainController, subController, T };
 
                 }, "updateControllers", Memo.Refs(config, controllers));
 
                 MainController = updateControllers.mainController;
-                Controller = updateControllers.controller;
+                Controller = controllers.FirstOrDefault(c => c.IsUnderControl) ?? MainController;
                 SubController = updateControllers.subController;
 
                 if (MainController == null) return;

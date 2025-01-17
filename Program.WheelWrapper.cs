@@ -25,8 +25,10 @@ namespace IngameScript
             var radius = distance / Math.Tan(MathHelper.ToRadians(maxSteerAngle));
             return wh.Select(w =>
             {
-                w.Radius = radius;
                 w.TargetHeight = hight;
+                var halfWidth = Math.Abs(w.ToFocalPoint.X);
+                w.SteerAngleLeft = Math.Atan(w.DistanceFocal / (radius + (w.IsLeft ? -halfWidth : halfWidth)));
+                w.SteerAngleRight = Math.Atan(w.DistanceFocal / (radius + (w.IsLeft ? halfWidth : -halfWidth)));
                 return w;
             }).ToArray();
         }, "myWheels", Memo.Refs(AllWheels, Config));
@@ -56,7 +58,6 @@ namespace IngameScript
             // public float SteerOverride { get { return Wheel.GetValueFloat("Steer override"); } set { Wheel.SetValueFloat("Steer override", value); } }
             public Vector3D ToCoM = Vector3D.Zero;
             public Vector3D ToFocalPoint = Vector3D.Zero;
-            public double Radius;
             public float HeightOffsetMin => Wheel.GetMinimum<float>("Height");
             public float HeightOffsetMax => Wheel.GetMaximum<float>("Height");
             public float TargetHeight;
@@ -78,11 +79,13 @@ namespace IngameScript
             {
                 Wheel = wheel;
                 var RC = ini["AckermanFocalPoint"].ToString("CoM") == "RC" && controller is IMyRemoteControl;
-                var transposition = MatrixD.Transpose(controller.WorldMatrix);
-                var wheelPos = wheel.Top.GetPosition();
-                ToCoM = Vector3D.TransformNormal(wheelPos - controller.CenterOfMass, transposition);
-                ToFocalPoint = RC ? Vector3D.TransformNormal(wheelPos - controller.GetPosition(), transposition) : ToCoM;
-                ToFocalPoint.Z += ini["AckermanFocalPointOffset"].ToDouble();
+                if (wheel.Top != null) {
+                    var wheelPos = wheel.Top.GetPosition();
+                    var transposition = MatrixD.Transpose(controller.WorldMatrix);
+                    ToCoM = Vector3D.TransformNormal(wheelPos - controller.CenterOfMass, transposition);
+                    ToFocalPoint = RC ? Vector3D.TransformNormal(wheelPos - controller.GetPosition(), transposition) : ToCoM;
+                    ToFocalPoint.Z += ini["AckermanFocalPointOffset"].ToDouble();
+                }
 
                 var subType = Wheel.BlockDefinition.SubtypeName;
                 var isSmallGrid = Wheel.CubeGrid.GridSizeEnum == MyCubeSize.Small;
@@ -92,10 +95,6 @@ namespace IngameScript
                     : isBigWheel ? 55 : 52.5;
 
                 Wheel.InvertSteer = IsFront != IsFrontFocal;
-
-                var halfWidth = Math.Abs(ToFocalPoint.X);
-                SteerAngleLeft = Math.Atan(DistanceFocal / (Radius + (IsLeft ? -halfWidth : halfWidth)));
-                SteerAngleRight = Math.Atan(DistanceFocal / (Radius + (IsLeft ? halfWidth : -halfWidth)));
 
                 MaxPower =
                     subType.Contains("5x5") ? (isSmallGrid ? 0.3 : 1.5) :
@@ -107,8 +106,11 @@ namespace IngameScript
             public WheelWrapper(IMyMotorSuspension wheel, GridProps props)
             {
                 Wheel = wheel;
-                var center = props.SubController == null ? wheel.CubeGrid.WorldVolume.Center : props.SubController.CenterOfMass;
-                ToCoM = Vector3D.TransformNormal(wheel.Top.GetPosition() - center, MatrixD.Transpose(props.MainController.WorldMatrix));
+                if (wheel.Top != null) {
+                    var center = props.SubController == null ? wheel.CubeGrid.WorldVolume.Center : props.SubController.CenterOfMass;
+                    ToCoM = Vector3D.TransformNormal(wheel.Top.GetPosition() - center, MatrixD.Transpose(props.MainController.WorldMatrix));
+                }
+                
                 var isBigWheel = Wheel.BlockDefinition.SubtypeName.Contains("5x5");
                 BlackMagicFactor = Wheel.CubeGrid.GridSizeEnum == MyCubeSize.Small
                     ? isBigWheel ? 18.5 : 15
