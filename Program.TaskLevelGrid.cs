@@ -80,8 +80,8 @@ namespace IngameScript
             {
                 isFastEnough = gridProps.Speed > 5;
                 var dt = TaskManager.CurrentTaskLastRun.TotalSeconds;
-                var rollSpeed = MathHelper.Clamp(pidRoll.Signal(gridProps.Roll, dt), -60, 60);
-                var pitchSpeed = MathHelper.Clamp(pidPitch.Signal(gridProps.Pitch - 5, dt), -60, 60);
+                var rollSpeed = Util.NormalizeClamp(pidRoll.Signal(gridProps.Roll, dt), -180, 180, -30, 30);
+                var pitchSpeed = Util.NormalizeClamp(pidPitch.Signal(gridProps.Pitch - 5, dt), -180, 180, -30, 30);
                 Util.ApplyGyroOverride(pitchSpeed, 0, -rollSpeed, gyroList, gridProps.MainController.WorldMatrix);
                 yield return null;
             }

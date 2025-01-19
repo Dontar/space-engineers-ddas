@@ -46,9 +46,9 @@ namespace IngameScript
                         .FirstOrDefault(c => Util.IsTagged(c, tag) && c is IMyRemoteControl)
                         ?? subControllers.FirstOrDefault();
 
-                    var T = MatrixD.Transpose(mainController.WorldMatrix);
+                    // var T = MatrixD.Transpose(mainController.WorldMatrix);
 
-                    return new { mainController, subController, T };
+                    return new { mainController, subController };
 
                 }, "updateControllers", Memo.Refs(config, controllers));
 
@@ -58,7 +58,7 @@ namespace IngameScript
 
                 if (MainController == null) return;
 
-                var gravityLocal = Vector3D.TransformNormal(MainController.GetTotalGravity(), updateControllers.T);
+                var gravityLocal = Vector3D.TransformNormal(MainController.GetTotalGravity(), MatrixD.Transpose(MainController.WorldMatrix));
                 var roll = Math.Atan2(gravityLocal.Dot(Vector3D.Right), gravityLocal.Dot(Vector3D.Down));
                 var pitch = Math.Atan2(gravityLocal.Dot(Vector3D.Backward), gravityLocal.Dot(Vector3D.Down));
 
