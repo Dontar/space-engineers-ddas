@@ -58,9 +58,10 @@ namespace IngameScript
 
                 if (MainController == null) return;
 
-                var gravityLocal = Vector3D.TransformNormal(MainController.GetTotalGravity(), MatrixD.Transpose(MainController.WorldMatrix));
-                var roll = Math.Atan2(gravityLocal.Dot(Vector3D.Right), gravityLocal.Dot(Vector3D.Down));
-                var pitch = Math.Atan2(gravityLocal.Dot(Vector3D.Backward), gravityLocal.Dot(Vector3D.Down));
+                var grav = MainController.GetTotalGravity();
+                var matrix = MainController.WorldMatrix;
+                var roll = Math.Atan2(grav.Dot(matrix.Right), grav.Dot(matrix.Down));
+                var pitch = Math.Atan2(grav.Dot(matrix.Backward), grav.Dot(matrix.Down));
 
                 Roll = MathHelper.ToDegrees(roll);
                 Pitch = MathHelper.ToDegrees(pitch);
