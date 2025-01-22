@@ -225,7 +225,8 @@ namespace IngameScript
                     {
                         progress.Reset();
                         progress.MoveNext();
-                    };
+                    }
+                    ;
                     var size = screen.MeasureStringInPixels(new StringBuilder(pbLabel), screen.Font, screen.FontSize);
                     screen.Alignment = TextAlignment.CENTER;
                     screen.ContentType = ContentType.TEXT_AND_IMAGE;
@@ -250,7 +251,8 @@ namespace IngameScript
                     {
                         progress.Reset();
                         progress.MoveNext();
-                    };
+                    }
+                    ;
 
                     runtimeText.Clear();
                     runtimeText.AppendLine($"Runtime Info - {progress.Current}");
@@ -306,23 +308,24 @@ namespace IngameScript
                 {
                     var task = executionList[i];
                     if (task.IsPaused) continue;
+
                     task.TaskResult = null;
+                    
                     task.TimeSinceLastRun += TimeSinceLastRun;
-                    if (task.TimeSinceLastRun >= task.Interval)
+                    if (task.TimeSinceLastRun < task.Interval) continue;
+
+                    CurrentTaskLastRun = task.TimeSinceLastRun;
+                    if (!task.Enumerator.MoveNext())
                     {
-                        CurrentTaskLastRun = task.TimeSinceLastRun;
-                        if (!task.Enumerator.MoveNext())
+                        if (task.IsOnce)
                         {
-                            if (task.IsOnce)
-                            {
-                                tasks.RemoveAt(i);
-                                continue;
-                            }
-                            task.Enumerator = task.Ref.GetEnumerator();
+                            tasks.RemoveAt(i);
+                            continue;
                         }
-                        task.TimeSinceLastRun = TimeSpan.Zero;
-                        task.TaskResult = task.Enumerator.Current;
+                        task.Enumerator = task.Ref.GetEnumerator();
                     }
+                    task.TimeSinceLastRun = TimeSpan.Zero;
+                    task.TaskResult = task.Enumerator.Current;
                 }
             }
         }
