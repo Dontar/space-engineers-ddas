@@ -28,7 +28,6 @@ namespace IngameScript
     partial class Program : MyGridProgram
     {
         IEnumerable<IMyTextSurface> ScreensStat => Memo.Of(() => Util.GetScreens("ddas-status").ToArray(), "screensStatus", 100);
-        // IEnumerable<IMyTextSurface> ScreensMenu => Memo.Of(() => Util.GetScreens("ddas-menu").ToArray(), "screensMenus", 100);
         IEnumerable ScreensTask()
         {
             var screenText = new StringBuilder();
@@ -38,12 +37,6 @@ namespace IngameScript
                 var propulsion = TaskManager.TaskResults.OfType<CruiseTaskResult>().FirstOrDefault().Propulsion;
                 var power = TaskManager.TaskResults.OfType<PowerTaskResult>().FirstOrDefault();
                 var autopilot = TaskManager.TaskResults.OfType<AutopilotTaskResult>().FirstOrDefault();
-                var waypoint = "None";
-
-                if (gridProps.Autopilot != null)
-                {
-                    waypoint = gridProps.Autopilot.CurrentWaypoint.Name ?? "None";
-                }
 
                 screenText.Clear();
                 screenText.AppendLine($"Speed:       {gridProps.Speed * 3.6:N2} km/h");
@@ -56,7 +49,7 @@ namespace IngameScript
                 screenText.AppendLine($"AutoLevel:   {gridProps.AutoLevel}");
                 screenText.AppendLine($"Power:       {power.Power:N2}");
                 screenText.AppendLine($"Propulsion:  {propulsion:N2}");
-                screenText.AppendLine($"Waypoint:    {waypoint}");
+                screenText.AppendLine($"Waypoint:    {autopilot.Waypoint ?? "None"}");
 
                 foreach (var s in ScreensStat)
                 {
@@ -64,11 +57,6 @@ namespace IngameScript
                     s.Font = "Monospace";
                     s.WriteText(screenText);
                 }
-                // foreach (var s in ScreensMenu)
-                // {
-                //     s.ContentType = ContentType.TEXT_AND_IMAGE;
-                //     menuSystem.Render(s);
-                // }
                 yield return null;
             }
         }

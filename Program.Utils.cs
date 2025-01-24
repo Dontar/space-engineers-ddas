@@ -234,7 +234,7 @@ namespace IngameScript
                     yield return null;
                 }
             }
-            public static StringBuilder StatusText = new StringBuilder();
+            static readonly StringBuilder StatusText = new StringBuilder();
             public static void Echo(string text)
             {
                 StatusText.AppendLine(text);
@@ -252,7 +252,6 @@ namespace IngameScript
                         progress.Reset();
                         progress.MoveNext();
                     }
-                    ;
 
                     runtimeText.Clear();
                     runtimeText.AppendLine($"Runtime Info - {progress.Current}");

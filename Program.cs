@@ -35,6 +35,7 @@ namespace IngameScript
             TaskManager.AddTask(Util.DisplayLogo("DDAS", Me.GetSurface(0)), 1.5f);
             TaskManager.AddTask(ScreensTask());
             TaskManager.AddTask(AutopilotTask());
+            TaskManager.AddTask(AutopilotAITask());
             TaskManager.AddTask(AutoLevelTask());
             TaskManager.AddTask(SuspensionStrengthTask(), 3f);
             _PowerTask = TaskManager.AddTask(PowerTask());
@@ -194,7 +195,7 @@ namespace IngameScript
                         w.Wheel.Power = 0;
                     }
 
-                    if (gridProps.Autopilot?.IsAutoPilotEnabled ?? false)
+                    if (!autopilot.Equals(default(AutopilotTaskResult)))
                     {
                         w.Wheel.MaxSteerAngle = (float)(autopilot.Steer > 0 ? w.SteerAngleRight : w.SteerAngleLeft);
                         w.Wheel.SteeringOverride = w.IsFrontFocal ? autopilot.Steer : -autopilot.Steer;

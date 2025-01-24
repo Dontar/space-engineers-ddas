@@ -30,7 +30,6 @@ namespace IngameScript
             public IMyShipController Controller;
             public IMyShipController MainController;
             public IMyShipController SubController;
-            public IMyRemoteControl Autopilot => MainController is IMyRemoteControl ? MainController as IMyRemoteControl : null;
             public void UpdateGridProps(Dictionary<string, MyIniValue> config, IEnumerable<IMyShipController> controllers)
             {
                 var updateControllers = Memo.Of(() =>
@@ -45,8 +44,6 @@ namespace IngameScript
                     var subController = subControllers
                         .FirstOrDefault(c => Util.IsTagged(c, tag) && c is IMyRemoteControl)
                         ?? subControllers.FirstOrDefault();
-
-                    // var T = MatrixD.Transpose(mainController.WorldMatrix);
 
                     return new { mainController, subController };
 
