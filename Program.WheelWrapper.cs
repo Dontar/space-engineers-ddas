@@ -6,6 +6,7 @@ using VRageMath;
 using VRage.Game;
 using VRage.Game.ModAPI.Ingame.Utilities;
 using System.Linq;
+using System.Numerics;
 
 namespace IngameScript
 {
@@ -66,7 +67,8 @@ namespace IngameScript
             public double TargetStrength = 5;
             public string Debug = "";
             public float Friction { get { return Wheel.Friction; } set { Wheel.Friction = value; } }
-            public bool IsLeft => ToCoM.X < 0;
+            // public bool IsLeft => ToCoM.X < 0;
+            public bool IsLeft = false;
             public bool IsFront => ToCoM.Z < 0;
             public bool IsFrontFocal => ToFocalPoint.Z < 0;
             public double WeightRatio = 1;
@@ -79,9 +81,15 @@ namespace IngameScript
             {
                 Wheel = wheel;
                 var RC = ini["AckermanFocalPoint"].ToString("CoM") == "RC" && controller is IMyRemoteControl;
-                if (wheel.Top != null) {
+                
+                var transposition = MatrixD.Transpose(controller.WorldMatrix);
+                var wheelUp = Vector3D.TransformNormal(wheel.WorldMatrix.Up, transposition);
+                IsLeft = Base6Directions.GetDirection(wheelUp) == controller.Orientation.Left;
+
+                if (wheel.Top != null)
+                {
                     var wheelPos = wheel.Top.GetPosition();
-                    var transposition = MatrixD.Transpose(controller.WorldMatrix);
+
                     ToCoM = Vector3D.TransformNormal(wheelPos - controller.CenterOfMass, transposition);
                     ToFocalPoint = RC ? Vector3D.TransformNormal(wheelPos - controller.GetPosition(), transposition) : ToCoM;
                     ToFocalPoint.Z += ini["AckermanFocalPointOffset"].ToDouble();
@@ -106,11 +114,12 @@ namespace IngameScript
             public WheelWrapper(IMyMotorSuspension wheel, GridProps props)
             {
                 Wheel = wheel;
-                if (wheel.Top != null) {
+                if (wheel.Top != null)
+                {
                     var center = props.SubController == null ? wheel.CubeGrid.WorldVolume.Center : props.SubController.CenterOfMass;
                     ToCoM = Vector3D.TransformNormal(wheel.Top.GetPosition() - center, MatrixD.Transpose(props.MainController.WorldMatrix));
                 }
-                
+
                 var isBigWheel = Wheel.BlockDefinition.SubtypeName.Contains("5x5");
                 BlackMagicFactor = Wheel.CubeGrid.GridSizeEnum == MyCubeSize.Small
                     ? isBigWheel ? 18.5 : 15
