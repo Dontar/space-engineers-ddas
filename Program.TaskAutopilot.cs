@@ -139,10 +139,8 @@ namespace IngameScript
         IEnumerable AutopilotAITask()
         {
             var ini = Config;
-            var autopilot = Memo.Of(() => Util.GetBlocks<IMyFlightMovementBlock>().FirstOrDefault(), "AI", 100);
-            if (autopilot == null) yield break;
-            if (!autopilot.IsAutoPilotEnabled) yield break;
-            Action<bool> SetAutoPilotEnabled = (bool value) => autopilot.SetValueBool("ActivateBehavior", value);
+            var autopilot = Memo.Of(() => Util.GetBlocks<IMyFlightMovementBlock>().FirstOrDefault(), "AI", Memo.Refs(gridProps.Mass.BaseMass));
+            if (autopilot == null || !autopilot.IsAutoPilotEnabled) yield break;
             var sensor = Memo.Of(() => Util.GetBlocks<IMySensorBlock>(b => Util.IsNotIgnored(b, ini["IgnoreTag"].ToString())).FirstOrDefault(), "sensor", Memo.Refs(gridProps.Mass.BaseMass));
 
             var wayPoints = new List<IMyAutopilotWaypoint>();
@@ -150,11 +148,19 @@ namespace IngameScript
 
             while (ini.Equals(Config) && autopilot.IsAutoPilotEnabled)
             {
-                if (wayPoints.Count == 0) yield break;
-                Util.Echo($"Waypoints count: {wayPoints.Count}");
+                if (autopilot.CurrentWaypoint == null)
+                {
+                    gridProps.MainController.HandBrake = true;
+                    yield break;
+                }
+                else
+                {
+                    gridProps.MainController.HandBrake = false;
+                }
+
                 if (!gridProps.Cruise)
                 {
-                    TaskManager.AddTaskOnce(CruiseTask(autopilot.SpeedLimit * 3.6f, () => autopilot.IsAutoPilotEnabled));
+                    TaskManager.AddTaskOnce(CruiseTask(autopilot.SpeedLimit * 3.6f, () => autopilot.IsAutoPilotEnabled || !gridProps.MainController.HandBrake));
                 }
                 else
                     gridProps.CruiseSpeed = autopilot.SpeedLimit * 3.6f;
@@ -162,7 +168,7 @@ namespace IngameScript
 
                 if (gridProps.UpDown > 0)
                 {
-                    SetAutoPilotEnabled(false);
+                    autopilot.SetValueBool("ActivateBehavior", false);
                     yield break;
                 }
 
@@ -193,15 +199,11 @@ namespace IngameScript
                 var direction = Vector3D.ProjectOnPlane(ref directionVector, ref Vector3D.Up);
                 var directionAngle = Math.Atan2(direction.Dot(Vector3D.Right), direction.Dot(Vector3D.Forward));
 
-                if (direction.Length() < autopilot.CubeGrid.WorldVolume.Radius)
+                if (autopilot.CurrentWaypoint.Matrix.Translation == wayPoints.LastOrDefault().Matrix.Translation)
                 {
-                    if (autopilot.CurrentWaypoint.Matrix.Translation == wayPoints.LastOrDefault().Matrix.Translation)
-                    {
-                        SetAutoPilotEnabled(false);
-                        gridProps.MainController.HandBrake = true;
-                        yield break;
-                    }
+                    gridProps.MainController.HandBrake = direction.Length() < autopilot.CubeGrid.WorldVolume.Radius;
                 }
+
                 yield return new AutopilotTaskResult
                 {
                     Waypoint = autopilot.CurrentWaypoint.Name,
