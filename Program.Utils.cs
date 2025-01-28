@@ -299,7 +299,7 @@ namespace IngameScript
             }
 
             public static TimeSpan CurrentTaskLastRun;
-            public static List<object> TaskResults => tasks.Select(t => t.TaskResult).ToList();
+            public static IEnumerable<object> TaskResults => tasks.Select(t => t.TaskResult);
             public static void RunTasks(TimeSpan TimeSinceLastRun)
             {
                 var executionList = new List<Task>(tasks);
