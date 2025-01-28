@@ -37,7 +37,7 @@ namespace IngameScript
             var ini = Config;
             gridProps.Cruise = true;
             gridProps.CruiseSpeed = cruiseSpeed > -1 ? cruiseSpeed : (float)(gridProps.Speed * 3.6);
-            cruiseWhile = cruiseWhile ?? (() => gridProps.UpDown == 0 || !gridProps.MainController.HandBrake);
+            cruiseWhile = cruiseWhile ?? (() => gridProps.UpDown == 0 && !gridProps.MainController.HandBrake);
             var pid = new PID(ini["PIDCruise"].ToString("0.5/0/0/0"));
             while (ini.Equals(Config) && cruiseWhile())
             {

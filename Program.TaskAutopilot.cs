@@ -160,7 +160,7 @@ namespace IngameScript
 
                 if (!gridProps.Cruise)
                 {
-                    TaskManager.AddTaskOnce(CruiseTask(autopilot.SpeedLimit * 3.6f, () => autopilot.IsAutoPilotEnabled || !gridProps.MainController.HandBrake));
+                    TaskManager.AddTaskOnce(CruiseTask(autopilot.SpeedLimit * 3.6f, () => autopilot.IsAutoPilotEnabled && !gridProps.MainController.HandBrake));
                 }
                 else
                     gridProps.CruiseSpeed = autopilot.SpeedLimit * 3.6f;

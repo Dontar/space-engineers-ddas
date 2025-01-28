@@ -16,14 +16,16 @@ namespace IngameScript
 
         IEnumerable<WheelWrapper> MyWheels => Memo.Of(() =>
         {
+            var T = MatrixD.Transpose(gridProps.MainController.WorldMatrix);
             var config = Config;
             var wh = AllWheels
                 .Where(w => w.CubeGrid == Me.CubeGrid)
-                .Select(w => new WheelWrapper(w, gridProps.MainController, config));
+                .Select(w => new WheelWrapper(w, gridProps.MainController, config, T));
             var maxSteerAngle = config["MaxSteeringAngle"].ToDouble(25);
             var distance = wh.Max(w => Math.Abs(w.ToFocalPoint.Z));
             var hight = wh.Min(w => w.Wheel.Height);
             var radius = distance / Math.Tan(MathHelper.ToRadians(maxSteerAngle));
+
             return wh.Select(w =>
             {
                 w.TargetHeight = hight;
@@ -36,9 +38,10 @@ namespace IngameScript
 
         IEnumerable<WheelWrapper> SubWheels => Memo.Of(() =>
         {
+            var T = MatrixD.Transpose(gridProps.MainController.WorldMatrix);
             var sw = AllWheels
                 .Where(w => w.CubeGrid != Me.CubeGrid)
-                .Select(w => new WheelWrapper(w, gridProps));
+                .Select(w => new WheelWrapper(w, gridProps, T));
             if (sw.Count() > 0)
             {
                 var hight = sw.Min(w => w.Wheel.Height);
@@ -56,7 +59,6 @@ namespace IngameScript
         {
             public IMyMotorSuspension Wheel;
             public float SpeedLimit { get { return Wheel.GetValueFloat("Speed Limit"); } set { Wheel.SetValueFloat("Speed Limit", value); } }
-            // public float SteerOverride { get { return Wheel.GetValueFloat("Steer override"); } set { Wheel.SetValueFloat("Steer override", value); } }
             public Vector3D ToCoM = Vector3D.Zero;
             public Vector3D ToFocalPoint = Vector3D.Zero;
             public float HeightOffsetMin => Wheel.GetMinimum<float>("Height");
@@ -67,7 +69,6 @@ namespace IngameScript
             public double TargetStrength = 5;
             public string Debug = "";
             public float Friction { get { return Wheel.Friction; } set { Wheel.Friction = value; } }
-            // public bool IsLeft => ToCoM.X < 0;
             public bool IsLeft = false;
             public bool IsFront => ToCoM.Z < 0;
             public bool IsFrontFocal => ToFocalPoint.Z < 0;
@@ -77,21 +78,19 @@ namespace IngameScript
             public double SteerAngleRight;
             public double MaxPower;
 
-            public WheelWrapper(IMyMotorSuspension wheel, IMyShipController controller, Dictionary<string, MyIniValue> ini)
+            public WheelWrapper(IMyMotorSuspension wheel, IMyShipController controller, Dictionary<string, MyIniValue> ini, MatrixD T)
             {
                 Wheel = wheel;
                 var RC = ini["AckermanFocalPoint"].ToString("CoM") == "RC" && controller is IMyRemoteControl;
-                
-                var transposition = MatrixD.Transpose(controller.WorldMatrix);
-                var wheelUp = Vector3D.TransformNormal(wheel.WorldMatrix.Up, transposition);
-                IsLeft = Base6Directions.GetDirection(wheelUp) == controller.Orientation.Left;
+
+                IsLeft = Wheel.Orientation.Up == controller.Orientation.Left;
 
                 if (wheel.Top != null)
                 {
                     var wheelPos = wheel.Top.GetPosition();
 
-                    ToCoM = Vector3D.TransformNormal(wheelPos - controller.CenterOfMass, transposition);
-                    ToFocalPoint = RC ? Vector3D.TransformNormal(wheelPos - controller.GetPosition(), transposition) : ToCoM;
+                    ToCoM = Vector3D.TransformNormal(wheelPos - controller.CenterOfMass, T);
+                    ToFocalPoint = RC ? Vector3D.TransformNormal(wheelPos - controller.GetPosition(), T) : ToCoM;
                     ToFocalPoint.Z += ini["AckermanFocalPointOffset"].ToDouble();
                 }
 
@@ -111,13 +110,17 @@ namespace IngameScript
                     subType.Contains("1x1") ? (isSmallGrid ? 0.1 : 0.5) : 0;
             }
 
-            public WheelWrapper(IMyMotorSuspension wheel, GridProps props)
+            public WheelWrapper(IMyMotorSuspension wheel, GridProps props, MatrixD T)
             {
                 Wheel = wheel;
+
+                var wheelUp = Vector3D.TransformNormal(Wheel.WorldMatrix.Up, T);
+                IsLeft = Base6Directions.GetDirection(wheelUp) == props.MainController.Orientation.Left;
+
                 if (wheel.Top != null)
                 {
                     var center = props.SubController == null ? wheel.CubeGrid.WorldVolume.Center : props.SubController.CenterOfMass;
-                    ToCoM = Vector3D.TransformNormal(wheel.Top.GetPosition() - center, MatrixD.Transpose(props.MainController.WorldMatrix));
+                    ToCoM = Vector3D.TransformNormal(wheel.Top.GetPosition() - center, T);
                 }
 
                 var isBigWheel = Wheel.BlockDefinition.SubtypeName.Contains("5x5");
