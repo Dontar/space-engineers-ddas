@@ -302,10 +302,9 @@ namespace IngameScript
             public static IEnumerable<object> TaskResults => tasks.Select(t => t.TaskResult);
             public static void RunTasks(TimeSpan TimeSinceLastRun)
             {
-                var executionList = new List<Task>(tasks);
-                for (int i = 0; i < executionList.Count; i++)
+                var executionList = tasks.ToArray();
+                foreach(var task in executionList)
                 {
-                    var task = executionList[i];
                     if (task.IsPaused) continue;
 
                     task.TaskResult = null;
@@ -318,7 +317,7 @@ namespace IngameScript
                     {
                         if (task.IsOnce)
                         {
-                            tasks.RemoveAt(i);
+                            tasks.Remove(task);
                             continue;
                         }
                         task.Enumerator = task.Ref.GetEnumerator();
