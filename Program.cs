@@ -33,7 +33,7 @@ namespace IngameScript
             Util.Init(this);
             gridProps = new GridProps(this);
             TaskManager.AddTask(Util.DisplayLogo("DDAS", Me.GetSurface(0)), 1.5f);
-            TaskManager.AddTask(ScreensTask());
+            TaskManager.AddTask(ScreensTask(), 1f);
             TaskManager.AddTask(AutopilotTask());
             TaskManager.AddTask(AutopilotAITask());
             TaskManager.AddTask(AutoLevelTask());
