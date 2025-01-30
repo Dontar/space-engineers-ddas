@@ -10,6 +10,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Net;
+using System.Numerics;
 using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.WindowsRuntime;
 using System.Text;
@@ -31,28 +32,34 @@ namespace IngameScript
     {
         static class Memo
         {
-            class CacheValue
+            private class CacheValue
             {
-                public int Age;
-                public object Value;
-                public object[] Dependency;
-                public bool Decay()
+                public object Value { get; }
+                public object[] Dependency { get; }
+                public int Age { get; private set; }
+
+                public CacheValue(object[] dep, object value)
                 {
-                    Age--;
-                    return Age >= 0;
+                    Dependency = dep;
+                    Value = value;
+                    Age = 0;
                 }
+
                 public CacheValue(int age, object value)
                 {
                     Age = age;
                     Value = value;
                 }
-                public CacheValue(object[] dep, object value)
+
+                public bool Decay()
                 {
-                    Dependency = dep;
-                    Value = value;
+                    if (Age-- > 0) return true;
+                    return false;
                 }
             }
-            static readonly Dictionary<string, CacheValue> _dependencyCache = new Dictionary<string, CacheValue>();
+
+            private static readonly Dictionary<string, CacheValue> _dependencyCache = new Dictionary<string, CacheValue>();
+            private const int MaxCacheSize = 1000;
 
             public static object[] Refs(object p1, object p2 = null, object p3 = null)
             {
@@ -69,27 +76,48 @@ namespace IngameScript
 
             public static R Of<R>(Func<R> f, string context, object[] dep)
             {
-                if (_dependencyCache.Count > 1000) throw new Exception("Cache overflow");
+                if (_dependencyCache.Count > MaxCacheSize)
+                {
+                    EvictOldestCacheItem();
+                }
+
                 CacheValue value;
                 if (_dependencyCache.TryGetValue(context, out value))
                 {
-                    if (value.Dependency.SequenceEqual(dep)) return (R)value.Value;
+                    if (value.Dependency.SequenceEqual(dep))
+                    {
+                        return (R)value.Value;
+                    }
                 }
+
                 var result = f();
                 _dependencyCache[context] = new CacheValue(dep, result);
                 return result;
             }
             public static R Of<R>(Func<R> f, string context, int age)
             {
-                if (_dependencyCache.Count > 1000) throw new Exception("Cache overflow");
+                if (_dependencyCache.Count > MaxCacheSize)
+                {
+                    EvictOldestCacheItem();
+                }
+
                 CacheValue value;
                 if (_dependencyCache.TryGetValue(context, out value))
                 {
-                    if (value.Decay()) return (R)value.Value;
+                    if (value.Decay())
+                    {
+                        return (R)value.Value;
+                    }
                 }
+
                 var result = f();
                 _dependencyCache[context] = new CacheValue(age, result);
                 return result;
+            }
+            private static void EvictOldestCacheItem()
+            {
+                var oldestKey = _dependencyCache.Last().Key;
+                _dependencyCache.Remove(oldestKey);
             }
         }
 
@@ -214,6 +242,13 @@ namespace IngameScript
                 }
             }
 
+            public static double ToAzimuth(Vector3D v)
+            {
+                v.Y = 0;
+                v.Normalize();
+                return v.X >= 0.0 ? 0.0 - Math.Acos(v.Dot(Vector3D.Forward)) : Math.Acos(v.Dot(Vector3D.Forward));
+            }
+
             public static IEnumerable DisplayLogo(string logo, IMyTextSurface screen)
             {
                 var progress = (new char[] { '/', '-', '\\', '|' }).GetEnumerator();
@@ -272,29 +307,47 @@ namespace IngameScript
 
         static class TaskManager
         {
-            public class Task
+            public struct Task
             {
                 public IEnumerator Enumerator;
                 public IEnumerable Ref;
                 public TimeSpan Interval;
-                public TimeSpan TimeSinceLastRun = TimeSpan.Zero;
-                public object TaskResult = null;
-                public bool IsPaused = false;
-                public bool IsOnce = false;
+                public TimeSpan TimeSinceLastRun;
+                public object TaskResult;
+                public bool IsPaused;
+                public bool IsOnce;
             }
             static readonly List<Task> tasks = new List<Task>();
 
             public static Task AddTask(IEnumerable task, float intervalSeconds = 0)
             {
-                Task item = new Task { Ref = task, Enumerator = task.GetEnumerator(), Interval = TimeSpan.FromSeconds(intervalSeconds) };
-                tasks.Add(item);
+                Task item = new Task
+                {
+                    Ref = task,
+                    Enumerator = task.GetEnumerator(),
+                    Interval = TimeSpan.FromSeconds(intervalSeconds),
+                    TimeSinceLastRun = TimeSpan.Zero,
+                    TaskResult = null,
+                    IsPaused = false,
+                    IsOnce = false
+                };
+                tasks.Insert(0, item);
                 return item;
             }
 
             public static Task AddTaskOnce(IEnumerable task, float intervalSeconds = 0)
             {
-                Task item = AddTask(task, intervalSeconds);
-                item.IsOnce = true;
+                Task item = new Task
+                {
+                    Ref = task,
+                    Enumerator = task.GetEnumerator(),
+                    Interval = TimeSpan.FromSeconds(intervalSeconds),
+                    TimeSinceLastRun = TimeSpan.Zero,
+                    TaskResult = null,
+                    IsPaused = false,
+                    IsOnce = true
+                };
+                tasks.Insert(0, item);
                 return item;
             }
 
@@ -302,14 +355,15 @@ namespace IngameScript
             public static IEnumerable<object> TaskResults => tasks.Select(t => t.TaskResult);
             public static void RunTasks(TimeSpan TimeSinceLastRun)
             {
-                var executionList = tasks.ToArray();
-                foreach(var task in executionList)
+                for (int i = tasks.Count - 1; i >= 0; i--)
                 {
+                    var task = tasks[i];
                     if (task.IsPaused) continue;
 
                     task.TaskResult = null;
-                    
+
                     task.TimeSinceLastRun += TimeSinceLastRun;
+                    tasks[i] = task;
                     if (task.TimeSinceLastRun < task.Interval) continue;
 
                     CurrentTaskLastRun = task.TimeSinceLastRun;
@@ -317,13 +371,14 @@ namespace IngameScript
                     {
                         if (task.IsOnce)
                         {
-                            tasks.Remove(task);
+                            tasks.RemoveAt(i);
                             continue;
                         }
                         task.Enumerator = task.Ref.GetEnumerator();
                     }
                     task.TimeSinceLastRun = TimeSpan.Zero;
                     task.TaskResult = task.Enumerator.Current;
+                    tasks[i] = task;
                 }
             }
         }

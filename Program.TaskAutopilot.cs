@@ -28,6 +28,9 @@ namespace IngameScript
 {
     partial class Program : MyGridProgram
     {
+
+        public bool Recording { get; set; } = false;
+
         struct AutopilotTaskResult
         {
             public Vector3D Direction;
@@ -37,10 +40,10 @@ namespace IngameScript
 
         IEnumerable AutopilotTask()
         {
+            var controller = gridProps.MainController;
+            var autopilot = controller is IMyRemoteControl ? controller as IMyRemoteControl : null;
+            if (autopilot == null || !autopilot.IsAutoPilotEnabled) yield break;
             var ini = Config;
-            var autopilot = gridProps.MainController as IMyRemoteControl;
-            if (autopilot == null) yield break;
-            if (!autopilot.IsAutoPilotEnabled) yield break;
             var sensor = Memo.Of(() => Util.GetBlocks<IMySensorBlock>(b => Util.IsNotIgnored(b, ini["IgnoreTag"].ToString())).FirstOrDefault(), "sensor", Memo.Refs(gridProps.Mass.BaseMass));
             var wayPoints = new List<MyWaypointInfo>();
             autopilot.GetWaypointInfo(wayPoints);
@@ -57,12 +60,12 @@ namespace IngameScript
 
             while (ini.Equals(Config) && autopilot.IsAutoPilotEnabled)
             {
-                if (!gridProps.Cruise)
+                if (!Cruise)
                 {
                     TaskManager.AddTaskOnce(CruiseTask(autopilot.SpeedLimit * 3.6f, () => autopilot.IsAutoPilotEnabled));
                 }
                 else
-                    gridProps.CruiseSpeed = autopilot.SpeedLimit * 3.6f;
+                    CruiseSpeed = autopilot.SpeedLimit * 3.6f;
 
 
                 if (gridProps.UpDown > 0)
@@ -94,9 +97,8 @@ namespace IngameScript
                 }
 
                 var T = MatrixD.Transpose(autopilot.WorldMatrix);
-                var directionVector = Vector3D.TransformNormal(destinationVector, T);
-                var direction = Vector3D.ProjectOnPlane(ref directionVector, ref Vector3D.Up);
-                var directionAngle = Math.Atan2(direction.Dot(Vector3D.Right), direction.Dot(Vector3D.Forward));
+                var direction = Vector3D.TransformNormal(destinationVector, T); direction.Y = 0;
+                var directionAngle = Util.ToAzimuth(direction);
 
                 if (direction.Length() < autopilot.CubeGrid.WorldVolume.Radius)
                 {
@@ -138,9 +140,9 @@ namespace IngameScript
 
         IEnumerable AutopilotAITask()
         {
-            var ini = Config;
             var autopilot = Memo.Of(() => Util.GetBlocks<IMyFlightMovementBlock>().FirstOrDefault(), "AI", Memo.Refs(gridProps.Mass.BaseMass));
             if (autopilot == null || !autopilot.IsAutoPilotEnabled) yield break;
+            var ini = Config;
             var sensor = Memo.Of(() => Util.GetBlocks<IMySensorBlock>(b => Util.IsNotIgnored(b, ini["IgnoreTag"].ToString())).FirstOrDefault(), "sensor", Memo.Refs(gridProps.Mass.BaseMass));
 
             var wayPoints = new List<IMyAutopilotWaypoint>();
@@ -158,12 +160,12 @@ namespace IngameScript
                     gridProps.MainController.HandBrake = false;
                 }
 
-                if (!gridProps.Cruise)
+                if (!Cruise)
                 {
                     TaskManager.AddTaskOnce(CruiseTask(autopilot.SpeedLimit * 3.6f, () => autopilot.IsAutoPilotEnabled && !gridProps.MainController.HandBrake));
                 }
                 else
-                    gridProps.CruiseSpeed = autopilot.SpeedLimit * 3.6f;
+                    CruiseSpeed = autopilot.SpeedLimit * 3.6f;
 
 
                 if (gridProps.UpDown > 0)
@@ -193,11 +195,9 @@ namespace IngameScript
                         destinationVector += corners;
                     }
                 }
-
                 var T = MatrixD.Transpose(autopilot.WorldMatrix);
-                var directionVector = Vector3D.TransformNormal(destinationVector, T);
-                var direction = Vector3D.ProjectOnPlane(ref directionVector, ref Vector3D.Up);
-                var directionAngle = Math.Atan2(direction.Dot(Vector3D.Right), direction.Dot(Vector3D.Forward));
+                var direction = Vector3D.TransformNormal(destinationVector, T); direction.Y = 0;
+                var directionAngle = Util.ToAzimuth(direction);
 
                 if (autopilot.CurrentWaypoint.Matrix.Translation == wayPoints.LastOrDefault().Matrix.Translation)
                 {
@@ -208,19 +208,19 @@ namespace IngameScript
                 {
                     Waypoint = autopilot.CurrentWaypoint.Name,
                     Direction = direction,
-                    Steer = (float)directionAngle
+                    Steer = (float)directionAngle,
                 };
             }
         }
 
         IEnumerable RecordPathTask()
         {
-            if (gridProps.Recording) yield break;
+            if (Recording) yield break;
             var autopilot = gridProps.MainController as IMyRemoteControl;
             var wayPoints = new List<MyWaypointInfo>();
             var counter = 0;
-            gridProps.Recording = true;
-            while (gridProps.Recording)
+            Recording = true;
+            while (Recording)
             {
                 var current = autopilot.GetPosition();
                 if (Vector3D.Distance(current, wayPoints.LastOrDefault().Coords) > 15)

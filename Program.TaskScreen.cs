@@ -31,6 +31,7 @@ namespace IngameScript
         IEnumerable ScreensTask()
         {
             var screenText = new StringBuilder();
+            GridProps gridProps = this.gridProps;
 
             while (true)
             {
@@ -42,11 +43,11 @@ namespace IngameScript
                 screenText.AppendLine($"Speed:       {gridProps.Speed * 3.6:N2} km/h");
                 screenText.AppendLine($"Roll:        {gridProps.Roll:N2} Degrees");
                 screenText.AppendLine($"Pitch:       {gridProps.Pitch:N2} Degrees");
-                screenText.AppendLine($"CruiseSpeed: {gridProps.CruiseSpeed:N2} km/h");
-                screenText.AppendLine($"Cruise:      {gridProps.Cruise}");
-                screenText.AppendLine($"Recording:   {gridProps.Recording}");
-                screenText.AppendLine($"Flipping:    {gridProps.Flipping}");
-                screenText.AppendLine($"AutoLevel:   {gridProps.AutoLevel}");
+                screenText.AppendLine($"CruiseSpeed: {CruiseSpeed:N2} km/h");
+                screenText.AppendLine($"Cruise:      {Cruise}");
+                screenText.AppendLine($"Recording:   {Recording}");
+                screenText.AppendLine($"Flipping:    {Flipping}");
+                screenText.AppendLine($"AutoLevel:   {AutoLevel}");
                 screenText.AppendLine($"Power:       {power.Power:N2}");
                 screenText.AppendLine($"Propulsion:  {propulsion:N2}");
                 screenText.AppendLine($"Waypoint:    {autopilot.Waypoint ?? "None"}");

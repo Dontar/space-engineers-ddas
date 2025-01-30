@@ -12,24 +12,18 @@ namespace IngameScript
         class GridProps
         {
             private Program _program;
-            public double Roll;
-            public double Pitch;
+            public double Roll { get; private set; }
+            public double Pitch { get; private set; }
             public MyShipMass Mass => MainController.CalculateShipMass();
             public Vector3D Gravity => MainController.GetTotalGravity();
             public double GravityMagnitude => Gravity.Length();
             public double Speed => MainController.GetShipSpeed();
-            public bool Cruise = false;
-            public bool Flipping = false;
-            public bool RollCompensating = false;
-            public bool Recording = false;
-            public bool AutoLevel = false;
-            public float CruiseSpeed = 0;
-            public float ForwardBackward => Controller.MoveIndicator.Z;
-            public float LeftRight => Controller.MoveIndicator.X;
-            public float UpDown => Controller.MoveIndicator.Y;
-            public IMyShipController Controller;
-            public IMyShipController MainController;
-            public IMyShipController SubController;
+            public float ForwardBackward => Controller?.MoveIndicator.Z ?? 0;
+            public float LeftRight => Controller?.MoveIndicator.X ?? 0;
+            public float UpDown => Controller?.MoveIndicator.Y ?? 0;
+            public IMyShipController Controller { get; private set; }
+            public IMyShipController MainController { get; private set; }
+            public IMyShipController SubController { get; private set; }
             public void UpdateGridProps(Dictionary<string, MyIniValue> config, IEnumerable<IMyShipController> controllers)
             {
                 var updateControllers = Memo.Of(() =>
@@ -66,7 +60,7 @@ namespace IngameScript
             public GridProps(Program program)
             {
                 _program = program;
-                AutoLevel = _program.Config["AutoLevel"].ToBoolean(true);
+                _program.AutoLevel = _program.Config["AutoLevel"].ToBoolean(true);
             }
         }
 
@@ -113,7 +107,8 @@ namespace IngameScript
                 myIni.Set("Options", "AutoLevel", "true");
 
                 Me.CustomData = myIni.ToString();
-            };
+            }
+            ;
             var keys = new List<MyIniKey>();
             myIni.GetKeys(keys);
             return keys.ToDictionary(k => k.Name, k => myIni.Get(k.Section, k.Name));

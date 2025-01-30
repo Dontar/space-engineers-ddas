@@ -33,11 +33,11 @@ namespace IngameScript
             Util.Init(this);
             gridProps = new GridProps(this);
             TaskManager.AddTask(Util.DisplayLogo("DDAS", Me.GetSurface(0)), 1.5f);
-            TaskManager.AddTask(ScreensTask(), 1f);
+            TaskManager.AddTask(ScreensTask(), 0.5f);
             TaskManager.AddTask(AutopilotTask());
             TaskManager.AddTask(AutopilotAITask());
             TaskManager.AddTask(AutoLevelTask());
-            TaskManager.AddTask(SuspensionStrengthTask(), 3f);
+            TaskManager.AddTask(SuspensionStrengthTask(), 5f);
             _PowerTask = TaskManager.AddTask(PowerTask());
             _StopLightsTask = TaskManager.AddTask(StopLightsTask());
             TaskManager.AddTask(MainTask());
@@ -52,7 +52,10 @@ namespace IngameScript
 
         public void Main(string argument, UpdateType updateSource)
         {
-            ProcessCommands(argument);
+            if (!string.IsNullOrEmpty(argument))
+            {
+                ProcessCommands(argument);
+            }
 
             if (!updateSource.HasFlag(UpdateType.Update10)) return;
 
@@ -63,7 +66,7 @@ namespace IngameScript
                 {
                     Util.Echo("No controller found");
                     return;
-                };
+                }
 
                 TaskManager.RunTasks(Runtime.TimeSinceLastRun);
 
@@ -88,20 +91,20 @@ namespace IngameScript
                     TaskManager.AddTaskOnce(ToggleHightModeTask());
                     break;
                 case "flip":
-                    gridProps.AutoLevel = false;
+                    AutoLevel = false;
                     TaskManager.AddTaskOnce(FlipGridTask(), 2f);
                     break;
                 case "cruise":
                     TaskManager.AddTaskOnce(CruiseTask());
                     break;
                 case "level":
-                    gridProps.AutoLevel = !gridProps.AutoLevel;
+                    AutoLevel = !AutoLevel;
                     break;
                 case "record":
-                    if (!gridProps.Recording)
+                    if (!Recording)
                         TaskManager.AddTaskOnce(RecordPathTask(), 1.7f);
                     else
-                        gridProps.Recording = false;
+                        Recording = false;
                     break;
                 case "import":
                     TaskManager.AddTaskOnce(ImportPathTask());
@@ -135,15 +138,25 @@ namespace IngameScript
             var high = ini["HighModeHight"].ToDouble(MyWheels.FirstOrDefault().HeightOffsetMin);
             var low = ini["LowModeHight"].ToDouble();
 
+            var rollCompensating = false;
+
             while (ini.Equals(Config))
             {
+                var gridProps = this.gridProps;
+                var gravityMagnitude = gridProps.GravityMagnitude;
+                var speed = gridProps.Speed;
+                var leftRight = gridProps.LeftRight;
+                var upDown = gridProps.UpDown;
+                var forwardBackward = gridProps.ForwardBackward;
+                var gridRoll = gridProps.Roll;
+
                 var taskResults = TaskManager.TaskResults;
                 var updateStrength = taskResults.OfType<StrengthTaskResult>().FirstOrDefault();
                 var propulsion = taskResults.OfType<CruiseTaskResult>().FirstOrDefault().Propulsion;
                 var power = taskResults.OfType<PowerTaskResult>().FirstOrDefault().Power;
                 var autopilot = taskResults.OfType<AutopilotTaskResult>().FirstOrDefault();
 
-                var roll = gridProps.Roll + (gridProps.RollCompensating ? (gridProps.Roll > 0 ? 6 : -6) : 0);
+                var roll = gridRoll + (rollCompensating ? (gridRoll > 0 ? 6 : -6) : 0);
 
                 if (gridProps.SubController != null)
                 {
@@ -152,60 +165,61 @@ namespace IngameScript
 
                 foreach (var w in MyWheels)
                 {
+                    IMyMotorSuspension wheel = w.Wheel;
                     // update strength
                     if (strength)
-                        updateStrength.Action?.Invoke(w, GridUnsprungMass * gridProps.GravityMagnitude);
+                        updateStrength.Action?.Invoke(w, GridUnsprungMass * gravityMagnitude);
                     if (frictionFlag)
-                        if (gridProps.Speed > FrictionMinSpeed && gridProps.LeftRight != 0)
+                        if (speed > FrictionMinSpeed && leftRight != 0)
                         {
-                            w.Friction = gridProps.LeftRight < 0 ? (w.IsLeft ? FrictionInner : FrictionOuter) : (w.IsLeft ? FrictionOuter : FrictionInner);
+                            w.Friction = leftRight < 0 ? (w.IsLeft ? FrictionInner : FrictionOuter) : (w.IsLeft ? FrictionOuter : FrictionInner);
                         }
                         else w.Friction = 100;
 
                     if (powerFlag)
-                        w.Wheel.Power = power;
+                        wheel.Power = power;
 
-                    w.Wheel.PropulsionOverride = w.IsLeft ? propulsion : -propulsion;
+                    wheel.PropulsionOverride = w.IsLeft ? propulsion : -propulsion;
 
                     // update height
                     if (suspensionHight && ((roll > suspensionHightRoll && w.IsLeft) || (roll < -suspensionHightRoll && !w.IsLeft)))
                     {
-                        var value = Util.NormalizeClamp(Math.Abs(gridProps.Roll), 0, 25, high, low);
-                        w.Wheel.Height += (float)((value - w.Wheel.Height) * 0.5f);
-                        gridProps.RollCompensating = true;
+                        var value = Util.NormalizeClamp(Math.Abs(gridRoll), 0, 25, high, low);
+                        wheel.Height += (float)((value - wheel.Height) * 0.5f);
+                        rollCompensating = true;
                     }
                     else
                     {
-                        w.Wheel.Height += (w.TargetHeight - w.Wheel.Height) * 0.3f;
-                        gridProps.RollCompensating = false;
+                        wheel.Height += (w.TargetHeight - wheel.Height) * 0.3f;
+                        rollCompensating = false;
                     }
 
                     // update steering
-                    if (gridProps.LeftRight != 0)
+                    if (leftRight != 0)
                     {
-                        w.Wheel.MaxSteerAngle = (float)(gridProps.LeftRight > 0 ? w.SteerAngleRight : w.SteerAngleLeft);
+                        wheel.MaxSteerAngle = (float)(leftRight > 0 ? w.SteerAngleRight : w.SteerAngleLeft);
                     }
 
                     // half breaking
-                    w.Wheel.Brake = true;
-                    var halfBreaking = gridProps.UpDown > 0 && gridProps.ForwardBackward < 0;
+                    wheel.Brake = true;
+                    var halfBreaking = upDown > 0 && forwardBackward < 0;
                     if (halfBreaking && w.IsFront)
                     {
-                        w.Wheel.Brake = false;
-                        w.Wheel.Power = 0;
+                        wheel.Brake = false;
+                        wheel.Power = 0;
                     }
 
                     if (!autopilot.Equals(default(AutopilotTaskResult)))
                     {
-                        w.Wheel.MaxSteerAngle = (float)(autopilot.Steer > 0 ? w.SteerAngleRight : w.SteerAngleLeft);
-                        w.Wheel.SteeringOverride = w.IsFrontFocal ? autopilot.Steer : -autopilot.Steer;
+                        wheel.MaxSteerAngle = (float)(autopilot.Steer < 0 ? w.SteerAngleRight : w.SteerAngleLeft);
+                        wheel.SteeringOverride = w.IsFrontFocal ? -autopilot.Steer : autopilot.Steer;
                     }
                     else
-                        w.Wheel.SteeringOverride = 0;
+                        wheel.SteeringOverride = 0;
 
-                    if (addWheels && !w.Wheel.IsAttached)
+                    if (addWheels && !wheel.IsAttached)
                     {
-                        w.Wheel.ApplyAction("Add Top Part");
+                        wheel.ApplyAction("Add Top Part");
                     }
 
                 }
@@ -215,42 +229,43 @@ namespace IngameScript
                 }
                 foreach (var w in SubWheels)
                 {
+                    IMyMotorSuspension wheel = w.Wheel;
                     w.SpeedLimit = MyWheels.First().SpeedLimit;
 
                     if (subWheels)
-                        updateStrength.SubAction?.Invoke(w, GridUnsprungMass * gridProps.GravityMagnitude);
+                        updateStrength.SubAction?.Invoke(w, GridUnsprungMass * gravityMagnitude);
                     if (frictionFlag)
-                        if (gridProps.Speed > FrictionMinSpeed && gridProps.LeftRight != 0)
+                        if (speed > FrictionMinSpeed && leftRight != 0)
                         {
-                            w.Friction = gridProps.LeftRight < 0 ? (w.IsLeft ? FrictionInner : FrictionOuter) : (w.IsLeft ? FrictionOuter : FrictionInner);
+                            w.Friction = leftRight < 0 ? (w.IsLeft ? FrictionInner : FrictionOuter) : (w.IsLeft ? FrictionOuter : FrictionInner);
                         }
                         else w.Friction = 100;
 
                     if (powerFlag)
-                        w.Wheel.Power = power;
+                        wheel.Power = power;
 
                     if (suspensionHight && ((roll > suspensionHightRoll && w.IsLeft) || (roll < -suspensionHightRoll && !w.IsLeft)))
                     {
-                        var value = Util.NormalizeClamp(Math.Abs(gridProps.Roll), 0, 25, high, low);
-                        w.Wheel.Height += (float)((value - w.Wheel.Height) * 0.5f);
+                        var value = Util.NormalizeClamp(Math.Abs(gridRoll), 0, 25, high, low);
+                        wheel.Height += (float)((value - wheel.Height) * 0.5f);
                     }
                     else
-                        w.Wheel.Height += (w.TargetHeight - w.Wheel.Height) * 0.3f;
+                        wheel.Height += (w.TargetHeight - wheel.Height) * 0.3f;
 
-                    w.Wheel.PropulsionOverride = 0;
-                    if (gridProps.Cruise)
+                    wheel.PropulsionOverride = 0;
+                    if (Cruise)
                     {
-                        w.Wheel.PropulsionOverride = w.IsLeft ? propulsion : -propulsion;
+                        wheel.PropulsionOverride = w.IsLeft ? propulsion : -propulsion;
                     }
-                    else if (gridProps.ForwardBackward != 0 && !(gridProps.UpDown > 0))
+                    else if (forwardBackward != 0 && !(upDown > 0))
                     {
-                        var p = gridProps.ForwardBackward < 0 ? 1 : -1;
-                        w.Wheel.PropulsionOverride = w.IsLeft ? p : -p;
+                        var p = forwardBackward < 0 ? 1 : -1;
+                        wheel.PropulsionOverride = w.IsLeft ? p : -p;
                     }
 
-                    if (addWheels && !w.Wheel.IsAttached)
+                    if (addWheels && !wheel.IsAttached)
                     {
-                        w.Wheel.ApplyAction("Add Top Part");
+                        wheel.ApplyAction("Add Top Part");
                     }
 
                 }
@@ -260,7 +275,6 @@ namespace IngameScript
 
         IEnumerable<IMyLightingBlock> Lights => Memo.Of(() =>
         {
-            var gridMass = gridProps.Mass.BaseMass;
             var orientation = gridProps.MainController.Orientation;
             var tag = Config["Tag"].ToString("{DDAS}");
             var ignoreTag = Config["IgnoreTag"].ToString("{Ignore}");
@@ -282,6 +296,8 @@ namespace IngameScript
 
             while (lights.Equals(Lights) && ini.Equals(Config))
             {
+                float upDown = gridProps.UpDown;
+                float forwardBackward = gridProps.ForwardBackward;
                 foreach (var l in lights)
                 {
                     l.Radius = 1f;
@@ -289,14 +305,14 @@ namespace IngameScript
                     l.Falloff = 0;
                     l.Color = Color.DarkRed;
 
-                    if (gridProps.UpDown > 0)
+                    if (upDown > 0)
                     {
                         l.Intensity = 5f;
                         l.Falloff = 1.3f;
                         l.Radius = 5f;
                         l.Color = Color.Red;
                     }
-                    if (gridProps.ForwardBackward > 0)
+                    if (forwardBackward > 0)
                     {
                         l.Intensity = 5f;
                         l.Falloff = 1.3f;
@@ -304,7 +320,7 @@ namespace IngameScript
                         l.Color = Color.White;
                     }
 
-                };
+                }
                 yield return null;
             }
         }
@@ -328,7 +344,7 @@ namespace IngameScript
             var controlSubWheel = SubWheels.FirstOrDefault();
             currentHeight = controlSubWheel.TargetHeight;
 
-            high = Config["HighModeHight"].ToSingle(controlSubWheel.HeightOffsetMin);//Max
+            high = MathHelper.Clamp(high, controlSubWheel.HeightOffsetMin, controlSubWheel.HeightOffsetMax);//Max
             closeHigh = high - currentHeight;
             closeLow = currentHeight - low;
             targetHeight = Math.Abs(closeHigh) < Math.Abs(closeLow) ? low : high;

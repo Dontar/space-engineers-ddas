@@ -27,34 +27,42 @@ namespace IngameScript
 {
     partial class Program : MyGridProgram
     {
+
+        public bool Cruise { get; set; } = false;
+        public float CruiseSpeed { get; set; } = 0;
+
         struct CruiseTaskResult
         {
             public float Propulsion;
         }
         IEnumerable<CruiseTaskResult> CruiseTask(float cruiseSpeed = -1, Func<bool> cruiseWhile = null)
         {
-            if (gridProps.Cruise) yield break;
+            if (Cruise) yield break;
+
+            var gridProps = this.gridProps;
             var ini = Config;
-            gridProps.Cruise = true;
-            gridProps.CruiseSpeed = cruiseSpeed > -1 ? cruiseSpeed : (float)(gridProps.Speed * 3.6);
-            cruiseWhile = cruiseWhile ?? (() => gridProps.UpDown == 0 && !gridProps.MainController.HandBrake);
             var pid = new PID(ini["PIDCruise"].ToString("0.5/0/0/0"));
+
+            Cruise = true;
+            CruiseSpeed = cruiseSpeed > -1 ? cruiseSpeed : (float)(gridProps.Speed * 3.6);
+            cruiseWhile = cruiseWhile ?? (() => gridProps.UpDown == 0 && !gridProps.MainController.HandBrake);
+
             while (ini.Equals(Config) && cruiseWhile())
             {
                 if (cruiseSpeed == -1)
                 {
-                    gridProps.CruiseSpeed = MathHelper.Clamp(gridProps.CruiseSpeed + (float)gridProps.ForwardBackward * -5f, 5, MyWheels.First().SpeedLimit);
+                    CruiseSpeed = MathHelper.Clamp(CruiseSpeed + (float)gridProps.ForwardBackward * -5f, 5, MyWheels.First().SpeedLimit);
                 }
                 var dt = TaskManager.CurrentTaskLastRun.TotalSeconds;
                 var currentSpeedKmh = gridProps.Speed * 3.6;
-                var targetSpeed = gridProps.CruiseSpeed;
+                var targetSpeed = CruiseSpeed;
                 var error = targetSpeed - currentSpeedKmh;
                 var propulsion = MathHelper.Clamp(pid.Signal(error, dt), -1, 1);
 
                 yield return new CruiseTaskResult { Propulsion = (float)propulsion };
             }
-            gridProps.Cruise = false;
-            gridProps.CruiseSpeed = 0;
+            Cruise = false;
+            CruiseSpeed = 0;
         }
     }
 }

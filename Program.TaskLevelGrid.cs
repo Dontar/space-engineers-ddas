@@ -27,26 +27,30 @@ namespace IngameScript
 {
     partial class Program : MyGridProgram
     {
+        public bool Flipping { get; set; } = false;
+        public bool AutoLevel { get; set; } = false;
 
         IEnumerable<IMyGyro> Gyros => Memo.Of(() => Util.GetBlocks<IMyGyro>(b => Util.IsNotIgnored(b, Config["IgnoreTag"].ToString()) && b.Enabled), "gyros", Memo.Refs(gridProps.Mass.BaseMass, Config));
 
         IEnumerable FlipGridTask()
         {
-            if (gridProps.Flipping) yield break;
+            if (Flipping) yield break;
             var gyroList = Gyros;
             if (gyroList.Count() == 0) yield break;
+
+            var gridProps = this.gridProps;
             var ini = Config;
             var pidRoll = new PID(ini["PIDFlip"].ToString("8/0/0/0"));
+
             foreach (var g in gyroList)
             {
                 g.GyroOverride = true; g.GyroPower = 1;
 
             }
-            gridProps.Flipping = true;
+            Flipping = true;
             while (ini.Equals(Config) && !(Util.IsBetween(gridProps.Roll, -25, 25) || gridProps.UpDown < 0))
             {
                 var dt = TaskManager.CurrentTaskLastRun.TotalSeconds;
-                // var power = Util.NormalizeValue(Math.Abs(gridProps.Roll), 0, 180, 5, 100);
                 var rollSpeed = Util.NormalizeClamp(pidRoll.Signal(gridProps.Roll, dt), -180, 180, -30, 30);
                 Util.ApplyGyroOverride(0, 0, -rollSpeed, gyroList, gridProps.MainController.WorldMatrix);
                 yield return null;
@@ -55,16 +59,17 @@ namespace IngameScript
             {
                 g.GyroPower = 1; g.Roll = g.Yaw = g.Pitch = 0; g.GyroOverride = false;
             }
-            gridProps.Flipping = false;
+            Flipping = false;
         }
 
         IEnumerable AutoLevelTask()
         {
-            if (!gridProps.AutoLevel) yield break;
-            var ini = Config;
+            if (!AutoLevel) yield break;
             var gyroList = Gyros;
             if (gyroList.Count() == 0) yield break;
 
+            var gridProps = this.gridProps;
+            var ini = Config;
             var pidRoll = new PID(ini["PIDRoll"].ToString("6/0/0/0"));
             var pidPitch = new PID(ini["PIDPitch"].ToString("3/0/0/0"));
             var gyroPower = float.Parse(ini["AutoLevelPower"].ToString("30"));
@@ -76,7 +81,7 @@ namespace IngameScript
                     g.GyroOverride = true; g.GyroPower = gyroPower / 100;
                 }
             }
-            while (ini.Equals(Config) && gridProps.AutoLevel && isFastEnough)
+            while (ini.Equals(Config) && AutoLevel && isFastEnough)
             {
                 isFastEnough = gridProps.Speed > 5;
                 var dt = TaskManager.CurrentTaskLastRun.TotalSeconds;
