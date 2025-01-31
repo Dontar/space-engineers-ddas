@@ -272,6 +272,7 @@ namespace IngameScript
             static readonly StringBuilder StatusText = new StringBuilder();
             public static void Echo(string text)
             {
+                StatusText.Clear();
                 StatusText.AppendLine(text);
             }
             public static IEnumerable StatusMonitor(Program p)
@@ -298,7 +299,6 @@ namespace IngameScript
                     runtimeText.AppendLine();
                     runtimeText.AppendStringBuilder(StatusText);
                     p.Echo(runtimeText.ToString());
-                    StatusText.Clear();
                     yield return null;
                 }
             }
@@ -331,7 +331,7 @@ namespace IngameScript
                     IsPaused = false,
                     IsOnce = false
                 };
-                tasks.Insert(0, item);
+                tasks.Add(item);
                 return item;
             }
 
@@ -347,7 +347,7 @@ namespace IngameScript
                     IsPaused = false,
                     IsOnce = true
                 };
-                tasks.Insert(0, item);
+                tasks.Add(item);
                 return item;
             }
 
@@ -367,14 +367,21 @@ namespace IngameScript
                     if (task.TimeSinceLastRun < task.Interval) continue;
 
                     CurrentTaskLastRun = task.TimeSinceLastRun;
-                    if (!task.Enumerator.MoveNext())
+                    try
                     {
-                        if (task.IsOnce)
+                        if (!task.Enumerator.MoveNext())
                         {
-                            tasks.RemoveAt(i);
-                            continue;
+                            if (task.IsOnce)
+                            {
+                                tasks.RemoveAt(i);
+                                continue;
+                            }
+                            task.Enumerator = task.Ref.GetEnumerator();
                         }
-                        task.Enumerator = task.Ref.GetEnumerator();
+                    }
+                    catch (Exception e)
+                    {
+                        Util.Echo(e.ToString());
                     }
                     task.TimeSinceLastRun = TimeSpan.Zero;
                     task.TaskResult = task.Enumerator.Current;

@@ -32,16 +32,16 @@ namespace IngameScript
             Runtime.UpdateFrequency = UpdateFrequency.Update10;
             Util.Init(this);
             gridProps = new GridProps(this);
-            TaskManager.AddTask(Util.DisplayLogo("DDAS", Me.GetSurface(0)), 1.5f);
-            TaskManager.AddTask(ScreensTask(), 0.5f);
-            TaskManager.AddTask(AutopilotTask());
-            TaskManager.AddTask(AutopilotAITask());
-            TaskManager.AddTask(AutoLevelTask());
-            TaskManager.AddTask(SuspensionStrengthTask(), 5f);
-            _PowerTask = TaskManager.AddTask(PowerTask());
-            _StopLightsTask = TaskManager.AddTask(StopLightsTask());
-            TaskManager.AddTask(MainTask());
             TaskManager.AddTask(Util.StatusMonitor(this));
+            TaskManager.AddTask(MainTask());
+            TaskManager.AddTask(AutopilotAITask());
+            TaskManager.AddTask(AutopilotTask());
+            _StopLightsTask = TaskManager.AddTask(StopLightsTask());
+            _PowerTask = TaskManager.AddTask(PowerTask());
+            TaskManager.AddTask(SuspensionStrengthTask(), 5f);
+            TaskManager.AddTask(AutoLevelTask());
+            TaskManager.AddTask(ScreensTask(), 0.5f);
+            TaskManager.AddTask(Util.DisplayLogo("DDAS", Me.GetSurface(0)), 1.5f);
 
             _PowerTask.IsPaused = !Config["Power"].ToBoolean(true);
             _StopLightsTask.IsPaused = !Config["StopLights"].ToBoolean(true);
@@ -59,22 +59,14 @@ namespace IngameScript
 
             if (!updateSource.HasFlag(UpdateType.Update10)) return;
 
-            try
+            gridProps.UpdateGridProps(Config, Controllers);
+            if (gridProps.MainController == null)
             {
-                gridProps.UpdateGridProps(Config, Controllers);
-                if (gridProps.MainController == null)
-                {
-                    Util.Echo("No controller found");
-                    return;
-                }
-
-                TaskManager.RunTasks(Runtime.TimeSinceLastRun);
-
+                Util.Echo("No controller found");
+                return;
             }
-            catch (Exception e)
-            {
-                Util.Echo(e.ToString());
-            }
+
+            TaskManager.RunTasks(Runtime.TimeSinceLastRun);
         }
 
         private void ProcessCommands(string argument)

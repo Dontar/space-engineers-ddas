@@ -7,6 +7,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.ComponentModel;
 using System.Linq;
 using System.Numerics;
 using System.Runtime.CompilerServices;
@@ -20,6 +21,7 @@ using VRage.Game.GUI.TextPanel;
 using VRage.Game.ModAPI.Ingame;
 using VRage.Game.ModAPI.Ingame.Utilities;
 using VRage.Game.ObjectBuilders.Definitions;
+using VRage.Network;
 using VRageMath;
 using VRageRender;
 using VRageRender.Animations;
@@ -36,6 +38,8 @@ namespace IngameScript
             public Vector3D Direction;
             public float Steer;
             public string Waypoint;
+            public int WaypointCount;
+            public FlightMode Mode;
         }
 
         IEnumerable AutopilotTask()
@@ -75,26 +79,7 @@ namespace IngameScript
                 }
 
                 var currentPosition = autopilot.GetPosition();
-                var destinationVector = autopilot.CurrentWaypoint.Coords - currentPosition;
-
-                if (autopilot.GetValueBool("CollisionAvoidance") && sensor != null)
-                {
-                    var detectionBox = autopilot.CubeGrid.WorldAABB
-                        .Inflate(2)
-                        .Include(currentPosition + autopilot.WorldMatrix.Forward * 15)
-                        .Include(currentPosition + autopilot.WorldMatrix.Right * 5)
-                        .Include(currentPosition + autopilot.WorldMatrix.Left * 5);
-
-                    var obstructions = new List<MyDetectedEntityInfo>();
-                    sensor.DetectedEntities(obstructions);
-                    var obstruction = obstructions.FirstOrDefault(o => detectionBox.Intersects(o.BoundingBox));
-                    if (!obstruction.IsEmpty())
-                    {
-                        var v = obstruction.BoundingBox.TransformFast(autopilot.WorldMatrix);
-                        var corners = Enumerable.Range(0, 8).Select(i => v.GetCorner(i)).Max(i => Vector3D.DistanceSquared(i, currentPosition));
-                        destinationVector += corners;
-                    }
-                }
+                var destinationVector = autopilot.CurrentWaypoint.Coords - currentPosition + AvoidCollision(autopilot, sensor, currentPosition);
 
                 var T = MatrixD.Transpose(autopilot.WorldMatrix);
                 var direction = Vector3D.TransformNormal(destinationVector, T); direction.Y = 0;
@@ -133,7 +118,8 @@ namespace IngameScript
                 {
                     Waypoint = autopilot.CurrentWaypoint.Name,
                     Direction = direction,
-                    Steer = (float)directionAngle
+                    Steer = (float)directionAngle,
+                    Mode = autopilot.FlightMode
                 };
             }
         }
@@ -144,25 +130,30 @@ namespace IngameScript
             if (autopilot == null || !autopilot.IsAutoPilotEnabled) yield break;
             var ini = Config;
             var sensor = Memo.Of(() => Util.GetBlocks<IMySensorBlock>(b => Util.IsNotIgnored(b, ini["IgnoreTag"].ToString())).FirstOrDefault(), "sensor", Memo.Refs(gridProps.Mass.BaseMass));
+            var controller = gridProps.MainController;
 
             var wayPoints = new List<IMyAutopilotWaypoint>();
             autopilot.GetWaypoints(wayPoints);
 
+            IEnumerator<IMyAutopilotWaypoint> wayPointsInfo = wayPoints.GetEnumerator();
+            wayPointsInfo.MoveNext();
+
             while (ini.Equals(Config) && autopilot.IsAutoPilotEnabled)
             {
-                if (autopilot.CurrentWaypoint == null)
+                var currentWaypoint = (wayPoints.Count > 1 ? wayPointsInfo.Current?.Matrix.Translation : autopilot.CurrentWaypoint?.Matrix.Translation) ?? Vector3D.Zero;
+
+                if (currentWaypoint == Vector3D.Zero)
                 {
-                    gridProps.MainController.HandBrake = true;
+                    controller.HandBrake = true;
                     yield break;
                 }
                 else
-                {
-                    gridProps.MainController.HandBrake = false;
-                }
+                    controller.HandBrake = false;
 
-                if (!Cruise)
+
+                if (!Cruise && !controller.HandBrake)
                 {
-                    TaskManager.AddTaskOnce(CruiseTask(autopilot.SpeedLimit * 3.6f, () => autopilot.IsAutoPilotEnabled && !gridProps.MainController.HandBrake));
+                    TaskManager.AddTaskOnce(CruiseTask(autopilot.SpeedLimit * 3.6f, () => autopilot.IsAutoPilotEnabled && !controller.HandBrake));
                 }
                 else
                     CruiseSpeed = autopilot.SpeedLimit * 3.6f;
@@ -175,42 +166,79 @@ namespace IngameScript
                 }
 
                 var currentPosition = autopilot.GetPosition();
-                var destinationVector = autopilot.CurrentWaypoint.Matrix.Translation - currentPosition;
+                var destinationVector = currentWaypoint - currentPosition + AvoidCollision(autopilot, sensor, currentPosition);
 
-                if (autopilot.GetValueBool("CollisionAvoidance") && sensor != null)
-                {
-                    var detectionBox = autopilot.CubeGrid.WorldAABB
-                        .Inflate(2)
-                        .Include(currentPosition + autopilot.WorldMatrix.Forward * 15)
-                        .Include(currentPosition + autopilot.WorldMatrix.Right * 5)
-                        .Include(currentPosition + autopilot.WorldMatrix.Left * 5);
-
-                    var obstructions = new List<MyDetectedEntityInfo>();
-                    sensor.DetectedEntities(obstructions);
-                    var obstruction = obstructions.FirstOrDefault(o => detectionBox.Intersects(o.BoundingBox));
-                    if (!obstruction.IsEmpty())
-                    {
-                        var v = obstruction.BoundingBox.TransformFast(autopilot.WorldMatrix);
-                        var corners = Enumerable.Range(0, 8).Select(i => v.GetCorner(i)).Max(i => Vector3D.DistanceSquared(i, currentPosition));
-                        destinationVector += corners;
-                    }
-                }
                 var T = MatrixD.Transpose(autopilot.WorldMatrix);
                 var direction = Vector3D.TransformNormal(destinationVector, T); direction.Y = 0;
                 var directionAngle = Util.ToAzimuth(direction);
 
-                if (autopilot.CurrentWaypoint.Matrix.Translation == wayPoints.LastOrDefault().Matrix.Translation)
+                var isWayPointReached = direction.Length() < autopilot.CubeGrid.WorldVolume.Radius;
+
+                if (isWayPointReached)
                 {
-                    gridProps.MainController.HandBrake = direction.Length() < autopilot.CubeGrid.WorldVolume.Radius;
+                    if (wayPoints.Count > 1)
+                    {
+                        if (!wayPointsInfo.MoveNext())
+                        {
+                            switch (autopilot.FlightMode)
+                            {
+                                case FlightMode.Circle:
+                                    wayPointsInfo = wayPoints.GetEnumerator();
+                                    wayPointsInfo.MoveNext();
+                                    break;
+                                case FlightMode.Patrol:
+                                    var distanceFirst = Vector3D.Distance(wayPoints.First().Matrix.Translation, currentPosition);
+                                    var distanceLast = Vector3D.Distance(wayPoints.Last().Matrix.Translation, currentPosition);
+                                    wayPointsInfo = (distanceLast < distanceFirst ? wayPoints.Select(w => w).Reverse() : wayPoints).Skip(1).GetEnumerator();
+                                    wayPointsInfo.MoveNext();
+                                    break;
+                                default:
+                                    controller.HandBrake = true;
+                                    autopilot.SetValueBool("ActivateBehavior", false);
+                                    yield break;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        controller.HandBrake = true;
+                        yield break;
+
+                    }
                 }
 
                 yield return new AutopilotTaskResult
                 {
-                    Waypoint = autopilot.CurrentWaypoint.Name,
+                    Waypoint = (wayPoints.Count > 1 ? wayPointsInfo.Current?.Name : autopilot.CurrentWaypoint?.Name) ?? "None",
                     Direction = direction,
                     Steer = (float)directionAngle,
+                    Mode = autopilot.FlightMode,
+                    WaypointCount = wayPoints.Count
                 };
             }
+        }
+
+        double AvoidCollision(IMyTerminalBlock autopilot, IMySensorBlock sensor, Vector3D currentPosition)
+        {
+            if (autopilot.GetValueBool("CollisionAvoidance") && sensor != null)
+            {
+                var detectionBox = autopilot.CubeGrid.WorldAABB
+                    .Inflate(2)
+                    .Include(currentPosition + autopilot.WorldMatrix.Forward * 15)
+                    .Include(currentPosition + autopilot.WorldMatrix.Right * 5)
+                    .Include(currentPosition + autopilot.WorldMatrix.Left * 5);
+
+                var obstructions = new List<MyDetectedEntityInfo>();
+                sensor.DetectedEntities(obstructions);
+                var obstruction = obstructions.FirstOrDefault(o => detectionBox.Intersects(o.BoundingBox));
+                if (!obstruction.IsEmpty())
+                {
+                    var v = obstruction.BoundingBox.TransformFast(autopilot.WorldMatrix);
+                    return Enumerable.Range(0, 8).Select(i => v.GetCorner(i)).Max(i => Vector3D.DistanceSquared(i, currentPosition));
+                }
+            }
+
+            return 0;
         }
 
         IEnumerable RecordPathTask()
