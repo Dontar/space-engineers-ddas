@@ -34,7 +34,6 @@ namespace IngameScript
             gridProps = new GridProps(this);
             TaskManager.AddTask(Util.StatusMonitor(this));
             TaskManager.AddTask(MainTask());
-            TaskManager.AddTask(AutopilotAITask());
             TaskManager.AddTask(AutopilotTask());
             _StopLightsTask = TaskManager.AddTask(StopLightsTask());
             _PowerTask = TaskManager.AddTask(PowerTask());

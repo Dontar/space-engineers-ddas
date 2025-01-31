@@ -44,105 +44,29 @@ namespace IngameScript
 
         IEnumerable AutopilotTask()
         {
-            var controller = gridProps.MainController;
-            var autopilot = controller is IMyRemoteControl ? controller as IMyRemoteControl : null;
+            var controller = gridProps.MainController is IMyRemoteControl ? gridProps.MainController : null;
+            var autopilot = Autopilot.FromBlock(Memo.Of(() => Util.GetBlocks<IMyFlightMovementBlock>().FirstOrDefault() as IMyTerminalBlock, "AI", Memo.Refs(gridProps.Mass.BaseMass)) ?? controller);
+
             if (autopilot == null || !autopilot.IsAutoPilotEnabled) yield break;
             var ini = Config;
             var sensor = Memo.Of(() => Util.GetBlocks<IMySensorBlock>(b => Util.IsNotIgnored(b, ini["IgnoreTag"].ToString())).FirstOrDefault(), "sensor", Memo.Refs(gridProps.Mass.BaseMass));
-            var wayPoints = new List<MyWaypointInfo>();
-            autopilot.GetWaypointInfo(wayPoints);
 
-            Action movePointToEnd = () =>
+            var wayPoints = autopilot.Waypoints;
+            int wayPointsCount = wayPoints.Count();
+            var wayPointsInfo = wayPoints.GetEnumerator();
+            if (wayPointsCount > 1)
             {
-                var waypointData = new List<MyWaypointInfo>();
-                autopilot.GetWaypointInfo(waypointData);
-                waypointData.Add(waypointData.FirstOrDefault());
-                waypointData.RemoveAt(0);
-                autopilot.ClearWaypoints();
-                waypointData.ForEach(w => autopilot.AddWaypoint(w));
-            };
-
-            while (ini.Equals(Config) && autopilot.IsAutoPilotEnabled)
-            {
-                if (!Cruise)
-                {
-                    TaskManager.AddTaskOnce(CruiseTask(autopilot.SpeedLimit * 3.6f, () => autopilot.IsAutoPilotEnabled));
-                }
-                else
-                    CruiseSpeed = autopilot.SpeedLimit * 3.6f;
-
-
-                if (gridProps.UpDown > 0)
-                {
-                    autopilot.SetAutoPilotEnabled(false);
-                    yield break;
-                }
-
-                var currentPosition = autopilot.GetPosition();
-                var destinationVector = autopilot.CurrentWaypoint.Coords - currentPosition + AvoidCollision(autopilot, sensor, currentPosition);
-
-                var T = MatrixD.Transpose(autopilot.WorldMatrix);
-                var direction = Vector3D.TransformNormal(destinationVector, T); direction.Y = 0;
-                var directionAngle = Util.ToAzimuth(direction);
-
-                if (direction.Length() < autopilot.CubeGrid.WorldVolume.Radius)
-                {
-                    if (autopilot.CurrentWaypoint.Coords == wayPoints.LastOrDefault().Coords)
-                    {
-                        switch (autopilot.FlightMode)
-                        {
-                            case FlightMode.Circle:
-                                movePointToEnd();
-                                autopilot.SetAutoPilotEnabled(true);
-                                break;
-                            case FlightMode.Patrol:
-                                autopilot.ClearWaypoints();
-                                wayPoints.Reverse();
-                                wayPoints.ForEach(w => autopilot.AddWaypoint(w));
-                                autopilot.SetAutoPilotEnabled(true);
-                                break;
-                            default:
-                                movePointToEnd();
-                                autopilot.HandBrake = true;
-                                autopilot.SetAutoPilotEnabled(false);
-                                break;
-                        }
-                    }
-                    else
-                    {
-                        movePointToEnd();
-                        autopilot.SetAutoPilotEnabled(true);
-                    }
-                }
-                yield return new AutopilotTaskResult
-                {
-                    Waypoint = autopilot.CurrentWaypoint.Name,
-                    Direction = direction,
-                    Steer = (float)directionAngle,
-                    Mode = autopilot.FlightMode
-                };
+                var wayPointsDist = wayPoints.Select(w => new { Point = w, Distance = Vector3D.Distance(w.Coords, autopilot.GetPosition()) });
+                var closest = wayPointsDist.OrderBy(w => w.Distance).FirstOrDefault().Point;
+                wayPointsInfo = closest.Equals(wayPoints.Last()) ? wayPointsInfo : wayPoints.SkipWhile(w => !w.Equals(closest)).Skip(1).GetEnumerator();
             }
-        }
-
-        IEnumerable AutopilotAITask()
-        {
-            var autopilot = Memo.Of(() => Util.GetBlocks<IMyFlightMovementBlock>().FirstOrDefault(), "AI", Memo.Refs(gridProps.Mass.BaseMass));
-            if (autopilot == null || !autopilot.IsAutoPilotEnabled) yield break;
-            var ini = Config;
-            var sensor = Memo.Of(() => Util.GetBlocks<IMySensorBlock>(b => Util.IsNotIgnored(b, ini["IgnoreTag"].ToString())).FirstOrDefault(), "sensor", Memo.Refs(gridProps.Mass.BaseMass));
-            var controller = gridProps.MainController;
-
-            var wayPoints = new List<IMyAutopilotWaypoint>();
-            autopilot.GetWaypoints(wayPoints);
-
-            IEnumerator<IMyAutopilotWaypoint> wayPointsInfo = wayPoints.GetEnumerator();
             wayPointsInfo.MoveNext();
 
             while (ini.Equals(Config) && autopilot.IsAutoPilotEnabled)
             {
-                var currentWaypoint = (wayPoints.Count > 1 ? wayPointsInfo.Current?.Matrix.Translation : autopilot.CurrentWaypoint?.Matrix.Translation) ?? Vector3D.Zero;
+                var currentWaypoint = wayPointsCount > 1 ? wayPointsInfo.Current : autopilot.CurrentWaypoint;
 
-                if (currentWaypoint == Vector3D.Zero)
+                if (currentWaypoint.Equals(MyWaypointInfo.Empty))
                 {
                     controller.HandBrake = true;
                     yield break;
@@ -161,22 +85,22 @@ namespace IngameScript
 
                 if (gridProps.UpDown > 0)
                 {
-                    autopilot.SetValueBool("ActivateBehavior", false);
+                    autopilot.SetAutoPilotEnabled(false);
                     yield break;
                 }
 
                 var currentPosition = autopilot.GetPosition();
-                var destinationVector = currentWaypoint - currentPosition + AvoidCollision(autopilot, sensor, currentPosition);
+                var destinationVector = currentWaypoint.Coords - currentPosition + AvoidCollision(autopilot.Block, sensor, currentPosition);
 
                 var T = MatrixD.Transpose(autopilot.WorldMatrix);
                 var direction = Vector3D.TransformNormal(destinationVector, T); direction.Y = 0;
                 var directionAngle = Util.ToAzimuth(direction);
 
-                var isWayPointReached = direction.Length() < autopilot.CubeGrid.WorldVolume.Radius;
+                var isWayPointReached = direction.Length() < autopilot.Block.CubeGrid.WorldVolume.Radius;
 
                 if (isWayPointReached)
                 {
-                    if (wayPoints.Count > 1)
+                    if (wayPointsCount > 1)
                     {
                         if (!wayPointsInfo.MoveNext())
                         {
@@ -187,14 +111,14 @@ namespace IngameScript
                                     wayPointsInfo.MoveNext();
                                     break;
                                 case FlightMode.Patrol:
-                                    var distanceFirst = Vector3D.Distance(wayPoints.First().Matrix.Translation, currentPosition);
-                                    var distanceLast = Vector3D.Distance(wayPoints.Last().Matrix.Translation, currentPosition);
+                                    var distanceFirst = Vector3D.Distance(wayPoints.First().Coords, currentPosition);
+                                    var distanceLast = Vector3D.Distance(wayPoints.Last().Coords, currentPosition);
                                     wayPointsInfo = (distanceLast < distanceFirst ? wayPoints.Select(w => w).Reverse() : wayPoints).Skip(1).GetEnumerator();
                                     wayPointsInfo.MoveNext();
                                     break;
                                 default:
                                     controller.HandBrake = true;
-                                    autopilot.SetValueBool("ActivateBehavior", false);
+                                    autopilot.SetAutoPilotEnabled(false);
                                     yield break;
                             }
                         }
@@ -209,11 +133,11 @@ namespace IngameScript
 
                 yield return new AutopilotTaskResult
                 {
-                    Waypoint = (wayPoints.Count > 1 ? wayPointsInfo.Current?.Name : autopilot.CurrentWaypoint?.Name) ?? "None",
+                    Waypoint = (wayPointsCount > 1 ? wayPointsInfo.Current.Name : autopilot.CurrentWaypoint.Name) ?? "None",
                     Direction = direction,
                     Steer = (float)directionAngle,
                     Mode = autopilot.FlightMode,
-                    WaypointCount = wayPoints.Count
+                    WaypointCount = wayPointsCount
                 };
             }
         }
@@ -241,10 +165,77 @@ namespace IngameScript
             return 0;
         }
 
+        class Autopilot
+        {
+            public Autopilot(IMyTerminalBlock block)
+            {
+                Block = block;
+            }
+
+            public IMyTerminalBlock Block { get; }
+            public bool IsAutoPilotEnabled => Block is IMyRemoteControl ? (Block as IMyRemoteControl).IsAutoPilotEnabled : (Block as IMyFlightMovementBlock).IsAutoPilotEnabled;
+            public IEnumerable<MyWaypointInfo> Waypoints
+            {
+                get
+                {
+                    if (Block is IMyRemoteControl)
+                    {
+                        var autopilot = Block as IMyRemoteControl;
+                        var waypoints = new List<MyWaypointInfo>();
+                        autopilot.GetWaypointInfo(waypoints);
+                        return waypoints;
+                    }
+                    else
+                    {
+                        var autopilot = Block as IMyFlightMovementBlock;
+                        var waypoints = new List<IMyAutopilotWaypoint>();
+                        autopilot.GetWaypoints(waypoints);
+                        return waypoints.Select(w => new MyWaypointInfo(w.Name, w.Matrix.Translation));
+                    }
+                }
+            }
+            public MyWaypointInfo CurrentWaypoint
+            {
+                get
+                {
+                    if (Block is IMyRemoteControl)
+                    {
+                        var autopilot = Block as IMyRemoteControl;
+                        return autopilot.CurrentWaypoint;
+                    }
+                    else
+                    {
+                        var autopilot = Block as IMyFlightMovementBlock;
+                        if (autopilot.CurrentWaypoint == null)
+                            return MyWaypointInfo.Empty;
+                        return new MyWaypointInfo(autopilot.CurrentWaypoint.Name, autopilot.CurrentWaypoint.Matrix.Translation);
+                    }
+                }
+            }
+            public FlightMode FlightMode => Block is IMyRemoteControl ? (Block as IMyRemoteControl).FlightMode : (Block as IMyFlightMovementBlock).FlightMode;
+            public float SpeedLimit => Block is IMyRemoteControl ? (Block as IMyRemoteControl).SpeedLimit : (Block as IMyFlightMovementBlock).SpeedLimit;
+            public MatrixD WorldMatrix => Block.WorldMatrix;
+            public Vector3D GetPosition()
+            {
+                return Block.GetPosition();
+            }
+            public void SetAutoPilotEnabled(bool enabled)
+            {
+                Block.SetValueBool(Block is IMyFlightMovementBlock ? "ActivateBehavior" : "AutoPilot", enabled);
+            }
+            public static Autopilot FromBlock(IMyTerminalBlock block)
+            {
+                if (block != null)
+                    return new Autopilot(block);
+                else
+                    return null;
+            }
+        }
+
         IEnumerable RecordPathTask()
         {
             if (Recording) yield break;
-            var autopilot = gridProps.MainController as IMyRemoteControl;
+            var autopilot = gridProps.MainController;
             var wayPoints = new List<MyWaypointInfo>();
             var counter = 0;
             Recording = true;
