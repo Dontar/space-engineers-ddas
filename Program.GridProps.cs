@@ -24,7 +24,7 @@ namespace IngameScript
             public IMyShipController Controller { get; private set; }
             public IMyShipController MainController { get; private set; }
             public IMyShipController SubController { get; private set; }
-            public void UpdateGridProps(Dictionary<string, MyIniValue> config, IEnumerable<IMyShipController> controllers)
+            public void UpdateGridProps(ConfigDictionary config, IEnumerable<IMyShipController> controllers)
             {
                 var updateControllers = Memo.Of(() =>
                 {
@@ -64,7 +64,21 @@ namespace IngameScript
             }
         }
 
-        Dictionary<string, MyIniValue> Config => Memo.Of(() =>
+        class ConfigDictionary : Dictionary<string, MyIniValue>
+        {
+            public ConfigDictionary(IDictionary<string, MyIniValue> dictionary) : base(dictionary) { }
+            public new MyIniValue this[string key]
+            {
+                get
+                {
+                    MyIniValue value;
+                    return TryGetValue(key, out value) ? value : MyIniValue.EMPTY;
+                }
+                set { this[key] = value; }
+            }
+        }
+
+        ConfigDictionary Config => Memo.Of(() =>
         {
             var myIni = new MyIni();
             if (!myIni.TryParse(Me.CustomData) || Me.CustomData == "")
@@ -111,7 +125,7 @@ namespace IngameScript
             ;
             var keys = new List<MyIniKey>();
             myIni.GetKeys(keys);
-            return keys.ToDictionary(k => k.Name, k => myIni.Get(k.Section, k.Name));
+            return new ConfigDictionary(keys.ToDictionary(k => k.Name, k => myIni.Get(k.Section, k.Name)));
 
         }, "myIni", Memo.Refs(Me.CustomData));
 

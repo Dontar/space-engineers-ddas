@@ -135,7 +135,7 @@ namespace IngameScript
                 {
                     Waypoint = (wayPointsCount > 1 ? wayPointsInfo.Current.Name : autopilot.CurrentWaypoint.Name) ?? "None",
                     Direction = direction,
-                    Steer = (float)directionAngle,
+                    Steer = (float)MathHelper.Clamp(directionAngle, -1, 1),
                     Mode = autopilot.FlightMode,
                     WaypointCount = wayPointsCount
                 };
@@ -236,19 +236,21 @@ namespace IngameScript
         {
             if (Recording) yield break;
             var autopilot = gridProps.MainController;
+            var minDistance = autopilot.CubeGrid.WorldVolume.Radius * 2;
             var wayPoints = new List<MyWaypointInfo>();
             var counter = 0;
             Recording = true;
             while (Recording)
             {
                 var current = autopilot.GetPosition();
-                if (Vector3D.Distance(current, wayPoints.LastOrDefault().Coords) > 15)
+                if (Vector3D.Distance(current, wayPoints.LastOrDefault().Coords) > minDistance)
                 {
                     wayPoints.Add(new MyWaypointInfo($"Waypoint-#{counter++}", current));
                 }
                 yield return null;
             }
             autopilot.CustomData = string.Join("\n", wayPoints);
+            TaskManager.AddTaskOnce(ImportPathTask());
         }
 
         IEnumerable ImportPathTask()

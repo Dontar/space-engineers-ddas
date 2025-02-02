@@ -115,13 +115,13 @@ namespace IngameScript
         IEnumerable MainTask()
         {
             var ini = Config;
-            var strength = ini["SuspensionStrength"].ToBoolean(true);
-            var subWheels = ini["SubWheelsStrength"].ToBoolean(true);
+            var strengthFlag = ini["SuspensionStrength"].ToBoolean(true);
+            var subWheelsStrengthFlag = ini["SubWheelsStrength"].ToBoolean(true);
             var powerFlag = ini["Power"].ToBoolean(true);
             var frictionFlag = ini["Friction"].ToBoolean(true);
-            var suspensionHight = ini["SuspensionHight"].ToBoolean(true);
+            var suspensionHightFlag = ini["SuspensionHight"].ToBoolean(true);
             var suspensionHightRoll = ini["SuspensionHightRoll"].ToDouble(30);
-            var addWheels = ini["AddWheels"].ToBoolean(true);
+            var addWheelsFlag = ini["AddWheels"].ToBoolean(true);
             var FrictionInner = ini["FrictionInner"].ToSingle(80);
             var FrictionOuter = ini["FrictionOuter"].ToSingle(60);
             var FrictionMinSpeed = ini["FrictionMinSpeed"].ToSingle(5);
@@ -149,6 +149,10 @@ namespace IngameScript
 
                 var roll = gridRoll + (rollCompensating ? (gridRoll > 0 ? 6 : -6) : 0);
 
+                bool isTurning = leftRight != 0 || !Util.IsBetween(autopilot.Steer, -0.4, 0.4);
+                bool isTurningLeft = leftRight < 0 || autopilot.Steer > 0;
+                var isHalfBreaking = upDown > 0 && forwardBackward < 0;
+
                 if (gridProps.SubController != null)
                 {
                     gridProps.SubController.HandBrake = gridProps.Controller.HandBrake;
@@ -157,26 +161,28 @@ namespace IngameScript
                 foreach (var w in MyWheels)
                 {
                     IMyMotorSuspension wheel = w.Wheel;
+                    wheel.SteeringOverride = w.IsFrontFocal ? -autopilot.Steer : autopilot.Steer;
+                    wheel.PropulsionOverride = w.IsLeft ? propulsion : -propulsion;
+
                     // update strength
-                    if (strength)
+                    if (strengthFlag)
                         updateStrength.Action?.Invoke(w, GridUnsprungMass * gravityMagnitude);
+
                     if (frictionFlag)
-                        if (speed > FrictionMinSpeed && leftRight != 0)
+                        if (speed > FrictionMinSpeed && isTurning)
                         {
-                            w.Friction = leftRight < 0 ? (w.IsLeft ? FrictionInner : FrictionOuter) : (w.IsLeft ? FrictionOuter : FrictionInner);
+                            w.Friction = isTurningLeft ? (w.IsLeft ? FrictionInner : FrictionOuter) : (w.IsLeft ? FrictionOuter : FrictionInner);
                         }
                         else w.Friction = 100;
 
                     if (powerFlag)
                         wheel.Power = power;
 
-                    wheel.PropulsionOverride = w.IsLeft ? propulsion : -propulsion;
-
                     // update height
-                    if (suspensionHight && ((roll > suspensionHightRoll && w.IsLeft) || (roll < -suspensionHightRoll && !w.IsLeft)))
+                    if (suspensionHightFlag && ((roll > suspensionHightRoll && w.IsLeft) || (roll < -suspensionHightRoll && !w.IsLeft)))
                     {
-                        var value = Util.NormalizeClamp(Math.Abs(gridRoll), 0, 25, high, low);
-                        wheel.Height += (float)((value - wheel.Height) * 0.5f);
+                        var value = (float)Util.NormalizeClamp(Math.Abs(gridRoll), 0, 25, high, low);
+                        wheel.Height += (value - wheel.Height) * 0.5f;
                         rollCompensating = true;
                     }
                     else
@@ -186,29 +192,18 @@ namespace IngameScript
                     }
 
                     // update steering
-                    if (leftRight != 0)
-                    {
-                        wheel.MaxSteerAngle = (float)(leftRight > 0 ? w.SteerAngleRight : w.SteerAngleLeft);
-                    }
+                    if (isTurning)
+                        wheel.MaxSteerAngle = (float)(isTurningLeft ? w.SteerAngleLeft : w.SteerAngleRight);
 
                     // half breaking
                     wheel.Brake = true;
-                    var halfBreaking = upDown > 0 && forwardBackward < 0;
-                    if (halfBreaking && w.IsFront)
+                    if (isHalfBreaking && w.IsFront)
                     {
                         wheel.Brake = false;
                         wheel.Power = 0;
                     }
 
-                    if (!autopilot.Equals(default(AutopilotTaskResult)))
-                    {
-                        wheel.MaxSteerAngle = (float)(autopilot.Steer < 0 ? w.SteerAngleRight : w.SteerAngleLeft);
-                        wheel.SteeringOverride = w.IsFrontFocal ? -autopilot.Steer : autopilot.Steer;
-                    }
-                    else
-                        wheel.SteeringOverride = 0;
-
-                    if (addWheels && !wheel.IsAttached)
+                    if (addWheelsFlag && !wheel.IsAttached)
                     {
                         wheel.ApplyAction("Add Top Part");
                     }
@@ -218,43 +213,35 @@ namespace IngameScript
                 {
                     high = ini["HighModeHight"].ToDouble(SubWheels.FirstOrDefault().HeightOffsetMin);
                 }
+                var subWheelPropulsion = Cruise ? propulsion : (forwardBackward != 0 && !(upDown > 0) ? (forwardBackward < 0 ? 1 : -1) : 0);
                 foreach (var w in SubWheels)
                 {
                     IMyMotorSuspension wheel = w.Wheel;
                     w.SpeedLimit = MyWheels.First().SpeedLimit;
-
-                    if (subWheels)
-                        updateStrength.SubAction?.Invoke(w, GridUnsprungMass * gravityMagnitude);
-                    if (frictionFlag)
-                        if (speed > FrictionMinSpeed && leftRight != 0)
-                        {
-                            w.Friction = leftRight < 0 ? (w.IsLeft ? FrictionInner : FrictionOuter) : (w.IsLeft ? FrictionOuter : FrictionInner);
-                        }
-                        else w.Friction = 100;
+                    wheel.PropulsionOverride = w.IsLeft ? subWheelPropulsion : -subWheelPropulsion;
 
                     if (powerFlag)
                         wheel.Power = power;
 
-                    if (suspensionHight && ((roll > suspensionHightRoll && w.IsLeft) || (roll < -suspensionHightRoll && !w.IsLeft)))
+                    if (subWheelsStrengthFlag)
+                        updateStrength.SubAction?.Invoke(w, GridUnsprungMass * gravityMagnitude);
+
+                    if (frictionFlag)
+                        if (speed > FrictionMinSpeed && isTurning)
+                        {
+                            w.Friction = isTurningLeft ? (w.IsLeft ? FrictionInner : FrictionOuter) : (w.IsLeft ? FrictionOuter : FrictionInner);
+                        }
+                        else w.Friction = 100;
+
+                    if (suspensionHightFlag && ((roll > suspensionHightRoll && w.IsLeft) || (roll < -suspensionHightRoll && !w.IsLeft)))
                     {
-                        var value = Util.NormalizeClamp(Math.Abs(gridRoll), 0, 25, high, low);
-                        wheel.Height += (float)((value - wheel.Height) * 0.5f);
+                        var value = (float)Util.NormalizeClamp(Math.Abs(gridRoll), 0, 25, high, low);
+                        wheel.Height += (value - wheel.Height) * 0.5f;
                     }
                     else
                         wheel.Height += (w.TargetHeight - wheel.Height) * 0.3f;
 
-                    wheel.PropulsionOverride = 0;
-                    if (Cruise)
-                    {
-                        wheel.PropulsionOverride = w.IsLeft ? propulsion : -propulsion;
-                    }
-                    else if (forwardBackward != 0 && !(upDown > 0))
-                    {
-                        var p = forwardBackward < 0 ? 1 : -1;
-                        wheel.PropulsionOverride = w.IsLeft ? p : -p;
-                    }
-
-                    if (addWheels && !wheel.IsAttached)
+                    if (addWheelsFlag && !wheel.IsAttached)
                     {
                         wheel.ApplyAction("Add Top Part");
                     }

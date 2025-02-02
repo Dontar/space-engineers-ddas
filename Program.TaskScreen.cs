@@ -50,6 +50,7 @@ namespace IngameScript
                 screenText.AppendLine($"AutoLevel:   {AutoLevel}");
                 screenText.AppendLine($"Power:       {power.Power:N2}");
                 screenText.AppendLine($"Propulsion:  {propulsion:N2}");
+                screenText.AppendLine($"Steer:       {autopilot.Steer}");
                 screenText.AppendLine($"Waypoint:    {autopilot.Waypoint}");
                 screenText.AppendLine($"Waypoint #:  {autopilot.WaypointCount}");
                 screenText.AppendLine($"Mode:        {autopilot.Mode}");
