@@ -42,12 +42,12 @@ namespace IngameScript
             TaskManager.AddTask(ScreensTask(), 0.5f);
             TaskManager.AddTask(Util.DisplayLogo("DDAS", Me.GetSurface(0)), 1.5f);
 
-            _PowerTask.IsPaused = !Config["Power"].ToBoolean(true);
-            _StopLightsTask.IsPaused = !Config["StopLights"].ToBoolean(true);
+            TaskManager.PauseTask(_PowerTask, !Config["Power"].ToBoolean(true));
+            TaskManager.PauseTask(_StopLightsTask, !Config["StopLights"].ToBoolean(true));
         }
 
-        readonly TaskManager.Task _PowerTask;
-        readonly TaskManager.Task _StopLightsTask;
+        readonly int _PowerTask;
+        readonly int _StopLightsTask;
 
         public void Main(string argument, UpdateType updateSource)
         {
