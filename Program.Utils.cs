@@ -189,6 +189,22 @@ namespace IngameScript
                 });
             }
 
+            public static int ScreenLines(IMyTextSurface screen, char symbol = 'S')
+            {
+                var symbolSize = screen.MeasureStringInPixels(new StringBuilder(symbol.ToString()), screen.Font, screen.FontSize);
+                var paddingY = NormalizeValue(screen.TextPadding, 0, 100, 0, screen.SurfaceSize.Y);
+                var screenY = screen.SurfaceSize.Y - paddingY;
+                return (int)Math.Floor(screenY / (symbolSize.Y + 2) * (512 / screen.TextureSize.Y)) + 1;
+            }
+
+            public static int ScreenColumns(IMyTextSurface screen, char symbol = 'S')
+            {
+                var symbolSize = screen.MeasureStringInPixels(new StringBuilder(symbol.ToString()), screen.Font, screen.FontSize);
+                var paddingX = NormalizeValue(screen.TextPadding, 0, 100, 0, screen.SurfaceSize.X);
+                var screenX = screen.SurfaceSize.X - paddingX;
+                return (int)Math.Floor(screenX / symbolSize.X * (512 / screen.TextureSize.X));
+            }
+
             public static double NormalizeValue(double value, double oldMin, double oldMax, double min, double max)
             {
                 double originalRange = oldMax - oldMin;
@@ -262,10 +278,10 @@ namespace IngameScript
                         progress.MoveNext();
                     }
                     ;
-                    var size = screen.MeasureStringInPixels(new StringBuilder(pbLabel), screen.Font, screen.FontSize);
+                    var screenLines = ScreenLines(screen);
                     screen.Alignment = TextAlignment.CENTER;
                     screen.ContentType = ContentType.TEXT_AND_IMAGE;
-                    screen.WriteText(string.Join("", Enumerable.Repeat("\n", (int)(screen.SurfaceSize.Y / size.Y) / 2)) + pbLabel + progress.Current);
+                    screen.WriteText(string.Join("", Enumerable.Repeat("\n", screenLines / 2) + pbLabel + progress.Current));
                     yield return null;
                 }
             }
@@ -319,7 +335,7 @@ namespace IngameScript
             }
             static readonly List<Task> tasks = new List<Task>();
 
-            public static Task AddTask(IEnumerable task, float intervalSeconds = 0)
+            public static int AddTask(IEnumerable task, float intervalSeconds = 0)
             {
                 Task item = new Task
                 {
@@ -332,10 +348,10 @@ namespace IngameScript
                     IsOnce = false
                 };
                 tasks.Add(item);
-                return item;
+                return tasks.Count - 1;
             }
 
-            public static Task AddTaskOnce(IEnumerable task, float intervalSeconds = 0)
+            public static int AddTaskOnce(IEnumerable task, float intervalSeconds = 0)
             {
                 Task item = new Task
                 {
@@ -348,7 +364,21 @@ namespace IngameScript
                     IsOnce = true
                 };
                 tasks.Add(item);
-                return item;
+                return tasks.Count - 1;
+            }
+
+            public static void PauseTask(int taskId, bool pause)
+            {
+                tasks[taskId] = new Task
+                {
+                    Ref = tasks[taskId].Ref,
+                    Enumerator = tasks[taskId].Enumerator,
+                    Interval = tasks[taskId].Interval,
+                    TimeSinceLastRun = tasks[taskId].TimeSinceLastRun,
+                    TaskResult = tasks[taskId].TaskResult,
+                    IsPaused = pause,
+                    IsOnce = tasks[taskId].IsOnce
+                };
             }
 
             public static TimeSpan CurrentTaskLastRun;
@@ -445,13 +475,14 @@ namespace IngameScript
                 {
                     screen.ContentType = ContentType.TEXT_AND_IMAGE;
                     screen.Alignment = TextAlignment.LEFT;
-                    var size = screen.SurfaceSize / screen.MeasureStringInPixels(new StringBuilder("="), screen.Font, screen.FontSize);
+                    var screenLines = Util.ScreenLines(screen);
+                    var screenColumns = Util.ScreenColumns(screen, '=');
 
                     var output = new StringBuilder();
                     output.AppendLine(_title);
-                    output.AppendLine(string.Join("", Enumerable.Repeat("=", (int)size.X)));
+                    output.AppendLine(string.Join("", Enumerable.Repeat("=", screenColumns)));
 
-                    var pageSize = (int)size.Y - 3;
+                    var pageSize = screenLines - 3;
                     var start = Math.Max(0, _selectedOption - pageSize / 2);
 
                     for (int i = start; i < Math.Min(Count, start + pageSize); i++)
@@ -460,13 +491,13 @@ namespace IngameScript
                         output.AppendLine($"{(i == _activeOption ? "-" : "")}{(i == _selectedOption ? "> " : "  ")}{this[i].Label}{(value != null ? $": {value}" : "")}");
                     }
 
-                    var remainingLines = (int)(size.Y - output.ToString().Split('\n').Length);
+                    var remainingLines = screenLines - output.ToString().Split('\n').Length;
                     for (int i = 0; i < remainingLines; i++)
                     {
                         output.AppendLine();
                     }
-                    size = screen.SurfaceSize / screen.MeasureStringInPixels(new StringBuilder("-"), screen.Font, screen.FontSize);
-                    output.AppendLine(string.Join("", Enumerable.Repeat("-", (int)size.X)));
+                    screenColumns = Util.ScreenColumns(screen, '-');
+                    output.AppendLine(string.Join("", Enumerable.Repeat("-", screenColumns)));
                     screen.WriteText(output.ToString());
                 }
             }
