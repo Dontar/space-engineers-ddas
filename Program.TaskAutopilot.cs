@@ -56,8 +56,7 @@ namespace IngameScript
             var wayPointsInfo = wayPoints.GetEnumerator();
             if (wayPointsCount > 1)
             {
-                var wayPointsDist = wayPoints.Select(w => new { Point = w, Distance = Vector3D.Distance(w.Coords, autopilot.GetPosition()) });
-                var closest = wayPointsDist.OrderBy(w => w.Distance).FirstOrDefault().Point;
+                var closest = wayPoints.OrderBy(w => Vector3D.Distance(w.Coords, autopilot.GetPosition())).FirstOrDefault().Coords;
                 wayPointsInfo = closest.Equals(wayPoints.Last()) ? wayPointsInfo : wayPoints.SkipWhile(w => !w.Equals(closest)).Skip(1).GetEnumerator();
             }
             wayPointsInfo.MoveNext();
@@ -127,7 +126,6 @@ namespace IngameScript
                     {
                         controller.HandBrake = true;
                         yield break;
-
                     }
                 }
 
@@ -146,11 +144,10 @@ namespace IngameScript
         {
             if (autopilot.GetValueBool("CollisionAvoidance") && sensor != null)
             {
-                var detectionBox = autopilot.CubeGrid.WorldAABB
-                    .Inflate(2)
-                    .Include(currentPosition + autopilot.WorldMatrix.Forward * 15)
-                    .Include(currentPosition + autopilot.WorldMatrix.Right * 5)
-                    .Include(currentPosition + autopilot.WorldMatrix.Left * 5);
+                var detectionBox = new BoundingBoxD(
+                    currentPosition + autopilot.WorldMatrix.Forward * 15 - new Vector3D(5, 5, 5),
+                    currentPosition + autopilot.WorldMatrix.Forward * 15 + new Vector3D(5, 5, 5)
+                );
 
                 var obstructions = new List<MyDetectedEntityInfo>();
                 sensor.DetectedEntities(obstructions);
