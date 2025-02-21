@@ -14,7 +14,6 @@ namespace IngameScript
             public double Roll;
             public double Pitch;
         }
-
         IEnumerable<GridOrientation> GridOrientationsTask()
         {
             var grav = Gravity;
@@ -90,7 +89,7 @@ namespace IngameScript
 
         }, "myIni", Memo.Refs(Me.CustomData));
 
-        double GridUnsprungMass => Memo.Of(() => Mass.PhysicalMass - MyWheels.Concat(SubWheels).Sum(w => w.Wheel.Top.Mass), "GridUnsprungWeight", Memo.Refs(Mass.PhysicalMass, AllWheels));
+        double GridUnsprungMass => Memo.Of(() => Mass.PhysicalMass - MyWheels.Concat(SubWheels).Sum(w => w.Wheel.Top?.Mass ?? 0), "GridUnsprungWeight", Memo.Refs(Mass.PhysicalMass, AllWheels));
 
         struct TControllers
         {
@@ -101,18 +100,19 @@ namespace IngameScript
         TControllers Controllers => Memo.Of(() =>
         {
             var controllers = Util.GetBlocks<IMyShipController>(b => Util.IsNotIgnored(b, Config["IgnoreTag"].ToString()) && b.IsSameConstructAs(Me));
-            var tag = Config["Tag"].ToString("{DDAS}");
             var myControllers = controllers.Where(c => c.CubeGrid == Me.CubeGrid && c.CanControlShip);
+            var subControllers = controllers.Where(c => c.CubeGrid != Me.CubeGrid);
+            var tag = Config["Tag"].ToString("{DDAS}");
+            
             var mainController = myControllers.FirstOrDefault(c => Util.IsTagged(c, tag) && c is IMyRemoteControl)
                 ?? myControllers.FirstOrDefault(c => c is IMyRemoteControl)
                 ?? myControllers.FirstOrDefault();
 
-            var subControllers = controllers.Where(c => c.CubeGrid != Me.CubeGrid);
             var subController = subControllers
                 .FirstOrDefault(c => Util.IsTagged(c, tag) && c is IMyRemoteControl)
                 ?? subControllers.FirstOrDefault();
 
-            return new TControllers { MainController = mainController, SubController = subController, Controllers = controllers.ToArray() };
+            return new TControllers { MainController = mainController, SubController = subController, Controllers = myControllers.ToArray() };
 
         }, "controllers", 100);
 
@@ -130,7 +130,6 @@ namespace IngameScript
             public float MaxOutput;
             public float CurrentOutput;
         }
-
         GridPower PowerProducersPower => Memo.Of(() =>
         {
             var blocks = Util.GetBlocks<IMyPowerProducer>(b =>

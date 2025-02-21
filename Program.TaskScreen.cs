@@ -35,10 +35,10 @@ namespace IngameScript
 
             while (true)
             {
-                var propulsion = TaskManager.TaskResults.OfType<CruiseTaskResult>().FirstOrDefault().Propulsion;
-                var power = TaskManager.TaskResults.OfType<PowerTaskResult>().FirstOrDefault();
-                var autopilot = TaskManager.TaskResults.OfType<AutopilotTaskResult>().FirstOrDefault();
-                var orientation = TaskManager.TaskResults.OfType<GridOrientation>().FirstOrDefault();
+                var propulsion = TaskManager.GetTaskResult<CruiseTaskResult>();
+                var power = TaskManager.GetTaskResult<PowerTaskResult>();
+                var autopilot = TaskManager.GetTaskResult<AutopilotTaskResult>();
+                var orientation = TaskManager.GetTaskResult<GridOrientation>();
 
                 screenText.Clear();
                 screenText.AppendLine($"Speed:       {Speed * 3.6:N2} km/h");
@@ -50,7 +50,7 @@ namespace IngameScript
                 screenText.AppendLine($"Flipping:    {Flipping}");
                 screenText.AppendLine($"AutoLevel:   {AutoLevel}");
                 screenText.AppendLine($"Power:       {power.Power:N2}");
-                screenText.AppendLine($"Propulsion:  {propulsion:N2}");
+                screenText.AppendLine($"Propulsion:  {propulsion.Propulsion:N2}");
                 screenText.AppendLine($"Steer:       {autopilot.Steer}");
                 screenText.AppendLine($"Waypoint:    {autopilot.Waypoint}");
                 screenText.AppendLine($"Waypoint #:  {autopilot.WaypointCount}");

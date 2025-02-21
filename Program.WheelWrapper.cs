@@ -97,6 +97,7 @@ namespace IngameScript
                 var subType = Wheel.BlockDefinition.SubtypeName;
                 var isSmallGrid = Wheel.CubeGrid.GridSizeEnum == MyCubeSize.Small;
                 var isBigWheel = subType.Contains("5x5");
+                
                 BlackMagicFactor = isSmallGrid
                     ? isBigWheel ? 18.5 : 15
                     : isBigWheel ? 55 : 52.5;
@@ -124,11 +125,13 @@ namespace IngameScript
                 }
 
                 var isBigWheel = Wheel.BlockDefinition.SubtypeName.Contains("5x5");
-                BlackMagicFactor = Wheel.CubeGrid.GridSizeEnum == MyCubeSize.Small
+                var isSmallGrid = Wheel.CubeGrid.GridSizeEnum == MyCubeSize.Small;
+                var subType = Wheel.BlockDefinition.SubtypeName;
+
+                BlackMagicFactor = isSmallGrid
                     ? isBigWheel ? 18.5 : 15
                     : isBigWheel ? 55 : 52.5;
-                var subType = Wheel.BlockDefinition.SubtypeName;
-                var isSmallGrid = Wheel.CubeGrid.GridSizeEnum == MyCubeSize.Small;
+
                 MaxPower =
                     subType.Contains("5x5") ? (isSmallGrid ? 0.3 : 1.5) :
                     subType.Contains("3x3") ? (isSmallGrid ? 0.2 : 1) :

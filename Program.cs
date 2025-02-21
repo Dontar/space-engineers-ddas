@@ -51,16 +51,16 @@ namespace IngameScript
 
         public void Main(string argument, UpdateType updateSource)
         {
-            if (!string.IsNullOrEmpty(argument))
-                ProcessCommands(argument);
-
-            if (!updateSource.HasFlag(UpdateType.Update10)) return;
-
             if (Controllers.MainController == null)
             {
                 Util.Echo("No controller found");
                 return;
             }
+
+            if (!string.IsNullOrEmpty(argument))
+                ProcessCommands(argument);
+
+            if (!updateSource.HasFlag(UpdateType.Update10)) return;
 
             TaskManager.RunTasks(Runtime.TimeSinceLastRun);
         }
@@ -132,12 +132,11 @@ namespace IngameScript
                 var upDown = UpDown;
                 var forwardBackward = ForwardBackward;
 
-                var taskResults = TaskManager.TaskResults;
-                var updateStrength = taskResults.OfType<StrengthTaskResult>().FirstOrDefault();
-                var propulsion = taskResults.OfType<CruiseTaskResult>().FirstOrDefault().Propulsion;
-                var power = taskResults.OfType<PowerTaskResult>().FirstOrDefault().Power;
-                var autopilot = taskResults.OfType<AutopilotTaskResult>().FirstOrDefault();
-                var orientation = taskResults.OfType<GridOrientation>().FirstOrDefault();
+                var updateStrength = TaskManager.GetTaskResult<StrengthTaskResult>();
+                var propulsion = TaskManager.GetTaskResult<CruiseTaskResult>().Propulsion;
+                var power = TaskManager.GetTaskResult<PowerTaskResult>().Power;
+                var autopilot = TaskManager.GetTaskResult<AutopilotTaskResult>();
+                var orientation = TaskManager.GetTaskResult<GridOrientation>();
 
                 // var gridRoll = orientation.Roll;
                 var roll = orientation.Roll + (rollCompensating ? (orientation.Roll > 0 ? 6 : -6) : 0);

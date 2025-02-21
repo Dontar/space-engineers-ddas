@@ -326,7 +326,7 @@ namespace IngameScript
 
         static class TaskManager
         {
-            public struct Task
+            class Task
             {
                 public IEnumerator Enumerator;
                 public IEnumerable Ref;
@@ -340,7 +340,7 @@ namespace IngameScript
 
             public static int AddTask(IEnumerable task, float intervalSeconds = 0)
             {
-                Task item = new Task
+                tasks.Add(new Task
                 {
                     Ref = task,
                     Enumerator = task.GetEnumerator(),
@@ -349,14 +349,13 @@ namespace IngameScript
                     TaskResult = null,
                     IsPaused = false,
                     IsOnce = false
-                };
-                tasks.Add(item);
+                });
                 return tasks.Count - 1;
             }
 
             public static int AddTaskOnce(IEnumerable task, float intervalSeconds = 0)
             {
-                Task item = new Task
+                tasks.Add(new Task
                 {
                     Ref = task,
                     Enumerator = task.GetEnumerator(),
@@ -365,27 +364,18 @@ namespace IngameScript
                     TaskResult = null,
                     IsPaused = false,
                     IsOnce = true
-                };
-                tasks.Add(item);
+                });
                 return tasks.Count - 1;
             }
 
             public static void PauseTask(int taskId, bool pause)
             {
-                tasks[taskId] = new Task
-                {
-                    Ref = tasks[taskId].Ref,
-                    Enumerator = tasks[taskId].Enumerator,
-                    Interval = tasks[taskId].Interval,
-                    TimeSinceLastRun = tasks[taskId].TimeSinceLastRun,
-                    TaskResult = tasks[taskId].TaskResult,
-                    IsPaused = pause,
-                    IsOnce = tasks[taskId].IsOnce
-                };
+                var task = tasks[taskId];
+                task.IsPaused = pause;
             }
 
+            public static T GetTaskResult<T>() => tasks.Select(t => t.TaskResult).OfType<T>().FirstOrDefault();
             public static TimeSpan CurrentTaskLastRun;
-            public static IEnumerable<object> TaskResults => tasks.Select(t => t.TaskResult);
             public static void RunTasks(TimeSpan TimeSinceLastRun)
             {
                 for (int i = tasks.Count - 1; i >= 0; i--)
@@ -418,7 +408,6 @@ namespace IngameScript
                     }
                     task.TimeSinceLastRun = TimeSpan.Zero;
                     task.TaskResult = task.Enumerator.Current;
-                    tasks[i] = task;
                 }
             }
         }
