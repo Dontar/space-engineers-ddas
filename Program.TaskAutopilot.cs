@@ -44,12 +44,12 @@ namespace IngameScript
 
         IEnumerable AutopilotTask()
         {
-            var controller = gridProps.MainController is IMyRemoteControl ? gridProps.MainController : null;
-            var autopilot = Autopilot.FromBlock(Memo.Of(() => Util.GetBlocks<IMyFlightMovementBlock>().FirstOrDefault() as IMyTerminalBlock, "AI", Memo.Refs(gridProps.Mass.BaseMass)) ?? controller);
+            var controller = Controllers.MainController is IMyRemoteControl ? Controllers.MainController : null;
+            var autopilot = Autopilot.FromBlock(Memo.Of(() => Util.GetBlocks<IMyFlightMovementBlock>().FirstOrDefault() as IMyTerminalBlock, "AI", Memo.Refs(Mass.BaseMass)) ?? controller);
 
             if (autopilot == null || !autopilot.IsAutoPilotEnabled) yield break;
             var ini = Config;
-            var sensor = Memo.Of(() => Util.GetBlocks<IMySensorBlock>(b => Util.IsNotIgnored(b, ini["IgnoreTag"].ToString())).FirstOrDefault(), "sensor", Memo.Refs(gridProps.Mass.BaseMass));
+            var sensor = Memo.Of(() => Util.GetBlocks<IMySensorBlock>(b => Util.IsNotIgnored(b, ini["IgnoreTag"].ToString())).FirstOrDefault(), "sensor", Memo.Refs(Mass.BaseMass));
 
             var wayPoints = autopilot.Waypoints;
             int wayPointsCount = wayPoints.Count();
@@ -82,7 +82,7 @@ namespace IngameScript
                     CruiseSpeed = autopilot.SpeedLimit * 3.6f;
 
 
-                if (gridProps.UpDown > 0)
+                if (UpDown > 0)
                 {
                     autopilot.SetAutoPilotEnabled(false);
                     yield break;
@@ -232,7 +232,7 @@ namespace IngameScript
         IEnumerable RecordPathTask()
         {
             if (Recording) yield break;
-            var autopilot = gridProps.MainController;
+            var autopilot = Controllers.MainController;
             var minDistance = autopilot.CubeGrid.WorldVolume.Radius * 2;
             var wayPoints = new List<MyWaypointInfo>();
             var counter = 0;
@@ -252,7 +252,7 @@ namespace IngameScript
 
         IEnumerable ImportPathTask()
         {
-            var autopilot = gridProps.MainController as IMyRemoteControl;
+            var autopilot = Controllers.MainController as IMyRemoteControl;
             var wayPoints = new List<MyWaypointInfo>();
             MyWaypointInfo.FindAll(autopilot.CustomData, wayPoints);
             autopilot.ClearWaypoints();
@@ -262,7 +262,7 @@ namespace IngameScript
 
         IEnumerable ReversePathTask()
         {
-            var autopilot = gridProps.MainController as IMyRemoteControl;
+            var autopilot = Controllers.MainController as IMyRemoteControl;
             var wayPoints = new List<MyWaypointInfo>();
             autopilot.GetWaypointInfo(wayPoints);
             autopilot.ClearWaypoints();
@@ -273,7 +273,7 @@ namespace IngameScript
 
         IEnumerable ExportPathTask()
         {
-            var autopilot = gridProps.MainController as IMyRemoteControl;
+            var autopilot = Controllers.MainController as IMyRemoteControl;
             var wayPoints = new List<MyWaypointInfo>();
             autopilot.GetWaypointInfo(wayPoints);
             autopilot.CustomData = string.Join("\n", wayPoints);

@@ -73,21 +73,18 @@ namespace IngameScript
 
             while (myWheels.Equals(MyWheels) || subWheels.Equals(SubWheels) || config.Equals(Config))
             {
-
                 Action<WheelWrapper, double> action = (w, GridUnsprungWeight) =>
                 {
                     w.TargetStrength = Memo.Of(() =>
-                        MathHelper.Clamp(Math.Sqrt(w.WeightRatio / normalizeFactor * GridUnsprungWeight) / w.BlackMagicFactor, 5, 100) * strengthFactor
-                    , $"TargetStrength-{w.Wheel.EntityId}", Memo.Refs(GridUnsprungWeight));
-                    w.Wheel.Strength += (float)((w.TargetStrength - w.Wheel.Strength) * 0.5);
+                        MathHelper.Clamp(Math.Sqrt(w.WeightRatio / normalizeFactor * GridUnsprungWeight) / w.BlackMagicFactor, 5, 100) * strengthFactor,
+                    $"TargetStrength-{w.Wheel.EntityId}", Memo.Refs(GridUnsprungWeight));
                 };
 
                 Action<WheelWrapper, double> subAction = (w, GridUnsprungWeight) =>
                 {
                     w.TargetStrength = Memo.Of(() =>
-                        MathHelper.Clamp(Math.Sqrt(w.WeightRatio / subNormalizeFactor * GridUnsprungWeight) / w.BlackMagicFactor, 5, 100) * strengthFactor
-                    , $"TargetStrength-{w.Wheel.EntityId}", Memo.Refs(GridUnsprungWeight));
-                    w.Wheel.Strength += (float)((w.TargetStrength - w.Wheel.Strength) * 0.5);
+                        MathHelper.Clamp(Math.Sqrt(w.WeightRatio / subNormalizeFactor * GridUnsprungWeight) / w.BlackMagicFactor, 5, 100) * strengthFactor,
+                    $"TargetStrength-{w.Wheel.EntityId}", Memo.Refs(GridUnsprungWeight));
                 };
 
                 yield return new StrengthTaskResult

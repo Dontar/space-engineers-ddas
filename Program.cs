@@ -31,7 +31,6 @@ namespace IngameScript
         {
             Runtime.UpdateFrequency = UpdateFrequency.Update10;
             Util.Init(this);
-            gridProps = new GridProps(this);
             TaskManager.AddTask(Util.StatusMonitor(this));
             TaskManager.AddTask(MainTask());
             TaskManager.AddTask(AutopilotTask());
@@ -40,6 +39,7 @@ namespace IngameScript
             TaskManager.AddTask(SuspensionStrengthTask(), 5f);
             TaskManager.AddTask(AutoLevelTask());
             TaskManager.AddTask(ScreensTask(), 0.5f);
+            TaskManager.AddTask(GridOrientationsTask());
             TaskManager.AddTask(Util.DisplayLogo("DDAS", Me.GetSurface(0)), 1.5f);
 
             TaskManager.PauseTask(_PowerTask, !Config["Power"].ToBoolean(true));
@@ -52,14 +52,11 @@ namespace IngameScript
         public void Main(string argument, UpdateType updateSource)
         {
             if (!string.IsNullOrEmpty(argument))
-            {
                 ProcessCommands(argument);
-            }
 
             if (!updateSource.HasFlag(UpdateType.Update10)) return;
 
-            gridProps.UpdateGridProps(Config, Controllers);
-            if (gridProps.MainController == null)
+            if (Controllers.MainController == null)
             {
                 Util.Echo("No controller found");
                 return;
@@ -70,12 +67,8 @@ namespace IngameScript
 
         private void ProcessCommands(string argument)
         {
-
             switch (argument.ToLower())
             {
-                // case "info":
-                //     Echo($"{Runtime.UpdateFrequency}\n{updateSource}");
-                //     break;
                 case "low":
                 case "high":
                 case "toggle_hight":
@@ -133,30 +126,28 @@ namespace IngameScript
 
             while (ini.Equals(Config))
             {
-                var gridProps = this.gridProps;
-                var gravityMagnitude = gridProps.GravityMagnitude;
-                var speed = gridProps.Speed;
-                var leftRight = gridProps.LeftRight;
-                var upDown = gridProps.UpDown;
-                var forwardBackward = gridProps.ForwardBackward;
-                var gridRoll = gridProps.Roll;
+                var gravityMagnitude = GravityMagnitude;
+                var speed = Speed;
+                var leftRight = LeftRight;
+                var upDown = UpDown;
+                var forwardBackward = ForwardBackward;
 
                 var taskResults = TaskManager.TaskResults;
                 var updateStrength = taskResults.OfType<StrengthTaskResult>().FirstOrDefault();
                 var propulsion = taskResults.OfType<CruiseTaskResult>().FirstOrDefault().Propulsion;
                 var power = taskResults.OfType<PowerTaskResult>().FirstOrDefault().Power;
                 var autopilot = taskResults.OfType<AutopilotTaskResult>().FirstOrDefault();
+                var orientation = taskResults.OfType<GridOrientation>().FirstOrDefault();
 
-                var roll = gridRoll + (rollCompensating ? (gridRoll > 0 ? 6 : -6) : 0);
+                // var gridRoll = orientation.Roll;
+                var roll = orientation.Roll + (rollCompensating ? (orientation.Roll > 0 ? 6 : -6) : 0);
 
                 bool isTurning = leftRight != 0 || !Util.IsBetween(autopilot.Steer, -0.4, 0.4);
                 bool isTurningLeft = leftRight < 0 || autopilot.Steer > 0;
                 var isHalfBreaking = upDown > 0 && forwardBackward < 0;
 
-                if (gridProps.SubController != null)
-                {
-                    gridProps.SubController.HandBrake = gridProps.Controller.HandBrake;
-                }
+                if (Controllers.SubController != null)
+                    Controllers.SubController.HandBrake = Controller.HandBrake;
 
                 foreach (var w in MyWheels)
                 {
@@ -166,7 +157,10 @@ namespace IngameScript
 
                     // update strength
                     if (strengthFlag)
+                    {
                         updateStrength.Action?.Invoke(w, GridUnsprungMass * gravityMagnitude);
+                        wheel.Strength += (float)((w.TargetStrength - wheel.Strength) * 0.5);
+                    }
 
                     if (frictionFlag)
                         if (speed > FrictionMinSpeed && isTurning)
@@ -181,7 +175,7 @@ namespace IngameScript
                     // update height
                     if (suspensionHightFlag && ((roll > suspensionHightRoll && w.IsLeft) || (roll < -suspensionHightRoll && !w.IsLeft)))
                     {
-                        var value = (float)Util.NormalizeClamp(Math.Abs(gridRoll), 0, 25, high, low);
+                        var value = (float)Util.NormalizeClamp(Math.Abs(orientation.Roll), 0, 25, high, low);
                         wheel.Height += (value - wheel.Height) * 0.5f;
                         rollCompensating = true;
                     }
@@ -204,9 +198,7 @@ namespace IngameScript
                     }
 
                     if (addWheelsFlag && !wheel.IsAttached)
-                    {
                         wheel.ApplyAction("Add Top Part");
-                    }
 
                 }
                 if (SubWheels.Count() > 0)
@@ -224,7 +216,10 @@ namespace IngameScript
                         wheel.Power = power;
 
                     if (subWheelsStrengthFlag)
+                    {
                         updateStrength.SubAction?.Invoke(w, GridUnsprungMass * gravityMagnitude);
+                        wheel.Strength += (float)((w.TargetStrength - wheel.Strength) * 0.5);
+                    }
 
                     if (frictionFlag)
                         if (speed > FrictionMinSpeed && isTurning)
@@ -235,16 +230,14 @@ namespace IngameScript
 
                     if (suspensionHightFlag && ((roll > suspensionHightRoll && w.IsLeft) || (roll < -suspensionHightRoll && !w.IsLeft)))
                     {
-                        var value = (float)Util.NormalizeClamp(Math.Abs(gridRoll), 0, 25, high, low);
+                        var value = (float)Util.NormalizeClamp(Math.Abs(orientation.Roll), 0, 25, high, low);
                         wheel.Height += (value - wheel.Height) * 0.5f;
                     }
                     else
                         wheel.Height += (w.TargetHeight - wheel.Height) * 0.3f;
 
                     if (addWheelsFlag && !wheel.IsAttached)
-                    {
                         wheel.ApplyAction("Add Top Part");
-                    }
 
                 }
                 yield return null;
@@ -253,7 +246,7 @@ namespace IngameScript
 
         IEnumerable<IMyLightingBlock> Lights => Memo.Of(() =>
         {
-            var orientation = gridProps.MainController.Orientation;
+            var orientation = Controllers.MainController.Orientation;
             var tag = Config["Tag"].ToString("{DDAS}");
             var ignoreTag = Config["IgnoreTag"].ToString("{Ignore}");
 
@@ -265,7 +258,7 @@ namespace IngameScript
                     )
                 )
             );
-        }, "stopLights", Memo.Refs(gridProps.Mass.BaseMass, Config));
+        }, "stopLights", Memo.Refs(Mass.BaseMass, Config));
 
         IEnumerable StopLightsTask()
         {
@@ -274,8 +267,8 @@ namespace IngameScript
 
             while (lights.Equals(Lights) && ini.Equals(Config))
             {
-                float upDown = gridProps.UpDown;
-                float forwardBackward = gridProps.ForwardBackward;
+                float upDown = UpDown;
+                float forwardBackward = ForwardBackward;
                 foreach (var l in lights)
                 {
                     l.Radius = 1f;

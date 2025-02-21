@@ -31,18 +31,19 @@ namespace IngameScript
         IEnumerable ScreensTask()
         {
             var screenText = new StringBuilder();
-            GridProps gridProps = this.gridProps;
+            // GridProps gridProps = this.gridProps;
 
             while (true)
             {
                 var propulsion = TaskManager.TaskResults.OfType<CruiseTaskResult>().FirstOrDefault().Propulsion;
                 var power = TaskManager.TaskResults.OfType<PowerTaskResult>().FirstOrDefault();
                 var autopilot = TaskManager.TaskResults.OfType<AutopilotTaskResult>().FirstOrDefault();
+                var orientation = TaskManager.TaskResults.OfType<GridOrientation>().FirstOrDefault();
 
                 screenText.Clear();
-                screenText.AppendLine($"Speed:       {gridProps.Speed * 3.6:N2} km/h");
-                screenText.AppendLine($"Roll:        {gridProps.Roll:N2} Degrees");
-                screenText.AppendLine($"Pitch:       {gridProps.Pitch:N2} Degrees");
+                screenText.AppendLine($"Speed:       {Speed * 3.6:N2} km/h");
+                screenText.AppendLine($"Roll:        {orientation.Roll:N2} Degrees");
+                screenText.AppendLine($"Pitch:       {orientation.Pitch:N2} Degrees");
                 screenText.AppendLine($"CruiseSpeed: {CruiseSpeed:N2} km/h");
                 screenText.AppendLine($"Cruise:      {Cruise}");
                 screenText.AppendLine($"Recording:   {Recording}");

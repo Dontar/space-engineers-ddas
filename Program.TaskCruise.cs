@@ -39,22 +39,22 @@ namespace IngameScript
         {
             if (Cruise) yield break;
 
-            var gridProps = this.gridProps;
+            // var gridProps = this.gridProps;
             var ini = Config;
             var pid = new PID(ini["PIDCruise"].ToString("0.5/0/0/0"));
 
             Cruise = true;
-            CruiseSpeed = cruiseSpeed > -1 ? cruiseSpeed : (float)(gridProps.Speed * 3.6);
-            cruiseWhile = cruiseWhile ?? (() => gridProps.UpDown == 0 && !gridProps.MainController.HandBrake);
+            CruiseSpeed = cruiseSpeed > -1 ? cruiseSpeed : (float)(Speed * 3.6);
+            cruiseWhile = cruiseWhile ?? (() => UpDown == 0 && !Controllers.MainController.HandBrake);
 
             while (ini.Equals(Config) && cruiseWhile())
             {
                 if (cruiseSpeed == -1)
                 {
-                    CruiseSpeed = MathHelper.Clamp(CruiseSpeed + (float)gridProps.ForwardBackward * -5f, 5, MyWheels.First().SpeedLimit);
+                    CruiseSpeed = MathHelper.Clamp(CruiseSpeed + (float)ForwardBackward * -5f, 5, MyWheels.First().SpeedLimit);
                 }
                 var dt = TaskManager.CurrentTaskLastRun.TotalSeconds;
-                var currentSpeedKmh = gridProps.Speed * 3.6;
+                var currentSpeedKmh = Speed * 3.6;
                 var targetSpeed = CruiseSpeed;
                 var error = targetSpeed - currentSpeedKmh;
                 var propulsion = MathHelper.Clamp(pid.Signal(error, dt), -1, 1);

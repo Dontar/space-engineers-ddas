@@ -12,15 +12,15 @@ namespace IngameScript
 {
     partial class Program
     {
-        IEnumerable<IMyMotorSuspension> AllWheels => Memo.Of(() => Util.GetBlocks<IMyMotorSuspension>(b => Util.IsNotIgnored(b, Config["IgnoreTag"].ToString()) && b.Enabled && b.IsSameConstructAs(Me)), "wheels", Memo.Refs(gridProps.Mass.BaseMass));
+        IEnumerable<IMyMotorSuspension> AllWheels => Memo.Of(() => Util.GetBlocks<IMyMotorSuspension>(b => Util.IsNotIgnored(b, Config["IgnoreTag"].ToString()) && b.Enabled && b.IsSameConstructAs(Me)), "wheels", Memo.Refs(Mass.BaseMass));
 
         IEnumerable<WheelWrapper> MyWheels => Memo.Of(() =>
         {
-            var T = MatrixD.Transpose(gridProps.MainController.WorldMatrix);
+            var T = MatrixD.Transpose(Controllers.MainController.WorldMatrix);
             var config = Config;
             var wh = AllWheels
                 .Where(w => w.CubeGrid == Me.CubeGrid)
-                .Select(w => new WheelWrapper(w, gridProps.MainController, config, T));
+                .Select(w => new WheelWrapper(w, Controllers.MainController, config, T));
             var maxSteerAngle = config["MaxSteeringAngle"].ToDouble(25);
             var distance = wh.Max(w => Math.Abs(w.ToFocalPoint.Z));
             var hight = wh.Min(w => w.Wheel.Height);
@@ -38,10 +38,10 @@ namespace IngameScript
 
         IEnumerable<WheelWrapper> SubWheels => Memo.Of(() =>
         {
-            var T = MatrixD.Transpose(gridProps.MainController.WorldMatrix);
+            var T = MatrixD.Transpose(Controllers.MainController.WorldMatrix);
             var sw = AllWheels
                 .Where(w => w.CubeGrid != Me.CubeGrid)
-                .Select(w => new WheelWrapper(w, gridProps, T));
+                .Select(w => new WheelWrapper(w, Controllers, T));
             if (sw.Count() > 0)
             {
                 var hight = sw.Min(w => w.Wheel.Height);
@@ -110,7 +110,7 @@ namespace IngameScript
                     subType.Contains("1x1") ? (isSmallGrid ? 0.1 : 0.5) : 0;
             }
 
-            public WheelWrapper(IMyMotorSuspension wheel, GridProps props, MatrixD T)
+            public WheelWrapper(IMyMotorSuspension wheel, TControllers props, MatrixD T)
             {
                 Wheel = wheel;
 

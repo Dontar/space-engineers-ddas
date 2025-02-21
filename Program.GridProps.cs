@@ -9,59 +9,20 @@ namespace IngameScript
 {
     partial class Program
     {
-        class GridProps
+        struct GridOrientation
         {
-            private Program _program;
-            public double Roll { get; private set; }
-            public double Pitch { get; private set; }
-            public MyShipMass Mass => MainController.CalculateShipMass();
-            public Vector3D Gravity => MainController.GetTotalGravity();
-            public double GravityMagnitude => Gravity.Length();
-            public double Speed => MainController.GetShipSpeed();
-            public float ForwardBackward => Controller?.MoveIndicator.Z ?? 0;
-            public float LeftRight => Controller?.MoveIndicator.X ?? 0;
-            public float UpDown => Controller?.MoveIndicator.Y ?? 0;
-            public IMyShipController Controller { get; private set; }
-            public IMyShipController MainController { get; private set; }
-            public IMyShipController SubController { get; private set; }
-            public void UpdateGridProps(ConfigDictionary config, IEnumerable<IMyShipController> controllers)
-            {
-                var updateControllers = Memo.Of(() =>
-                {
-                    var tag = config["Tag"].ToString("{DDAS}");
-                    var myControllers = controllers.Where(c => c.CubeGrid == _program.Me.CubeGrid && c.CanControlShip);
-                    var mainController = myControllers.FirstOrDefault(c => Util.IsTagged(c, tag) && c is IMyRemoteControl)
-                        ?? myControllers.FirstOrDefault(c => c is IMyRemoteControl)
-                        ?? myControllers.FirstOrDefault();
+            public double Roll;
+            public double Pitch;
+        }
 
-                    var subControllers = controllers.Where(c => c.CubeGrid != _program.Me.CubeGrid);
-                    var subController = subControllers
-                        .FirstOrDefault(c => Util.IsTagged(c, tag) && c is IMyRemoteControl)
-                        ?? subControllers.FirstOrDefault();
+        IEnumerable<GridOrientation> GridOrientationsTask()
+        {
+            var grav = Gravity;
+            var matrix = Controllers.MainController.WorldMatrix;
+            var roll = Math.Atan2(grav.Dot(matrix.Right), grav.Dot(matrix.Down));
+            var pitch = Math.Atan2(grav.Dot(matrix.Backward), grav.Dot(matrix.Down));
 
-                    return new { mainController, subController };
-
-                }, "updateControllers", Memo.Refs(config, controllers));
-
-                MainController = updateControllers.mainController;
-                Controller = controllers.FirstOrDefault(c => c.IsUnderControl) ?? MainController;
-                SubController = updateControllers.subController;
-
-                if (MainController == null) return;
-
-                var grav = MainController.GetTotalGravity();
-                var matrix = MainController.WorldMatrix;
-                var roll = Math.Atan2(grav.Dot(matrix.Right), grav.Dot(matrix.Down));
-                var pitch = Math.Atan2(grav.Dot(matrix.Backward), grav.Dot(matrix.Down));
-
-                Roll = MathHelper.ToDegrees(roll);
-                Pitch = MathHelper.ToDegrees(pitch);
-            }
-            public GridProps(Program program)
-            {
-                _program = program;
-                _program.AutoLevel = _program.Config["AutoLevel"].ToBoolean(true);
-            }
+            yield return new GridOrientation { Roll = MathHelper.ToDegrees(roll), Pitch = MathHelper.ToDegrees(pitch) };
         }
 
         class ConfigDictionary : Dictionary<string, MyIniValue>
@@ -129,11 +90,40 @@ namespace IngameScript
 
         }, "myIni", Memo.Refs(Me.CustomData));
 
-        readonly GridProps gridProps;
+        double GridUnsprungMass => Memo.Of(() => Mass.PhysicalMass - MyWheels.Concat(SubWheels).Sum(w => w.Wheel.Top.Mass), "GridUnsprungWeight", Memo.Refs(Mass.PhysicalMass, AllWheels));
 
-        double GridUnsprungMass => Memo.Of(() => gridProps.Mass.PhysicalMass - MyWheels.Concat(SubWheels).Sum(w => w.Wheel.Top.Mass), "GridUnsprungWeight", Memo.Refs(gridProps.Mass.PhysicalMass, AllWheels));
+        struct TControllers
+        {
+            public IMyShipController MainController;
+            public IMyShipController SubController;
+            public IMyShipController[] Controllers;
+        }
+        TControllers Controllers => Memo.Of(() =>
+        {
+            var controllers = Util.GetBlocks<IMyShipController>(b => Util.IsNotIgnored(b, Config["IgnoreTag"].ToString()) && b.IsSameConstructAs(Me));
+            var tag = Config["Tag"].ToString("{DDAS}");
+            var myControllers = controllers.Where(c => c.CubeGrid == Me.CubeGrid && c.CanControlShip);
+            var mainController = myControllers.FirstOrDefault(c => Util.IsTagged(c, tag) && c is IMyRemoteControl)
+                ?? myControllers.FirstOrDefault(c => c is IMyRemoteControl)
+                ?? myControllers.FirstOrDefault();
 
-        IEnumerable<IMyShipController> Controllers => Memo.Of(() => Util.GetBlocks<IMyShipController>(b => Util.IsNotIgnored(b, Config["IgnoreTag"].ToString()) && b.IsSameConstructAs(Me)), "controllers", 100);
+            var subControllers = controllers.Where(c => c.CubeGrid != Me.CubeGrid);
+            var subController = subControllers
+                .FirstOrDefault(c => Util.IsTagged(c, tag) && c is IMyRemoteControl)
+                ?? subControllers.FirstOrDefault();
+
+            return new TControllers { MainController = mainController, SubController = subController, Controllers = controllers.ToArray() };
+
+        }, "controllers", 100);
+
+        IMyShipController Controller => Controllers.Controllers.FirstOrDefault(c => c.IsUnderControl) ?? Controllers.MainController;
+        public float ForwardBackward => Controller?.MoveIndicator.Z ?? 0;
+        public float LeftRight => Controller?.MoveIndicator.X ?? 0;
+        public float UpDown => Controller?.MoveIndicator.Y ?? 0;
+        public MyShipMass Mass => Controllers.MainController.CalculateShipMass();
+        public Vector3D Gravity => Controllers.MainController.GetTotalGravity();
+        public double GravityMagnitude => Gravity.Length();
+        public double Speed => Controllers.MainController.GetShipSpeed();
 
         struct GridPower
         {

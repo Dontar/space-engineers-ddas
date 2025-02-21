@@ -30,7 +30,7 @@ namespace IngameScript
         public bool Flipping { get; set; } = false;
         public bool AutoLevel { get; set; } = false;
 
-        IEnumerable<IMyGyro> Gyros => Memo.Of(() => Util.GetBlocks<IMyGyro>(b => Util.IsNotIgnored(b, Config["IgnoreTag"].ToString()) && b.Enabled), "gyros", Memo.Refs(gridProps.Mass.BaseMass, Config));
+        IEnumerable<IMyGyro> Gyros => Memo.Of(() => Util.GetBlocks<IMyGyro>(b => Util.IsNotIgnored(b, Config["IgnoreTag"].ToString()) && b.Enabled), "gyros", Memo.Refs(Mass.BaseMass, Config));
 
         IEnumerable FlipGridTask()
         {
@@ -38,21 +38,22 @@ namespace IngameScript
             var gyroList = Gyros;
             if (gyroList.Count() == 0) yield break;
 
-            var gridProps = this.gridProps;
             var ini = Config;
+            var orientation = TaskManager.TaskResults.OfType<GridOrientation>().FirstOrDefault();
             var pidRoll = new PID(ini["PIDFlip"].ToString("8/0/0/0"));
 
             foreach (var g in gyroList)
             {
                 g.GyroOverride = true; g.GyroPower = 1;
-
             }
+
             Flipping = true;
-            while (ini.Equals(Config) && !(Util.IsBetween(gridProps.Roll, -25, 25) || gridProps.UpDown < 0))
+            while (ini.Equals(Config) && !(Util.IsBetween(orientation.Roll, -25, 25) || UpDown < 0))
             {
+                orientation = TaskManager.TaskResults.OfType<GridOrientation>().FirstOrDefault();
                 var dt = TaskManager.CurrentTaskLastRun.TotalSeconds;
-                var rollSpeed = Util.NormalizeClamp(pidRoll.Signal(gridProps.Roll, dt), -180, 180, -30, 30);
-                Util.ApplyGyroOverride(0, 0, -rollSpeed, gyroList, gridProps.MainController.WorldMatrix);
+                var rollSpeed = Util.NormalizeClamp(pidRoll.Signal(orientation.Roll, dt), -180, 180, -30, 30);
+                Util.ApplyGyroOverride(0, 0, -rollSpeed, gyroList, Controllers.MainController.WorldMatrix);
                 yield return null;
             }
             foreach (var g in gyroList)
@@ -68,12 +69,12 @@ namespace IngameScript
             var gyroList = Gyros;
             if (gyroList.Count() == 0) yield break;
 
-            var gridProps = this.gridProps;
+            var mainController = Controllers.MainController;
             var ini = Config;
             var pidRoll = new PID(ini["PIDRoll"].ToString("6/0/0/0"));
             var pidPitch = new PID(ini["PIDPitch"].ToString("3/0/0/0"));
             var gyroPower = float.Parse(ini["AutoLevelPower"].ToString("30"));
-            var isFastEnough = gridProps.Speed > 5;
+            var isFastEnough = Speed > 5;
             if (isFastEnough)
             {
                 foreach (var g in gyroList)
@@ -83,11 +84,12 @@ namespace IngameScript
             }
             while (ini.Equals(Config) && AutoLevel && isFastEnough)
             {
-                isFastEnough = gridProps.Speed > 5;
+                var orientation = TaskManager.TaskResults.OfType<GridOrientation>().FirstOrDefault();
+                isFastEnough = Speed > 5;
                 var dt = TaskManager.CurrentTaskLastRun.TotalSeconds;
-                var rollSpeed = Util.NormalizeClamp(pidRoll.Signal(gridProps.Roll, dt), -180, 180, -30, 30);
-                var pitchSpeed = Util.NormalizeClamp(pidPitch.Signal(gridProps.Pitch - 5, dt), -180, 180, -30, 30);
-                Util.ApplyGyroOverride(pitchSpeed, 0, -rollSpeed, gyroList, gridProps.MainController.WorldMatrix);
+                var rollSpeed = Util.NormalizeClamp(pidRoll.Signal(orientation.Roll, dt), -180, 180, -30, 30);
+                var pitchSpeed = Util.NormalizeClamp(pidPitch.Signal(orientation.Pitch - 5, dt), -180, 180, -30, 30);
+                Util.ApplyGyroOverride(pitchSpeed, 0, -rollSpeed, gyroList, mainController.WorldMatrix);
                 yield return null;
             }
             foreach (var g in gyroList)
