@@ -269,6 +269,9 @@ namespace IngameScript
             {
                 var progress = (new char[] { '/', '-', '\\', '|' }).GetEnumerator();
                 var pbLabel = $"{logo} - ";
+                var screenLines = ScreenLines(screen);
+                screen.Alignment = TextAlignment.CENTER;
+                screen.ContentType = ContentType.TEXT_AND_IMAGE;
 
                 while (true)
                 {
@@ -277,12 +280,12 @@ namespace IngameScript
                         progress.Reset();
                         progress.MoveNext();
                     }
-                    ;
-                    var screenLines = ScreenLines(screen);
-                    screen.Alignment = TextAlignment.CENTER;
-                    screen.ContentType = ContentType.TEXT_AND_IMAGE;
-                    screen.WriteText(string.Join("", Enumerable.Repeat("\n", screenLines / 2) + pbLabel + progress.Current));
-                    yield return null;
+
+                    yield return screen.WriteText(
+                        string.Join("", Enumerable.Repeat("\n", screenLines / 2))
+                        + pbLabel
+                        + progress.Current
+                    );
                 }
             }
             static readonly StringBuilder StatusText = new StringBuilder();
