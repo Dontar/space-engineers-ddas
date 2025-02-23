@@ -39,11 +39,10 @@ namespace IngameScript
         {
             // var gridProps = this.gridProps;
             var ini = Config;
-            var wheels = MyWheels;
             var PID = new PID(ini["PIDPower"].ToString("10/0/0/0"));
-            var wheelPower = wheels.Concat(SubWheels).Sum(w => w.MaxPower);
+            var wheelPower = MyWheels.Concat(SubWheels).Sum(w => w.MaxPower);
             float passivePower = 0;
-            while (ini.Equals(Config) && wheels.Equals(MyWheels))
+            while (ini.Equals(Config))
             {
                 var powerProducersPower = PowerProducersPower;
                 double speed = Speed;
@@ -55,7 +54,7 @@ namespace IngameScript
                 var powerMaxPercent = MathHelper.Clamp((vehicleMaxPower - passivePower) / wheelPower, 0, 1);
                 var dt = TaskManager.CurrentTaskLastRun.TotalSeconds;
                 var currentSpeedKmh = speed * 3.6;
-                var targetSpeed = Cruise ? CruiseSpeed : (ForwardBackward != 0 ? wheels.First().SpeedLimit : 0);
+                var targetSpeed = Cruise ? CruiseSpeed : (ForwardBackward != 0 ? MyWheels.First().SpeedLimit : 0);
                 var error = targetSpeed - currentSpeedKmh;
                 var power = MathHelper.Clamp(PID.Signal(error, dt), 5, 100 * powerMaxPercent);
                 yield return new PowerTaskResult

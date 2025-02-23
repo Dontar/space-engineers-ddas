@@ -30,17 +30,18 @@ namespace IngameScript
         public Program()
         {
             Runtime.UpdateFrequency = UpdateFrequency.Update10;
+            AutoLevel = Config["AutoLevel"].ToBoolean(true);
             Util.Init(this);
-            TaskManager.AddTask(Util.StatusMonitor(this));
-            TaskManager.AddTask(MainTask());
-            TaskManager.AddTask(AutopilotTask());
-            _StopLightsTask = TaskManager.AddTask(StopLightsTask());
-            _PowerTask = TaskManager.AddTask(PowerTask());
-            TaskManager.AddTask(SuspensionStrengthTask(), 5f);
-            TaskManager.AddTask(AutoLevelTask());
-            TaskManager.AddTask(ScreensTask(), 0.5f);
-            TaskManager.AddTask(GridOrientationsTask());
-            TaskManager.AddTask(Util.DisplayLogo("DDAS", Me.GetSurface(0)), 1.5f);
+            TaskManager.AddTask(Util.StatusMonitor(this));                          //0
+            TaskManager.AddTask(MainTask());                                        //1
+            TaskManager.AddTask(AutopilotTask());                                   //2
+            _StopLightsTask = TaskManager.AddTask(StopLightsTask());                //3
+            _PowerTask = TaskManager.AddTask(PowerTask());                          //4
+            TaskManager.AddTask(SuspensionStrengthTask(), 5f);                      //5
+            TaskManager.AddTask(AutoLevelTask());                                   //6
+            TaskManager.AddTask(ScreensTask(), 0.5f);                               //7
+            TaskManager.AddTask(GridOrientationsTask());                            //8
+            TaskManager.AddTask(Util.DisplayLogo("DDAS", Me.GetSurface(0)), 1.5f);  //9
 
             TaskManager.PauseTask(_PowerTask, !Config["Power"].ToBoolean(true));
             TaskManager.PauseTask(_StopLightsTask, !Config["StopLights"].ToBoolean(true));
@@ -76,7 +77,7 @@ namespace IngameScript
                     break;
                 case "flip":
                     AutoLevel = false;
-                    TaskManager.AddTaskOnce(FlipGridTask(), 2f);
+                    TaskManager.AddTaskOnce(FlipGridTask(), 1f);
                     break;
                 case "cruise":
                     TaskManager.AddTaskOnce(CruiseTask());
@@ -261,14 +262,11 @@ namespace IngameScript
 
         IEnumerable StopLightsTask()
         {
-            var ini = Config;
-            var lights = Lights;
-
-            while (lights.Equals(Lights) && ini.Equals(Config))
+            while (true)
             {
                 float upDown = UpDown;
                 float forwardBackward = ForwardBackward;
-                foreach (var l in lights)
+                foreach (var l in Lights)
                 {
                     l.Radius = 1f;
                     l.Intensity = 1f;

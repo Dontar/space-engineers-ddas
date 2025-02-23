@@ -42,30 +42,29 @@ namespace IngameScript
             var orientation = TaskManager.GetTaskResult<GridOrientation>();
             var pidRoll = new PID(ini["PIDFlip"].ToString("8/0/0/0"));
 
-            foreach (var g in gyroList)
-            {
-                g.GyroOverride = true; g.GyroPower = 1;
-            }
-
+            var OldAutoLevel = AutoLevel;
+            AutoLevel = false;
             Flipping = true;
             while (ini.Equals(Config) && !(Util.IsBetween(orientation.Roll, -25, 25) || UpDown < 0))
             {
                 orientation = TaskManager.GetTaskResult<GridOrientation>();
                 var dt = TaskManager.CurrentTaskLastRun.TotalSeconds;
-                var rollSpeed = Util.NormalizeClamp(pidRoll.Signal(orientation.Roll, dt), -180, 180, -30, 30);
+                var rollSpeed = Util.NormalizeClamp(pidRoll.Signal(orientation.Roll, dt), -180, 180, -60, 60);
                 Util.ApplyGyroOverride(0, 0, -rollSpeed, gyroList, Controllers.MainController.WorldMatrix);
                 yield return null;
             }
             foreach (var g in gyroList)
             {
-                g.GyroPower = 1; g.Roll = g.Yaw = g.Pitch = 0; g.GyroOverride = false;
+                g.Roll = g.Yaw = g.Pitch = 0; g.GyroOverride = false;
             }
             Flipping = false;
+            AutoLevel = OldAutoLevel;
         }
 
         IEnumerable AutoLevelTask()
         {
-            if (!AutoLevel) yield break;
+            var isFastEnough = Speed > 5;
+            if (!AutoLevel || !isFastEnough) yield break;
             var gyroList = Gyros;
             if (gyroList.Count() == 0) yield break;
 
@@ -73,28 +72,22 @@ namespace IngameScript
             var ini = Config;
             var pidRoll = new PID(ini["PIDRoll"].ToString("6/0/0/0"));
             var pidPitch = new PID(ini["PIDPitch"].ToString("3/0/0/0"));
-            var gyroPower = float.Parse(ini["AutoLevelPower"].ToString("30"));
-            var isFastEnough = Speed > 5;
-            if (isFastEnough)
-            {
-                foreach (var g in gyroList)
-                {
-                    g.GyroOverride = true; g.GyroPower = gyroPower / 100;
-                }
-            }
+            var pidYaw = new PID(ini["PIDYaw"].ToString("6/0/0/0"));
+            // var gyroPower = float.Parse(ini["AutoLevelPower"].ToString("30"));
             while (ini.Equals(Config) && AutoLevel && isFastEnough)
             {
                 var orientation = TaskManager.GetTaskResult<GridOrientation>();
                 isFastEnough = Speed > 5;
                 var dt = TaskManager.CurrentTaskLastRun.TotalSeconds;
-                var rollSpeed = Util.NormalizeClamp(pidRoll.Signal(orientation.Roll, dt), -180, 180, -30, 30);
-                var pitchSpeed = Util.NormalizeClamp(pidPitch.Signal(orientation.Pitch - 5, dt), -180, 180, -30, 30);
-                Util.ApplyGyroOverride(pitchSpeed, 0, -rollSpeed, gyroList, mainController.WorldMatrix);
+                var rollSpeed = Util.NormalizeClamp(pidRoll.Signal(orientation.Roll, dt), -180, 180, -60, 60);
+                var pitchSpeed = Util.NormalizeClamp(pidPitch.Signal(orientation.Pitch - 5, dt), -180, 180, -60, 60);
+                var yawSpeed = Util.NormalizeClamp(pidYaw.Signal(orientation.Yaw, dt), -180, 180, -60, 60);
+                Util.ApplyGyroOverride(pitchSpeed, yawSpeed, -rollSpeed, gyroList, mainController.WorldMatrix);
                 yield return null;
             }
             foreach (var g in gyroList)
             {
-                g.GyroPower = 1; g.Roll = g.Yaw = g.Pitch = 0; g.GyroOverride = false;
+                g.Roll = g.Yaw = g.Pitch = 0; g.GyroOverride = false;
             }
         }
     }

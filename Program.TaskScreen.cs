@@ -44,6 +44,7 @@ namespace IngameScript
                 screenText.AppendLine($"Speed:       {Speed * 3.6:N2} km/h");
                 screenText.AppendLine($"Roll:        {orientation.Roll:N2} Degrees");
                 screenText.AppendLine($"Pitch:       {orientation.Pitch:N2} Degrees");
+                screenText.AppendLine($"Yaw:         {orientation.Yaw:N2} Degrees");
                 screenText.AppendLine($"CruiseSpeed: {CruiseSpeed:N2} km/h");
                 screenText.AppendLine($"Cruise:      {Cruise}");
                 screenText.AppendLine($"Recording:   {Recording}");

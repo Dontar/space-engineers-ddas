@@ -13,15 +13,21 @@ namespace IngameScript
         {
             public double Roll;
             public double Pitch;
+            public double Yaw;
         }
         IEnumerable<GridOrientation> GridOrientationsTask()
         {
-            var grav = Gravity;
-            var matrix = Controllers.MainController.WorldMatrix;
-            var roll = Math.Atan2(grav.Dot(matrix.Right), grav.Dot(matrix.Down));
-            var pitch = Math.Atan2(grav.Dot(matrix.Backward), grav.Dot(matrix.Down));
+            while (true)
+            {
+                var speed = Controllers.MainController.GetShipVelocities().LinearVelocity.Normalized();
+                var grav = Gravity;
+                var matrix = Controllers.MainController.WorldMatrix;
+                var yaw = Math.Atan2(speed.Dot(matrix.Right), speed.Dot(matrix.Forward));
+                var roll = Math.Atan2(grav.Dot(matrix.Right), grav.Dot(matrix.Down));
+                var pitch = Math.Atan2(grav.Dot(matrix.Backward), grav.Dot(matrix.Down));
 
-            yield return new GridOrientation { Roll = MathHelper.ToDegrees(roll), Pitch = MathHelper.ToDegrees(pitch) };
+                yield return new GridOrientation { Roll = MathHelper.ToDegrees(roll), Pitch = MathHelper.ToDegrees(pitch), Yaw = MathHelper.ToDegrees(yaw) };
+            }
         }
 
         class ConfigDictionary : Dictionary<string, MyIniValue>
@@ -52,7 +58,7 @@ namespace IngameScript
 
                 myIni.Set("Options", "StrengthFactor", 0.6);
                 myIni.Set("Options", "SuspensionHightRoll", 30);
-                myIni.Set("Options", "AutoLevelPower", 30);
+                // myIni.Set("Options", "AutoLevelPower", 30);
 
                 myIni.Set("Options", "MaxSteeringAngle", 25);
                 myIni.Set("Options", "AckermanFocalPoint", "CoM");
@@ -103,7 +109,7 @@ namespace IngameScript
             var myControllers = controllers.Where(c => c.CubeGrid == Me.CubeGrid && c.CanControlShip);
             var subControllers = controllers.Where(c => c.CubeGrid != Me.CubeGrid);
             var tag = Config["Tag"].ToString("{DDAS}");
-            
+
             var mainController = myControllers.FirstOrDefault(c => Util.IsTagged(c, tag) && c is IMyRemoteControl)
                 ?? myControllers.FirstOrDefault(c => c is IMyRemoteControl)
                 ?? myControllers.FirstOrDefault();
@@ -132,14 +138,11 @@ namespace IngameScript
         }
         GridPower PowerProducersPower => Memo.Of(() =>
         {
-            var blocks = Util.GetBlocks<IMyPowerProducer>(b =>
-            {
-                return b.IsSameConstructAs(Me) && ((b.Enabled && !(b is IMyBatteryBlock))
-                    || (b.Enabled && b is IMyBatteryBlock && (b as IMyBatteryBlock).ChargeMode != ChargeMode.Recharge));
-            });
+            var blocks = Memo.Of(() => Util.GetBlocks<IMyPowerProducer>(b => b.IsSameConstructAs(Me)), "PowerProducers", Memo.Refs(Mass.BaseMass));
+            var maxPower = Memo.Of(() => blocks.Sum(b => b.Enabled ? b.MaxOutput : 0), "PowerProducersMaxPower", Memo.Refs(blocks));
             return new GridPower
             {
-                MaxOutput = blocks.Sum(b => b.MaxOutput),
+                MaxOutput = maxPower,
                 CurrentOutput = blocks.Sum(b => b.CurrentOutput)
             };
         }, "myPowerProducers", 10);
