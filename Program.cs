@@ -76,7 +76,6 @@ namespace IngameScript
                     TaskManager.AddTaskOnce(ToggleHightModeTask());
                     break;
                 case "flip":
-                    AutoLevel = false;
                     TaskManager.AddTaskOnce(FlipGridTask(), 1f);
                     break;
                 case "cruise":
@@ -176,7 +175,7 @@ namespace IngameScript
                     if (suspensionHightFlag && ((roll > suspensionHightRoll && w.IsLeft) || (roll < -suspensionHightRoll && !w.IsLeft)))
                     {
                         var value = (float)Util.NormalizeClamp(Math.Abs(orientation.Roll), 0, 25, high, low);
-                        wheel.Height += (value - wheel.Height) * 0.5f;
+                        wheel.Height += (value - wheel.Height) * 0.2f;
                         rollCompensating = true;
                     }
                     else

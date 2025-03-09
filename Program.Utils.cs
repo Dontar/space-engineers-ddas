@@ -255,6 +255,7 @@ namespace IngameScript
                     g.Pitch = (float)transformedRotationVec.X;
                     g.Yaw = (float)transformedRotationVec.Y;
                     g.Roll = (float)transformedRotationVec.Z;
+                    g.GyroOverride = true;
                 }
             }
 
@@ -368,11 +369,7 @@ namespace IngameScript
                 return tasks.Count - 1;
             }
 
-            public static void PauseTask(int taskId, bool pause)
-            {
-                var task = tasks[taskId];
-                task.IsPaused = pause;
-            }
+            public static void PauseTask(int taskId, bool pause) => tasks[taskId].IsPaused = pause;
 
             public static T GetTaskResult<T>() => tasks.Select(t => t.TaskResult).OfType<T>().FirstOrDefault();
             public static TimeSpan CurrentTaskLastRun;
@@ -386,7 +383,6 @@ namespace IngameScript
                     task.TaskResult = null;
 
                     task.TimeSinceLastRun += TimeSinceLastRun;
-                    tasks[i] = task;
                     if (task.TimeSinceLastRun < task.Interval) continue;
 
                     CurrentTaskLastRun = task.TimeSinceLastRun;

@@ -84,6 +84,7 @@ namespace IngameScript
                 var RC = ini["AckermanFocalPoint"].ToString("CoM") == "RC" && controller is IMyRemoteControl;
 
                 IsLeft = Wheel.Orientation.Up == controller.Orientation.Left;
+                TargetStrength = wheel.Strength;
 
                 if (wheel.Top != null)
                 {
@@ -117,6 +118,7 @@ namespace IngameScript
 
                 var wheelUp = Vector3D.TransformNormal(Wheel.WorldMatrix.Up, T);
                 IsLeft = Base6Directions.GetDirection(wheelUp) == props.MainController.Orientation.Left;
+                TargetStrength = wheel.Strength;
 
                 if (wheel.Top != null)
                 {
