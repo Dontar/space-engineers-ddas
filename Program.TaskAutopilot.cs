@@ -48,8 +48,8 @@ namespace IngameScript
             var autopilot = Autopilot.FromBlock(Memo.Of(() => Util.GetBlocks<IMyFlightMovementBlock>().FirstOrDefault() as IMyTerminalBlock, "AI", Memo.Refs(Mass.BaseMass)) ?? controller);
 
             if (autopilot == null || !autopilot.IsAutoPilotEnabled) yield break;
-            var ini = Config;
-            var sensor = Memo.Of(() => Util.GetBlocks<IMySensorBlock>(b => Util.IsNotIgnored(b, ini["IgnoreTag"].ToString())).FirstOrDefault(), "sensor", Memo.Refs(Mass.BaseMass));
+
+            var sensor = Memo.Of(() => Util.GetBlocks<IMySensorBlock>(b => Util.IsNotIgnored(b, _ignoreTag)).FirstOrDefault(), "sensor", Memo.Refs(Mass.BaseMass));
 
             var wayPoints = autopilot.Waypoints;
             int wayPointsCount = wayPoints.Count();
@@ -61,7 +61,7 @@ namespace IngameScript
             }
             wayPointsInfo.MoveNext();
 
-            while (ini.Equals(Config) && autopilot.IsAutoPilotEnabled)
+            while (autopilot.IsAutoPilotEnabled)
             {
                 var currentWaypoint = wayPointsCount > 1 ? wayPointsInfo.Current : autopilot.CurrentWaypoint;
 

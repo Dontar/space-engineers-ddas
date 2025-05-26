@@ -12,21 +12,24 @@ namespace IngameScript
 {
     partial class Program
     {
-        IEnumerable<IMyMotorSuspension> AllWheels => Memo.Of(() => Util.GetBlocks<IMyMotorSuspension>(b => Util.IsNotIgnored(b, Config["IgnoreTag"].ToString()) && b.Enabled && b.IsSameConstructAs(Me)), "wheels", Memo.Refs(Mass.BaseMass));
-
-        IEnumerable<WheelWrapper> MyWheels => Memo.Of(() =>
+        IEnumerable<IMyMotorSuspension> AllWheels;
+        IEnumerable<WheelWrapper> MyWheels;
+        IEnumerable<WheelWrapper> SubWheels;
+        
+        void InitWheels()
         {
+            AllWheels = Util.GetBlocks<IMyMotorSuspension>(b => Util.IsNotIgnored(b, _ignoreTag) && b.Enabled && b.IsSameConstructAs(Me));
+
             var T = MatrixD.Transpose(Controllers.MainController.WorldMatrix);
-            var config = Config;
             var wh = AllWheels
                 .Where(w => w.CubeGrid == Me.CubeGrid)
-                .Select(w => new WheelWrapper(w, Controllers.MainController, config, T));
-            var maxSteerAngle = config["MaxSteeringAngle"].ToDouble(25);
+                .Select(w => new WheelWrapper(w, Controllers.MainController, this, T));
+            var maxSteerAngle = _maxSteeringAngle;
             var distance = wh.Max(w => Math.Abs(w.ToFocalPoint.Z));
             var hight = wh.Min(w => w.Wheel.Height);
             var radius = distance / Math.Tan(MathHelper.ToRadians(maxSteerAngle));
 
-            return wh.Select(w =>
+            MyWheels = wh.Select(w =>
             {
                 w.TargetHeight = hight;
                 var halfWidth = Math.Abs(w.ToFocalPoint.X);
@@ -34,26 +37,22 @@ namespace IngameScript
                 w.SteerAngleRight = Math.Atan(w.DistanceFocal / (radius + (w.IsLeft ? halfWidth : -halfWidth)));
                 return w;
             }).ToArray();
-        }, "myWheels", Memo.Refs(AllWheels, Config));
 
-        IEnumerable<WheelWrapper> SubWheels => Memo.Of(() =>
-        {
-            var T = MatrixD.Transpose(Controllers.MainController.WorldMatrix);
+
             var sw = AllWheels
                 .Where(w => w.CubeGrid != Me.CubeGrid)
                 .Select(w => new WheelWrapper(w, Controllers, T));
             if (sw.Count() > 0)
             {
-                var hight = sw.Min(w => w.Wheel.Height);
+                hight = sw.Min(w => w.Wheel.Height);
                 sw = sw.Select(w =>
                 {
                     w.TargetHeight = hight;
                     return w;
                 });
             }
-            return sw.ToArray();
-        }, "subWheels", Memo.Refs(AllWheels));
-
+            SubWheels = sw.ToArray();
+        }
 
         class WheelWrapper
         {
@@ -78,10 +77,10 @@ namespace IngameScript
             public double SteerAngleRight;
             public double MaxPower;
 
-            public WheelWrapper(IMyMotorSuspension wheel, IMyShipController controller, Dictionary<string, MyIniValue> ini, MatrixD T)
+            public WheelWrapper(IMyMotorSuspension wheel, IMyShipController controller, Program ini, MatrixD T)
             {
                 Wheel = wheel;
-                var RC = ini["AckermanFocalPoint"].ToString("CoM") == "RC" && controller is IMyRemoteControl;
+                var RC = ini._ackermanFocalPoint == "RC" && controller is IMyRemoteControl;
 
                 IsLeft = Wheel.Orientation.Up == controller.Orientation.Left;
                 TargetStrength = wheel.Strength;
@@ -92,13 +91,13 @@ namespace IngameScript
 
                     ToCoM = Vector3D.TransformNormal(wheelPos - controller.CenterOfMass, T);
                     ToFocalPoint = RC ? Vector3D.TransformNormal(wheelPos - controller.GetPosition(), T) : ToCoM;
-                    ToFocalPoint.Z += ini["AckermanFocalPointOffset"].ToDouble();
+                    ToFocalPoint.Z += ini._ackermanFocalPointOffset;
                 }
 
                 var subType = Wheel.BlockDefinition.SubtypeName;
                 var isSmallGrid = Wheel.CubeGrid.GridSizeEnum == MyCubeSize.Small;
                 var isBigWheel = subType.Contains("5x5");
-                
+
                 BlackMagicFactor = isSmallGrid
                     ? isBigWheel ? 18.5 : 15
                     : isBigWheel ? 55 : 52.5;

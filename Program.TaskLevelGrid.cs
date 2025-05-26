@@ -30,21 +30,24 @@ namespace IngameScript
         public bool Flipping { get; set; } = false;
         public bool AutoLevel { get; set; } = false;
 
-        IEnumerable<IMyGyro> Gyros => Memo.Of(() => Util.GetBlocks<IMyGyro>(b => Util.IsNotIgnored(b, Config["IgnoreTag"].ToString()) && b.Enabled), "gyros", Memo.Refs(Mass.BaseMass, Config));
+        IEnumerable<IMyGyro> Gyros;
 
+        void InitAutoLevel()
+        {
+            Gyros = Util.GetBlocks<IMyGyro>(b => Util.IsNotIgnored(b, _ignoreTag) && b.Enabled);
+        }
         IEnumerable FlipGridTask()
         {
             if (Flipping) yield break;
             var gyroList = Gyros;
             if (gyroList.Count() == 0) yield break;
 
-            var ini = Config;
             var orientation = TaskManager.GetTaskResult<GridOrientation>();
 
             var OldAutoLevel = AutoLevel;
             Flipping = true;
             AutoLevel = false;
-            while (ini.Equals(Config) && !(Util.IsBetween(orientation.Roll, -25, 25) || UpDown < 0))
+            while (!(Util.IsBetween(orientation.Roll, -25, 25) || UpDown < 0))
             {
                 orientation = TaskManager.GetTaskResult<GridOrientation>();
                 var rollSpeed = Util.NormalizeClamp(orientation.Roll, -180, 180, -60, 60);
@@ -67,8 +70,7 @@ namespace IngameScript
             if (gyroList.Count() == 0) yield break;
 
             var mainController = Controllers.MainController;
-            var ini = Config;
-            while (ini.Equals(Config) && AutoLevel && isFastEnough)
+            while (AutoLevel && isFastEnough)
             {
                 var orientation = TaskManager.GetTaskResult<GridOrientation>();
                 isFastEnough = Speed > 5;

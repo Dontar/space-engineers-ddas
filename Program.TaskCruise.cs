@@ -27,9 +27,8 @@ namespace IngameScript
 {
     partial class Program : MyGridProgram
     {
-
-        public bool Cruise { get; set; } = false;
-        public float CruiseSpeed { get; set; } = 0;
+        public bool Cruise = false;
+        public float CruiseSpeed = 0;
 
         struct CruiseTaskResult
         {
@@ -39,15 +38,13 @@ namespace IngameScript
         {
             if (Cruise) yield break;
 
-            // var gridProps = this.gridProps;
-            var ini = Config;
-            var pid = new PID(ini["PIDCruise"].ToString("0.5/0/0/0"));
+            var pid = new PID(_pidCruise);
 
             Cruise = true;
             CruiseSpeed = cruiseSpeed > -1 ? cruiseSpeed : (float)(Speed * 3.6);
             cruiseWhile = cruiseWhile ?? (() => UpDown == 0 && !Controllers.MainController.HandBrake);
 
-            while (ini.Equals(Config) && cruiseWhile())
+            while (cruiseWhile())
             {
                 if (cruiseSpeed == -1)
                 {

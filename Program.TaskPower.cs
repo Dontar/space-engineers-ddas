@@ -37,12 +37,10 @@ namespace IngameScript
         }
         IEnumerable<PowerTaskResult> PowerTask()
         {
-            // var gridProps = this.gridProps;
-            var ini = Config;
-            var PID = new PID(ini["PIDPower"].ToString("10/0/0/0"));
+            var PID = new PID(_pidPower);
             var wheelPower = MyWheels.Concat(SubWheels).Sum(w => w.MaxPower);
             float passivePower = 0;
-            while (ini.Equals(Config))
+            while (true)
             {
                 var powerProducersPower = PowerProducersPower;
                 double speed = Speed;

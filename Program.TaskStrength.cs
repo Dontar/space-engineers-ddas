@@ -58,39 +58,34 @@ namespace IngameScript
         }
         IEnumerable<StrengthTaskResult> SuspensionStrengthTask()
         {
-            var config = Config;
             var myWheels = MyWheels;
             var subWheels = SubWheels;
 
-            var suspensionStrength = config["SuspensionStrength"].ToBoolean(true);
-            var subSuspensionStrength = config["SubWheelsStrength"].ToBoolean(true);
-            var strengthFactor = config["StrengthFactor"].ToSingle(1);
+            if (!_suspensionStrength) yield break;
 
-            if (!suspensionStrength) yield break;
+            var normalizeFactor = _suspensionStrength && myWheels.Count() > 0 ? CalcStrength(myWheels) : 0;
+            var subNormalizeFactor = _subWheelsStrength && subWheels.Count() > 0 ? CalcStrength(subWheels) : 0;
 
-            var normalizeFactor = suspensionStrength && myWheels.Count() > 0 ? CalcStrength(myWheels) : 0;
-            var subNormalizeFactor = subSuspensionStrength && subWheels.Count() > 0 ? CalcStrength(subWheels) : 0;
-
-            while (myWheels.Equals(MyWheels) || subWheels.Equals(SubWheels) || config.Equals(Config))
+            while (true)
             {
                 Action<WheelWrapper, double> action = (w, GridUnsprungWeight) =>
                 {
                     w.TargetStrength = Memo.Of(() =>
-                        MathHelper.Clamp(Math.Sqrt(w.WeightRatio / normalizeFactor * GridUnsprungWeight) / w.BlackMagicFactor, 5, 100) * strengthFactor,
+                        MathHelper.Clamp(Math.Sqrt(w.WeightRatio / normalizeFactor * GridUnsprungWeight) / w.BlackMagicFactor, 5, 100) * _strengthFactor,
                     $"TargetStrength-{w.Wheel.EntityId}", Memo.Refs(GridUnsprungWeight));
                 };
 
                 Action<WheelWrapper, double> subAction = (w, GridUnsprungWeight) =>
                 {
                     w.TargetStrength = Memo.Of(() =>
-                        MathHelper.Clamp(Math.Sqrt(w.WeightRatio / subNormalizeFactor * GridUnsprungWeight) / w.BlackMagicFactor, 5, 100) * strengthFactor,
+                        MathHelper.Clamp(Math.Sqrt(w.WeightRatio / subNormalizeFactor * GridUnsprungWeight) / w.BlackMagicFactor, 5, 100) * _strengthFactor,
                     $"TargetStrength-{w.Wheel.EntityId}", Memo.Refs(GridUnsprungWeight));
                 };
 
                 yield return new StrengthTaskResult
                 {
-                    Action = suspensionStrength ? action : null,
-                    SubAction = subSuspensionStrength ? subAction : null
+                    Action = _suspensionStrength ? action : null,
+                    SubAction = _subWheelsStrength ? subAction : null
                 };
             }
         }

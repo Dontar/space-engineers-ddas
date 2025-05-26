@@ -27,11 +27,14 @@ namespace IngameScript
 {
     partial class Program : MyGridProgram
     {
-        IEnumerable<IMyTextSurface> ScreensStat => Memo.Of(() => Util.GetScreens("ddas-status").ToArray(), "screensStatus", 100);
+        IEnumerable<IMyTextSurface> ScreensStat;
+        void InitScreens()
+        {
+            ScreensStat = Util.GetScreens("ddas-status").ToArray();
+        }
         IEnumerable ScreensTask()
         {
             var screenText = new StringBuilder();
-            // GridProps gridProps = this.gridProps;
 
             while (true)
             {
