@@ -38,7 +38,6 @@ namespace IngameScript
         }
         TControllers Controllers;
 
-        double GridUnsprungMass;
         IMyShipController Controller => Controllers.Controllers.FirstOrDefault(c => c.IsUnderControl) ?? Controllers.MainController;
         public float ForwardBackward => Controller?.MoveIndicator.Z ?? 0;
         public float LeftRight => Controller?.MoveIndicator.X ?? 0;
@@ -47,13 +46,6 @@ namespace IngameScript
         public Vector3D Gravity => Controllers.MainController.GetTotalGravity();
         public double GravityMagnitude => Gravity.Length();
         public double Speed => Controllers.MainController.GetShipSpeed();
-
-        struct GridPower
-        {
-            public float MaxOutput;
-            public float CurrentOutput;
-        }
-        GridPower PowerProducersPower;
 
         void InitGridProps()
         {
@@ -70,16 +62,6 @@ namespace IngameScript
                 ?? subControllers.FirstOrDefault();
 
             Controllers = new TControllers { MainController = mainController, SubController = subController, Controllers = myControllers.ToArray() };
-
-            GridUnsprungMass = Mass.PhysicalMass - MyWheels.Concat(SubWheels).Sum(w => w.Wheel.Top?.Mass ?? 0);
-
-            var blocks = Util.GetBlocks<IMyPowerProducer>(b => b.IsSameConstructAs(Me));
-            var maxPower = blocks.Sum(b => b.Enabled ? b.MaxOutput : 0);
-            PowerProducersPower = new GridPower
-            {
-                MaxOutput = maxPower,
-                CurrentOutput = blocks.Sum(b => b.CurrentOutput)
-            };
         }
     }
 }

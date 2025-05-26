@@ -63,10 +63,11 @@ namespace IngameScript
             Runtime.UpdateFrequency = UpdateFrequency.Update10;
             Util.Init(this);
             InitGridProps();
+            InitWheels();
+            InitPower();
             InitStopLights();
             InitAutoLevel();
             InitScreens();
-            InitWheels();
 
             TaskManager.AddTask(Util.StatusMonitor(this));                          //0
             TaskManager.AddTask(MainTask());                                        //1
@@ -79,8 +80,8 @@ namespace IngameScript
             TaskManager.AddTask(GridOrientationsTask());                            //8
             TaskManager.AddTask(Util.DisplayLogo("DDAS", Me.GetSurface(0)), 1.5f);  //9
 
-            TaskManager.PauseTask(_PowerTask, _power);
-            TaskManager.PauseTask(_StopLightsTask, _stopLights);
+            TaskManager.PauseTask(_PowerTask, !_power);
+            TaskManager.PauseTask(_StopLightsTask, !_stopLights);
         }
 
         readonly int _PowerTask;

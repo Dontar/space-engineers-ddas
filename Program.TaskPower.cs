@@ -27,6 +27,24 @@ namespace IngameScript
 {
     partial class Program : MyGridProgram
     {
+
+        struct GridPower
+        {
+            public float MaxOutput;
+            public Func<float> CurrentOutput;
+        }
+        GridPower PowerProducersPower;
+
+        void InitPower()
+        {
+            var blocks = Util.GetBlocks<IMyPowerProducer>(b => b.IsSameConstructAs(Me));
+            PowerProducersPower = new GridPower
+            {
+                MaxOutput = blocks.Sum(b => b.Enabled ? b.MaxOutput : 0),
+                CurrentOutput = () => blocks.Sum(b => b.CurrentOutput)
+            };
+        }
+
         struct PowerTaskResult
         {
             public float Power;
@@ -46,7 +64,7 @@ namespace IngameScript
                 double speed = Speed;
                 if (speed < 0.1)
                 {
-                    passivePower = powerProducersPower.CurrentOutput;
+                    passivePower = powerProducersPower.CurrentOutput();
                 }
                 var vehicleMaxPower = powerProducersPower.MaxOutput;
                 var powerMaxPercent = MathHelper.Clamp((vehicleMaxPower - passivePower) / wheelPower, 0, 1);

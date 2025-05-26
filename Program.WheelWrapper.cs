@@ -15,6 +15,7 @@ namespace IngameScript
         IEnumerable<IMyMotorSuspension> AllWheels;
         IEnumerable<WheelWrapper> MyWheels;
         IEnumerable<WheelWrapper> SubWheels;
+        double GridUnsprungMass;
 
         void InitWheels()
         {
@@ -52,6 +53,8 @@ namespace IngameScript
                 });
             }
             SubWheels = sw.ToArray();
+
+            GridUnsprungMass = Mass.PhysicalMass - MyWheels.Concat(SubWheels).Sum(w => w.Wheel.Top?.Mass ?? 0);
         }
 
         class WheelWrapper
