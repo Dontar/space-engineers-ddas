@@ -15,7 +15,7 @@ namespace IngameScript
         IEnumerable<IMyMotorSuspension> AllWheels;
         IEnumerable<WheelWrapper> MyWheels;
         IEnumerable<WheelWrapper> SubWheels;
-        
+
         void InitWheels()
         {
             AllWheels = Util.GetBlocks<IMyMotorSuspension>(b => Util.IsNotIgnored(b, _ignoreTag) && b.Enabled && b.IsSameConstructAs(Me));
@@ -80,7 +80,7 @@ namespace IngameScript
             public WheelWrapper(IMyMotorSuspension wheel, IMyShipController controller, Program ini, MatrixD T)
             {
                 Wheel = wheel;
-                var RC = ini._ackermanFocalPoint == "RC" && controller is IMyRemoteControl;
+                var RC = ini._ackermanFocalPoint == FocalPoint.RC && controller is IMyRemoteControl;
 
                 IsLeft = Wheel.Orientation.Up == controller.Orientation.Left;
                 TargetStrength = wheel.Strength;

@@ -35,16 +35,13 @@ namespace IngameScript
         private double _strengthFactor = 0.6;
         private double _suspensionHightRoll = 30;
         private double _maxSteeringAngle = 25;
-        private string _ackermanFocalPoint = "CoM";
+        private FocalPoint _ackermanFocalPoint = FocalPoint.CoM;
         private double _ackermanFocalPointOffset = 0;
         private float _frictionInner = 80;
         private float _frictionOuter = 60;
         private double _frictionMinSpeed = 5;
         private string _pidCruise = "0.5/0/0/0";
-        private string _pidFlip = "8/0/0/0";
         private string _pidPower = "10/0/0/0";
-        private string _pidRoll = "6/0/0/0";
-        private string _pidPitch = "3/0/0/0";
         private bool _addWheels = true;
         private bool _suspensionStrength = true;
         private bool _subWheelsStrength = true;
@@ -52,10 +49,15 @@ namespace IngameScript
         private bool _stopLights = true;
         private bool _friction = true;
         private bool _suspensionHight = true;
-        private bool _autoLevel = true;
-        private double _autoLevelPower = 30;
+        // private bool _autoLevel = true;
+        // private float _autoLevelPower = 30;
         #endregion
 
+        enum FocalPoint
+        {
+            CoM,
+            RC
+        }
         public Program()
         {
             Runtime.UpdateFrequency = UpdateFrequency.Update10;
@@ -72,6 +74,7 @@ namespace IngameScript
             _StopLightsTask = TaskManager.AddTask(StopLightsTask());                //3
             _PowerTask = TaskManager.AddTask(PowerTask());                          //4
             TaskManager.AddTask(SuspensionStrengthTask(), 5f);                      //5
+            // TaskManager.AddTask(AutoLevelTask());                                   //6
             TaskManager.AddTask(ScreensTask(), 0.5f);                               //7
             TaskManager.AddTask(GridOrientationsTask());                            //8
             TaskManager.AddTask(Util.DisplayLogo("DDAS", Me.GetSurface(0)), 1.5f);  //9
