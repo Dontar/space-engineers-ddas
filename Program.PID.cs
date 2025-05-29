@@ -42,13 +42,9 @@ namespace IngameScript
 
             double D(double error)
             {
-                double errorDerivative = (error - previousError) / deltaTime;// de(t) / dt = (e(t) - e(t-1)) / dt
+                double errorDerivative = _firstRun ? 0 : (error - previousError) / deltaTime;// de(t) / dt = (e(t) - e(t-1)) / dt
                 previousError = error;
-                if (_firstRun)
-                {
-                    errorDerivative = 0;
-                    _firstRun = false;
-                }
+                _firstRun = false;
 
                 return Kd * errorDerivative;
             }

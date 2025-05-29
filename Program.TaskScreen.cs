@@ -32,6 +32,11 @@ namespace IngameScript
         {
             ScreensStat = Util.GetScreens("ddas-status").ToArray();
         }
+
+        string F(string flag, bool state)
+        {
+            return state ? $"[{flag}]" : flag;
+        }
         IEnumerable ScreensTask()
         {
             var screenText = new StringBuilder();
@@ -49,13 +54,11 @@ namespace IngameScript
                 screenText.AppendLine($"Pitch:       {orientation.Pitch:N2} Degrees");
                 screenText.AppendLine($"Yaw:         {orientation.Yaw:N2} Degrees");
                 screenText.AppendLine($"CruiseSpeed: {CruiseSpeed:N2} km/h");
-                screenText.AppendLine($"Cruise:      {Cruise}");
-                screenText.AppendLine($"Recording:   {Recording}");
-                screenText.AppendLine($"Flipping:    {Flipping}");
-                screenText.AppendLine($"AutoLevel:   {AutoLevel}");
                 screenText.AppendLine($"Power:       {power.Power:N2}");
                 screenText.AppendLine($"Propulsion:  {propulsion.Propulsion:N2}");
-                screenText.AppendLine($"Steer:       {autopilot.Steer}");
+                screenText.AppendLine("============");
+                screenText.AppendLine($"{F("Cruise", Cruise)}  {F("Rec", Recording)}  {F("Flip", Flipping)}  {F("Level", AutoLevel)}");
+                // screenText.AppendLine($"Steer:       {autopilot.Steer}");
                 screenText.AppendLine($"Waypoint:    {autopilot.Waypoint}");
                 screenText.AppendLine($"Waypoint #:  {autopilot.WaypointCount}");
                 screenText.AppendLine($"Mode:        {autopilot.Mode}");

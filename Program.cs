@@ -63,12 +63,6 @@ namespace IngameScript
             Runtime.UpdateFrequency = UpdateFrequency.Update10;
             Util.Init(this);
             InitGridProps();
-            InitWheels();
-            InitPower();
-            InitStopLights();
-            InitAutoLevel();
-            InitScreens();
-
             TaskManager.AddTask(Util.StatusMonitor(this));                          //0
             TaskManager.AddTask(MainTask());                                        //1
             TaskManager.AddTask(AutopilotTask());                                   //2
@@ -86,6 +80,7 @@ namespace IngameScript
 
         readonly int _PowerTask;
         readonly int _StopLightsTask;
+        float BaseMass;
 
         public void Main(string argument, UpdateType updateSource)
         {
@@ -99,6 +94,17 @@ namespace IngameScript
                 ProcessCommands(argument);
 
             if (!updateSource.HasFlag(UpdateType.Update10)) return;
+
+            if (BaseMass != Mass.BaseMass)
+            {
+                InitGridProps();
+                InitWheels();
+                InitPower();
+                InitStopLights();
+                InitAutoLevel();
+                InitScreens();
+                BaseMass = Mass.BaseMass;
+            }
 
             TaskManager.RunTasks(Runtime.TimeSinceLastRun);
         }
@@ -294,8 +300,6 @@ namespace IngameScript
         {
             while (true)
             {
-                float upDown = UpDown;
-                float forwardBackward = ForwardBackward;
                 foreach (var l in Lights)
                 {
                     l.Radius = 1f;
@@ -303,7 +307,7 @@ namespace IngameScript
                     l.Falloff = 0;
                     l.Color = Color.DarkRed;
 
-                    if (upDown > 0)
+                    if (UpDown > 0)
                     {
                         l.Intensity = 5f;
                         l.Falloff = 1.3f;
@@ -311,7 +315,7 @@ namespace IngameScript
                         l.Color = Color.Red;
                     }
 
-                    if (forwardBackward > 0)
+                    if (ForwardBackward > 0)
                     {
                         l.Intensity = 5f;
                         l.Falloff = 1.3f;

@@ -74,46 +74,38 @@ namespace IngameScript
                 return new object[] { p1 };
             }
 
-            public static R Of<R>(Func<R> f, string context, object[] dep)
+            private static object IntOf(Func<object> f, string context, object dep)
             {
                 if (_dependencyCache.Count > MaxCacheSize)
                 {
                     EvictOldestCacheItem();
                 }
 
+                bool isAge = dep is int;
                 CacheValue value;
                 if (_dependencyCache.TryGetValue(context, out value))
                 {
-                    if (value.Dependency.SequenceEqual(dep))
+                    bool isNotStale = isAge ? value.Decay() : value.Dependency.SequenceEqual((object[])dep);
+                    if (isNotStale)
                     {
-                        return (R)value.Value;
+                        return value.Value;
                     }
                 }
 
                 var result = f();
-                _dependencyCache[context] = new CacheValue(dep, result);
+                _dependencyCache[context] = isAge ? new CacheValue((int)dep, result) : new CacheValue((object[])dep, result);
                 return result;
             }
-            public static R Of<R>(Func<R> f, string context, int age)
+
+            public static R Of<R>(Func<R> f, string context, object dep)
             {
-                if (_dependencyCache.Count > MaxCacheSize)
-                {
-                    EvictOldestCacheItem();
-                }
-
-                CacheValue value;
-                if (_dependencyCache.TryGetValue(context, out value))
-                {
-                    if (value.Decay())
-                    {
-                        return (R)value.Value;
-                    }
-                }
-
-                var result = f();
-                _dependencyCache[context] = new CacheValue(age, result);
-                return result;
+                return (R)IntOf(() => f(), context, dep);
             }
+            public static void Of(Action f, string context, object dep)
+            {
+                IntOf(() => { f(); return null; }, context, dep);
+            }
+
             private static void EvictOldestCacheItem()
             {
                 var oldestKey = _dependencyCache.Last().Key;

@@ -63,23 +63,29 @@ namespace IngameScript
 
             if (!_suspensionStrength) yield break;
 
-            var normalizeFactor = _suspensionStrength && myWheels.Count() > 0 ? CalcStrength(myWheels) : 0;
-            var subNormalizeFactor = _subWheelsStrength && subWheels.Count() > 0 ? CalcStrength(subWheels) : 0;
+            var normalizeFactor = myWheels.Count() > 0 ? CalcStrength(myWheels) : 0;
+            var subNormalizeFactor = subWheels.Count() > 0 ? CalcStrength(subWheels) : 0;
 
-            while (true)
+            double gridUnsprungWeight = GridUnsprungMass * GravityMagnitude;
+
+            while (myWheels == MyWheels)
             {
                 Action<WheelWrapper, double> action = (w, GridUnsprungWeight) =>
                 {
-                    w.TargetStrength = Memo.Of(() =>
-                        MathHelper.Clamp(Math.Sqrt(w.WeightRatio / normalizeFactor * GridUnsprungWeight) / w.BlackMagicFactor, 5, 100) * _strengthFactor,
-                    $"TargetStrength-{w.Wheel.EntityId}", Memo.Refs(GridUnsprungWeight));
+                    if (gridUnsprungWeight != GridUnsprungWeight)
+                    {
+                        w.TargetStrength = MathHelper.Clamp(Math.Sqrt(w.WeightRatio / normalizeFactor * GridUnsprungWeight) / w.BlackMagicFactor, 5, 100) * _strengthFactor;
+                        gridUnsprungWeight = GridUnsprungWeight;
+                    }
                 };
 
                 Action<WheelWrapper, double> subAction = (w, GridUnsprungWeight) =>
                 {
-                    w.TargetStrength = Memo.Of(() =>
-                        MathHelper.Clamp(Math.Sqrt(w.WeightRatio / subNormalizeFactor * GridUnsprungWeight) / w.BlackMagicFactor, 5, 100) * _strengthFactor,
-                    $"TargetStrength-{w.Wheel.EntityId}", Memo.Refs(GridUnsprungWeight));
+                    if (gridUnsprungWeight != GridUnsprungWeight)
+                    {
+                        w.TargetStrength = MathHelper.Clamp(Math.Sqrt(w.WeightRatio / subNormalizeFactor * GridUnsprungWeight) / w.BlackMagicFactor, 5, 100) * _strengthFactor;
+                        gridUnsprungWeight = GridUnsprungWeight;
+                    }
                 };
 
                 yield return new StrengthTaskResult
