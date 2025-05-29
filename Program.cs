@@ -102,6 +102,7 @@ namespace IngameScript
                 InitPower();
                 InitStopLights();
                 InitAutoLevel();
+                InitAutopilot();
                 InitScreens();
                 BaseMass = Mass.BaseMass;
             }

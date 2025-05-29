@@ -58,10 +58,10 @@ namespace IngameScript
         }
         IEnumerable<StrengthTaskResult> SuspensionStrengthTask()
         {
+            if (!_suspensionStrength) yield break;
+
             var myWheels = MyWheels;
             var subWheels = SubWheels;
-
-            if (!_suspensionStrength) yield break;
 
             var normalizeFactor = myWheels.Count() > 0 ? CalcStrength(myWheels) : 0;
             var subNormalizeFactor = subWheels.Count() > 0 ? CalcStrength(subWheels) : 0;
@@ -90,8 +90,8 @@ namespace IngameScript
 
                 yield return new StrengthTaskResult
                 {
-                    Action = _suspensionStrength ? action : null,
-                    SubAction = _subWheelsStrength ? subAction : null
+                    Action = action,
+                    SubAction = subAction
                 };
             }
         }

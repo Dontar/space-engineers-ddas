@@ -36,6 +36,7 @@ namespace IngameScript
         {
             Gyros = Util.GetBlocks<IMyGyro>(b => Util.IsNotIgnored(b, _ignoreTag) && b.Enabled);
         }
+
         IEnumerable FlipGridTask()
         {
             if (Flipping) yield break;

@@ -30,8 +30,19 @@ namespace IngameScript
 {
     partial class Program : MyGridProgram
     {
+        bool Recording = false;
+        IMyTerminalBlock AutopilotBlock;
+        IMySensorBlock Sensor;
+        IMyRemoteControl Remote;
+        Autopilot Pilot;
 
-        public bool Recording { get; set; } = false;
+        void InitAutopilot()
+        {
+            AutopilotBlock = Util.GetBlocks<IMyFlightMovementBlock>().FirstOrDefault();
+            Sensor = Util.GetBlocks<IMySensorBlock>(b => Util.IsNotIgnored(b, _ignoreTag)).FirstOrDefault();
+            Remote = (Controllers.MainController is IMyRemoteControl ? Controllers.MainController : null) as IMyRemoteControl;
+            Pilot = Autopilot.FromBlock(AutopilotBlock ?? Remote);
+        }
 
         struct AutopilotTaskResult
         {
@@ -44,26 +55,26 @@ namespace IngameScript
 
         IEnumerable AutopilotTask()
         {
-            var controller = Controllers.MainController is IMyRemoteControl ? Controllers.MainController : null;
-            var autopilot = Autopilot.FromBlock(Memo.Of(() => Util.GetBlocks<IMyFlightMovementBlock>().FirstOrDefault() as IMyTerminalBlock, "AI", Memo.Refs(Mass.BaseMass)) ?? controller);
+            var controller = Remote;
+            var autopilot = Pilot;
 
             if (autopilot == null || !autopilot.IsAutoPilotEnabled) yield break;
 
-            var sensor = Memo.Of(() => Util.GetBlocks<IMySensorBlock>(b => Util.IsNotIgnored(b, _ignoreTag)).FirstOrDefault(), "sensor", Memo.Refs(Mass.BaseMass));
+            var sensor = Sensor;
 
             var wayPoints = autopilot.Waypoints;
             int wayPointsCount = wayPoints.Count();
-            var wayPointsInfo = wayPoints.GetEnumerator();
+            var wayPointsEnum = wayPoints.GetEnumerator();
             if (wayPointsCount > 1)
             {
                 var closest = wayPoints.OrderBy(w => Vector3D.Distance(w.Coords, autopilot.GetPosition())).FirstOrDefault().Coords;
-                wayPointsInfo = closest.Equals(wayPoints.Last()) ? wayPointsInfo : wayPoints.SkipWhile(w => !w.Equals(closest)).Skip(1).GetEnumerator();
+                wayPointsEnum = closest.Equals(wayPoints.Last()) ? wayPointsEnum : wayPoints.SkipWhile(w => !w.Equals(closest)).Skip(1).GetEnumerator();
             }
-            wayPointsInfo.MoveNext();
+            wayPointsEnum.MoveNext();
 
             while (autopilot.IsAutoPilotEnabled)
             {
-                var currentWaypoint = wayPointsCount > 1 ? wayPointsInfo.Current : autopilot.CurrentWaypoint;
+                var currentWaypoint = wayPointsCount > 1 ? wayPointsEnum.Current : autopilot.CurrentWaypoint;
 
                 if (currentWaypoint.Equals(MyWaypointInfo.Empty))
                 {
@@ -101,19 +112,19 @@ namespace IngameScript
                 {
                     if (wayPointsCount > 1)
                     {
-                        if (!wayPointsInfo.MoveNext())
+                        if (!wayPointsEnum.MoveNext())
                         {
                             switch (autopilot.FlightMode)
                             {
                                 case FlightMode.Circle:
-                                    wayPointsInfo = wayPoints.GetEnumerator();
-                                    wayPointsInfo.MoveNext();
+                                    wayPointsEnum = wayPoints.GetEnumerator();
+                                    wayPointsEnum.MoveNext();
                                     break;
                                 case FlightMode.Patrol:
                                     var distanceFirst = Vector3D.Distance(wayPoints.First().Coords, currentPosition);
                                     var distanceLast = Vector3D.Distance(wayPoints.Last().Coords, currentPosition);
-                                    wayPointsInfo = (distanceLast < distanceFirst ? wayPoints.Select(w => w).Reverse() : wayPoints).Skip(1).GetEnumerator();
-                                    wayPointsInfo.MoveNext();
+                                    wayPointsEnum = (distanceLast < distanceFirst ? wayPoints.Select(w => w).Reverse() : wayPoints).Skip(1).GetEnumerator();
+                                    wayPointsEnum.MoveNext();
                                     break;
                                 default:
                                     controller.HandBrake = true;
@@ -131,7 +142,7 @@ namespace IngameScript
 
                 yield return new AutopilotTaskResult
                 {
-                    Waypoint = (wayPointsCount > 1 ? wayPointsInfo.Current.Name : autopilot.CurrentWaypoint.Name) ?? "None",
+                    Waypoint = (wayPointsCount > 1 ? wayPointsEnum.Current.Name : autopilot.CurrentWaypoint.Name) ?? "None",
                     Direction = direction,
                     Steer = (float)MathHelper.Clamp(directionAngle, -1, 1),
                     Mode = autopilot.FlightMode,
@@ -169,7 +180,7 @@ namespace IngameScript
                 Block = block;
             }
 
-            public IMyTerminalBlock Block { get; }
+            public IMyTerminalBlock Block;
             public bool IsAutoPilotEnabled => Block is IMyRemoteControl ? (Block as IMyRemoteControl).IsAutoPilotEnabled : (Block as IMyFlightMovementBlock).IsAutoPilotEnabled;
             public IEnumerable<MyWaypointInfo> Waypoints
             {
@@ -231,52 +242,51 @@ namespace IngameScript
 
         IEnumerable RecordPathTask()
         {
-            if (Recording) yield break;
-            var autopilot = Controllers.MainController;
-            var minDistance = autopilot.CubeGrid.WorldVolume.Radius * 2;
+            if (Remote == null || Recording) yield break;
+            var minDistance = Remote.CubeGrid.WorldVolume.Radius * 2;
             var wayPoints = new List<MyWaypointInfo>();
             var counter = 0;
             Recording = true;
             while (Recording)
             {
-                var current = autopilot.GetPosition();
+                var current = Remote.GetPosition();
                 if (Vector3D.Distance(current, wayPoints.LastOrDefault().Coords) > minDistance)
                 {
                     wayPoints.Add(new MyWaypointInfo($"Waypoint-#{counter++}", current));
                 }
                 yield return null;
             }
-            autopilot.CustomData = string.Join("\n", wayPoints);
+            Remote.CustomData = string.Join("\n", wayPoints);
             TaskManager.AddTaskOnce(ImportPathTask());
         }
 
         IEnumerable ImportPathTask()
         {
-            var autopilot = Controllers.MainController as IMyRemoteControl;
+            if (Remote == null) yield break;
             var wayPoints = new List<MyWaypointInfo>();
-            MyWaypointInfo.FindAll(autopilot.CustomData, wayPoints);
-            autopilot.ClearWaypoints();
-            wayPoints.ForEach(w => autopilot.AddWaypoint(w));
+            MyWaypointInfo.FindAll(Remote.CustomData, wayPoints);
+            Remote.ClearWaypoints();
+            wayPoints.ForEach(w => Remote.AddWaypoint(w));
             yield return null;
         }
 
         IEnumerable ReversePathTask()
         {
-            var autopilot = Controllers.MainController as IMyRemoteControl;
+            if (Remote == null) yield break;
             var wayPoints = new List<MyWaypointInfo>();
-            autopilot.GetWaypointInfo(wayPoints);
-            autopilot.ClearWaypoints();
+            Remote.GetWaypointInfo(wayPoints);
+            Remote.ClearWaypoints();
             wayPoints.Reverse();
-            wayPoints.ForEach(w => autopilot.AddWaypoint(w));
+            wayPoints.ForEach(w => Remote.AddWaypoint(w));
             yield return null;
         }
 
         IEnumerable ExportPathTask()
         {
-            var autopilot = Controllers.MainController as IMyRemoteControl;
+            if (Remote == null) yield break;
             var wayPoints = new List<MyWaypointInfo>();
-            autopilot.GetWaypointInfo(wayPoints);
-            autopilot.CustomData = string.Join("\n", wayPoints);
+            Remote.GetWaypointInfo(wayPoints);
+            Remote.CustomData = string.Join("\n", wayPoints);
             yield return null;
         }
     }

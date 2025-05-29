@@ -69,9 +69,8 @@ namespace IngameScript
                 var vehicleMaxPower = powerProducersPower.MaxOutput;
                 var powerMaxPercent = MathHelper.Clamp((vehicleMaxPower - passivePower) / wheelPower, 0, 1);
                 var dt = TaskManager.CurrentTaskLastRun.TotalSeconds;
-                var currentSpeedKmh = speed * 3.6;
                 var targetSpeed = Cruise ? CruiseSpeed : (ForwardBackward != 0 ? MyWheels.First().SpeedLimit : 0);
-                var error = targetSpeed - currentSpeedKmh;
+                var error = targetSpeed - speed * 3.6;
                 var power = MathHelper.Clamp(PID.Signal(error, dt), 5, 100 * powerMaxPercent);
                 yield return new PowerTaskResult
                 {
