@@ -27,8 +27,8 @@ namespace IngameScript
 {
     partial class Program : MyGridProgram
     {
-        public bool Flipping { get; set; } = false;
-        public bool AutoLevel { get; set; } = false;
+        bool Flipping = false;
+        // bool AutoLevel = false;
 
         IEnumerable<IMyGyro> Gyros;
 
@@ -45,14 +45,14 @@ namespace IngameScript
 
             var orientation = TaskManager.GetTaskResult<GridOrientation>();
 
-            var OldAutoLevel = AutoLevel;
+            var OldAutoLevel = _autoLevel;
             Flipping = true;
-            AutoLevel = false;
+            _autoLevel = false;
             while (!(Util.IsBetween(orientation.Roll, -25, 25) || UpDown < 0))
             {
                 orientation = TaskManager.GetTaskResult<GridOrientation>();
                 var rollSpeed = Util.NormalizeClamp(orientation.Roll, -180, 180, -60, 60);
-                Util.ApplyGyroOverride(0, 0, -rollSpeed, gyroList, Controllers.MainController.WorldMatrix);
+                Util.ApplyGyroOverride(0, 0, -rollSpeed, _autoLevelPower, gyroList, Controllers.MainController.WorldMatrix);
                 yield return null;
             }
             foreach (var g in gyroList)
@@ -60,25 +60,25 @@ namespace IngameScript
                 g.Roll = g.Yaw = g.Pitch = 0; g.GyroOverride = false;
             }
             Flipping = false;
-            AutoLevel = OldAutoLevel;
+            _autoLevel = OldAutoLevel;
         }
 
         IEnumerable AutoLevelTask()
         {
             var isFastEnough = Speed > 5;
-            if (!(AutoLevel && isFastEnough)) yield break;
+            if (!(_autoLevel && isFastEnough)) yield break;
             var gyroList = Gyros;
             if (gyroList.Count() == 0) yield break;
 
             var mainController = Controllers.MainController;
-            while (AutoLevel && isFastEnough)
+            while (_autoLevel && isFastEnough)
             {
                 var orientation = TaskManager.GetTaskResult<GridOrientation>();
                 isFastEnough = Speed > 5;
                 var rollSpeed = Util.NormalizeClamp(orientation.Roll, -180, 180, -60, 60);
                 var pitchSpeed = Util.NormalizeClamp(orientation.Pitch - 5, -180, 180, -60, 60);
-                var yawSpeed = Util.NormalizeClamp(orientation.Yaw, -180, 180, -60, 60);
-                Util.ApplyGyroOverride(pitchSpeed, yawSpeed, -rollSpeed, gyroList, mainController.WorldMatrix);
+                // var yawSpeed = Util.NormalizeClamp(orientation.Yaw, -180, 180, -60, 60);
+                Util.ApplyGyroOverride(pitchSpeed, /* yawSpeed */0, -rollSpeed, _autoLevelPower, gyroList, mainController.WorldMatrix);
                 yield return null;
             }
             foreach (var g in gyroList)

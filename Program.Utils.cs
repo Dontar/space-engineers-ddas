@@ -230,13 +230,13 @@ namespace IngameScript
                 return block is IMyTextSurfaceProvider && (block as IMyTextSurfaceProvider).SurfaceCount > 0;
             }
 
-            public static void ApplyGyroOverride(double pitchSpeed, double yawSpeed, double rollSpeed, IMyGyro gyro, MatrixD worldMatrix)
+            public static void ApplyGyroOverride(double pitchSpeed, double yawSpeed, double rollSpeed, float power, IMyGyro gyro, MatrixD worldMatrix)
             {
-                ApplyGyroOverride(pitchSpeed, yawSpeed, rollSpeed, new IMyGyro[] { gyro }, worldMatrix);
+                ApplyGyroOverride(pitchSpeed, yawSpeed, rollSpeed, power, new IMyGyro[] { gyro }, worldMatrix);
 
             }
 
-            public static void ApplyGyroOverride(double pitchSpeed, double yawSpeed, double rollSpeed, IEnumerable<IMyGyro> gyros, MatrixD worldMatrix)
+            public static void ApplyGyroOverride(double pitchSpeed, double yawSpeed, double rollSpeed, float power, IEnumerable<IMyGyro> gyros, MatrixD worldMatrix)
             {
                 var rotationVec = new Vector3D(pitchSpeed, yawSpeed, rollSpeed);
                 var relativeRotationVec = Vector3D.TransformNormal(rotationVec, worldMatrix);
@@ -248,6 +248,7 @@ namespace IngameScript
                     g.Yaw = (float)transformedRotationVec.Y;
                     g.Roll = (float)transformedRotationVec.Z;
                     g.GyroOverride = true;
+                    g.GyroPower = power;
                 }
             }
 

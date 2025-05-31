@@ -28,29 +28,29 @@ namespace IngameScript
     partial class Program : MyGridProgram
     {
         #region mdk preserve
-        private string _tag = "{DDAS}";
-        private string _ignoreTag = "{Ignore}";
-        private float _lowModeHight = 0;
-        private string _highModeHight = "Max";
-        private double _strengthFactor = 0.6;
-        private double _suspensionHightRoll = 30;
-        private double _maxSteeringAngle = 25;
-        private FocalPoint _ackermanFocalPoint = FocalPoint.CoM;
-        private double _ackermanFocalPointOffset = 0;
-        private float _frictionInner = 80;
-        private float _frictionOuter = 60;
-        private double _frictionMinSpeed = 5;
-        private string _pidCruise = "0.5/0/0/0";
-        private string _pidPower = "10/0/0/0";
-        private bool _addWheels = true;
-        private bool _suspensionStrength = true;
-        private bool _subWheelsStrength = true;
-        private bool _power = true;
-        private bool _stopLights = true;
-        private bool _friction = true;
-        private bool _suspensionHight = true;
-        // private bool _autoLevel = true;
-        // private float _autoLevelPower = 30;
+        string _tag = "{DDAS}";
+        string _ignoreTag = "{Ignore}";
+        float _lowModeHight = 0;
+        string _highModeHight = "Max";
+        double _strengthFactor = 0.6;
+        double _suspensionHightRoll = 30;
+        double _maxSteeringAngle = 25;
+        FocalPoint _ackermanFocalPoint = FocalPoint.CoM;
+        double _ackermanFocalPointOffset = 0;
+        float _frictionInner = 80;
+        float _frictionOuter = 60;
+        double _frictionMinSpeed = 5;
+        string _pidCruise = "0.5/0/0/0";
+        string _pidPower = "10/0/0/0";
+        bool _addWheels = true;
+        bool _suspensionStrength = true;
+        bool _subWheelsStrength = true;
+        bool _power = true;
+        bool _stopLights = true;
+        bool _friction = true;
+        bool _suspensionHight = true;
+        bool _autoLevel = false;
+        float _autoLevelPower = 30;
         #endregion
 
         enum FocalPoint
@@ -69,7 +69,7 @@ namespace IngameScript
             _StopLightsTask = TaskManager.AddTask(StopLightsTask());                //3
             _PowerTask = TaskManager.AddTask(PowerTask());                          //4
             TaskManager.AddTask(SuspensionStrengthTask(), 5f);                      //5
-            // TaskManager.AddTask(AutoLevelTask());                                   //6
+            TaskManager.AddTask(AutoLevelTask());                                   //6
             TaskManager.AddTask(ScreensTask(), 0.5f);                               //7
             TaskManager.AddTask(GridOrientationsTask());                            //8
             TaskManager.AddTask(Util.DisplayLogo("DDAS", Me.GetSurface(0)), 1.5f);  //9
@@ -126,7 +126,7 @@ namespace IngameScript
                     TaskManager.AddTaskOnce(CruiseTask());
                     break;
                 case "level":
-                    AutoLevel = !AutoLevel;
+                    _autoLevel = !_autoLevel;
                     break;
                 case "record":
                     if (!Recording)
