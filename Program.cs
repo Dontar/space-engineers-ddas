@@ -30,27 +30,33 @@ namespace IngameScript
         #region mdk preserve
         string _tag = "{DDAS}";
         string _ignoreTag = "{Ignore}";
+
+        bool _suspensionHight = true;
+        double _suspensionHightRoll = 30;
         float _lowModeHight = 0;
         string _highModeHight = "Max";
+
+        bool _suspensionStrength = true;
+        bool _subWheelsStrength = true;
         double _strengthFactor = 0.6;
-        double _suspensionHightRoll = 30;
-        double _maxSteeringAngle = 25;
+
         FocalPoint _ackermanFocalPoint = FocalPoint.CoM;
         double _ackermanFocalPointOffset = 0;
+        double _maxSteeringAngle = 25;
+
+        bool _friction = true;
         float _frictionInner = 80;
         float _frictionOuter = 60;
         double _frictionMinSpeed = 5;
+
+        bool _autoLevel = false;
+        float _autoLevelPower = 30;
+
         string _pidCruise = "0.5/0/0/0";
         string _pidPower = "10/0/0/0";
         bool _addWheels = true;
-        bool _suspensionStrength = true;
-        bool _subWheelsStrength = true;
         bool _power = true;
         bool _stopLights = true;
-        bool _friction = true;
-        bool _suspensionHight = true;
-        bool _autoLevel = false;
-        float _autoLevelPower = 30;
         #endregion
 
         enum FocalPoint
@@ -63,23 +69,19 @@ namespace IngameScript
             Runtime.UpdateFrequency = UpdateFrequency.Update10;
             Util.Init(this);
             InitGridProps();
-            TaskManager.AddTask(Util.StatusMonitor(this));                          //0
-            TaskManager.AddTask(MainTask());                                        //1
-            TaskManager.AddTask(AutopilotTask());                                   //2
-            _StopLightsTask = TaskManager.AddTask(StopLightsTask());                //3
-            _PowerTask = TaskManager.AddTask(PowerTask());                          //4
-            TaskManager.AddTask(SuspensionStrengthTask(), 5f);                      //5
-            TaskManager.AddTask(AutoLevelTask());                                   //6
-            TaskManager.AddTask(ScreensTask(), 0.5f);                               //7
-            TaskManager.AddTask(GridOrientationsTask());                            //8
-            TaskManager.AddTask(Util.DisplayLogo("DDAS", Me.GetSurface(0)), 1.5f);  //9
-
-            TaskManager.PauseTask(_PowerTask, !_power);
-            TaskManager.PauseTask(_StopLightsTask, !_stopLights);
+            TaskManager.AddTask(Util.StatusMonitor(this));
+            TaskManager.AddTask(MainTask());
+            TaskManager.AddTask(AutopilotTask());
+            TaskManager.AddTask(StopLightsTask(), 0, !_stopLights);
+            TaskManager.AddTask(PowerTask(), 0, !_power);
+            TaskManager.AddTask(SuspensionStrengthTask(), 5f, !_suspensionStrength);
+            _AutoLevelTask = TaskManager.AddTask(AutoLevelTask(), 0, !_autoLevel);
+            TaskManager.AddTask(ScreensTask(), 0.5f);
+            TaskManager.AddTask(GridOrientationsTask());
+            TaskManager.AddTask(Util.DisplayLogo("DDAS", Me.GetSurface(0)), 1.5f);
         }
 
-        readonly int _PowerTask;
-        readonly int _StopLightsTask;
+        readonly int _AutoLevelTask;
         float BaseMass;
 
         public void Main(string argument, UpdateType updateSource)
@@ -127,6 +129,7 @@ namespace IngameScript
                     break;
                 case "level":
                     _autoLevel = !_autoLevel;
+                    TaskManager.PauseTask(_AutoLevelTask, !_autoLevel);
                     break;
                 case "record":
                     if (!Recording)
@@ -174,7 +177,6 @@ namespace IngameScript
                 var autopilot = TaskManager.GetTaskResult<AutopilotTaskResult>();
                 var orientation = TaskManager.GetTaskResult<GridOrientation>();
 
-                // var gridRoll = orientation.Roll;
                 var roll = orientation.Roll + (rollCompensating ? (orientation.Roll > 0 ? 6 : -6) : 0);
 
                 bool isTurning = leftRight != 0 || !Util.IsBetween(autopilot.Steer, -0.4, 0.4);

@@ -57,7 +57,7 @@ namespace IngameScript
                 screenText.AppendLine($"Power:       {power.Power:N2}");
                 screenText.AppendLine($"Propulsion:  {propulsion.Propulsion:N2}");
                 screenText.AppendLine("============");
-                screenText.AppendLine($"{F("Cruise", Cruise)}  {F("Rec", Recording)}  {F("Flip", Flipping)}  {F("Level", AutoLevel)}");
+                screenText.AppendLine($"{F("Cruise", Cruise)}  {F("Rec", Recording)}  {F("Flip", Flipping)}  {F("Level", _autoLevel)}");
                 // screenText.AppendLine($"Steer:       {autopilot.Steer}");
                 screenText.AppendLine($"Waypoint:    {autopilot.Waypoint}");
                 screenText.AppendLine($"Waypoint #:  {autopilot.WaypointCount}");

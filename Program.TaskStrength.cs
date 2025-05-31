@@ -58,13 +58,10 @@ namespace IngameScript
         }
         IEnumerable<StrengthTaskResult> SuspensionStrengthTask()
         {
-            if (!_suspensionStrength) yield break;
-
             var myWheels = MyWheels;
-            var subWheels = SubWheels;
 
             var normalizeFactor = myWheels.Count() > 0 ? CalcStrength(myWheels) : 0;
-            var subNormalizeFactor = subWheels.Count() > 0 ? CalcStrength(subWheels) : 0;
+            var subNormalizeFactor = SubWheels.Count() > 0 ? CalcStrength(SubWheels) : 0;
 
             double gridUnsprungWeight = GridUnsprungMass * GravityMagnitude;
 

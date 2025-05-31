@@ -332,7 +332,7 @@ namespace IngameScript
             }
             static readonly List<Task> tasks = new List<Task>();
 
-            public static int AddTask(IEnumerable task, float intervalSeconds = 0)
+            public static int AddTask(IEnumerable task, float intervalSeconds = 0, bool IsPaused = false, bool IsOnce = false)
             {
                 tasks.Add(new Task
                 {
@@ -341,25 +341,14 @@ namespace IngameScript
                     Interval = TimeSpan.FromSeconds(intervalSeconds),
                     TimeSinceLastRun = TimeSpan.Zero,
                     TaskResult = null,
-                    IsPaused = false,
-                    IsOnce = false
+                    IsPaused = IsPaused,
+                    IsOnce = IsOnce
                 });
                 return tasks.Count - 1;
             }
-
-            public static int AddTaskOnce(IEnumerable task, float intervalSeconds = 0)
+            public static int AddTaskOnce(IEnumerable task, float intervalSeconds = 0, bool IsPaused = false)
             {
-                tasks.Add(new Task
-                {
-                    Ref = task,
-                    Enumerator = task.GetEnumerator(),
-                    Interval = TimeSpan.FromSeconds(intervalSeconds),
-                    TimeSinceLastRun = TimeSpan.Zero,
-                    TaskResult = null,
-                    IsPaused = false,
-                    IsOnce = true
-                });
-                return tasks.Count - 1;
+                return AddTask(task, intervalSeconds, IsPaused, true);
             }
 
             public static void PauseTask(int taskId, bool pause) => tasks[taskId].IsPaused = pause;

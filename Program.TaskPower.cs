@@ -51,14 +51,14 @@ namespace IngameScript
             public float WheelMaxPower;
             public float GridMaxPower;
             public float MaxPowerPercent;
-
         }
         IEnumerable<PowerTaskResult> PowerTask()
         {
+            var myWheels = MyWheels;
             var PID = new PID(_pidPower);
-            var wheelPower = MyWheels.Concat(SubWheels).Sum(w => w.MaxPower);
+            var wheelPower = myWheels.Concat(SubWheels).Sum(w => w.MaxPower);
             float passivePower = 0;
-            while (true)
+            while (myWheels == MyWheels)
             {
                 var powerProducersPower = PowerProducersPower;
                 double speed = Speed;

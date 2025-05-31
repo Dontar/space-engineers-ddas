@@ -28,7 +28,6 @@ namespace IngameScript
     partial class Program : MyGridProgram
     {
         bool Flipping = false;
-        // bool AutoLevel = false;
 
         IEnumerable<IMyGyro> Gyros;
 
@@ -45,9 +44,8 @@ namespace IngameScript
 
             var orientation = TaskManager.GetTaskResult<GridOrientation>();
 
-            var OldAutoLevel = _autoLevel;
             Flipping = true;
-            _autoLevel = false;
+            TaskManager.PauseTask(_AutoLevelTask, true);
             while (!(Util.IsBetween(orientation.Roll, -25, 25) || UpDown < 0))
             {
                 orientation = TaskManager.GetTaskResult<GridOrientation>();
@@ -60,18 +58,18 @@ namespace IngameScript
                 g.Roll = g.Yaw = g.Pitch = 0; g.GyroOverride = false;
             }
             Flipping = false;
-            _autoLevel = OldAutoLevel;
+            TaskManager.PauseTask(_AutoLevelTask, !_autoLevel);
         }
 
         IEnumerable AutoLevelTask()
         {
             var isFastEnough = Speed > 5;
-            if (!(_autoLevel && isFastEnough)) yield break;
+            if (!isFastEnough) yield break;
             var gyroList = Gyros;
             if (gyroList.Count() == 0) yield break;
 
             var mainController = Controllers.MainController;
-            while (_autoLevel && isFastEnough)
+            while (isFastEnough)
             {
                 var orientation = TaskManager.GetTaskResult<GridOrientation>();
                 isFastEnough = Speed > 5;
