@@ -31,14 +31,14 @@ namespace IngameScript
         {
             var frontMostAxel = wheels.Min(w => w.ToCoM.Z);
             var rearMostAxel = wheels.Max(w => w.ToCoM.Z);
-            var chassisLength = rearMostAxel - frontMostAxel;
+            var chassisLength = rearMostAxel + Math.Abs(frontMostAxel);
 
             var isTrailer = frontMostAxel > 0;
             // is trailer no front wheels
             if (isTrailer)
             {
                 frontMostAxel = -rearMostAxel;
-                chassisLength = wheels.First().Wheel.CubeGrid.WorldVolume.Radius * 2;
+                chassisLength = rearMostAxel * 2;
             }
 
             return wheels.Sum(w =>
@@ -47,7 +47,7 @@ namespace IngameScript
                 w.WeightRatio = w.IsFront
                     ? Math.Abs(Util.NormalizeValue(w.ToCoM.Z, rearMostAxel, frontMostAxel, 0, rearMostAxel / chassisLength))
                     : Math.Abs(Util.NormalizeValue(w.ToCoM.Z, frontMostAxel, rearMostAxel, 0, frontMostAxel / chassisLength));
-                return w.WeightRatio * (isTrailer ? 2 : 1);
+                return w.WeightRatio/*  * (isTrailer ? 2 : 1) */;
             });
         }
 
@@ -59,36 +59,22 @@ namespace IngameScript
         IEnumerable<StrengthTaskResult> SuspensionStrengthTask()
         {
             var myWheels = MyWheels;
+            var subWheels = SubWheels;
 
             var normalizeFactor = myWheels.Count() > 0 ? CalcStrength(myWheels) : 0;
-            var subNormalizeFactor = SubWheels.Count() > 0 ? CalcStrength(SubWheels) : 0;
+            var subNormalizeFactor = subWheels.Count() > 0 ? CalcStrength(subWheels) : 0;
 
-            double gridUnsprungWeight = GridUnsprungMass * GravityMagnitude;
-
-            while (myWheels == MyWheels)
+            Func<double, Action<WheelWrapper, double>> action = (factor) => (w, GridUnsprungWeight) =>
             {
-                Action<WheelWrapper, double> action = (w, GridUnsprungWeight) =>
-                {
-                    if (gridUnsprungWeight != GridUnsprungWeight)
-                    {
-                        w.TargetStrength = MathHelper.Clamp(Math.Sqrt(w.WeightRatio / normalizeFactor * GridUnsprungWeight) / w.BlackMagicFactor, 5, 100) * _strengthFactor;
-                        gridUnsprungWeight = GridUnsprungWeight;
-                    }
-                };
+                w.TargetStrength = MathHelper.Clamp(Math.Sqrt(w.WeightRatio / factor * GridUnsprungWeight) / w.BlackMagicFactor, 5, 100) * _strengthFactor;
+            };
 
-                Action<WheelWrapper, double> subAction = (w, GridUnsprungWeight) =>
-                {
-                    if (gridUnsprungWeight != GridUnsprungWeight)
-                    {
-                        w.TargetStrength = MathHelper.Clamp(Math.Sqrt(w.WeightRatio / subNormalizeFactor * GridUnsprungWeight) / w.BlackMagicFactor, 5, 100) * _strengthFactor;
-                        gridUnsprungWeight = GridUnsprungWeight;
-                    }
-                };
-
+            while (myWheels == MyWheels && subWheels == SubWheels)
+            {
                 yield return new StrengthTaskResult
                 {
-                    Action = action,
-                    SubAction = subAction
+                    Action = action(normalizeFactor),
+                    SubAction = action(subNormalizeFactor)
                 };
             }
         }

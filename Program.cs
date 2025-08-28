@@ -146,6 +146,9 @@ namespace IngameScript
                 case "export":
                     TaskManager.AddTaskOnce(ExportPathTask());
                     break;
+                case "status":
+                    ChangeScreenType();
+                    break;
                 default:
                     // menuSystem.ProcessMenuCommands(argument);
                     break;
@@ -210,16 +213,19 @@ namespace IngameScript
                         wheel.Power = power;
 
                     // update height
-                    if (_suspensionHight && ((roll > _suspensionHightRoll && w.IsLeft) || (roll < -_suspensionHightRoll && !w.IsLeft)))
+                    if (_suspensionHight)
                     {
-                        var value = (float)Util.NormalizeClamp(Math.Abs(orientation.Roll), 0, 25, high, low);
-                        wheel.Height += (value - wheel.Height) * 0.2f;
-                        rollCompensating = true;
-                    }
-                    else
-                    {
-                        wheel.Height += (w.TargetHeight - wheel.Height) * 0.3f;
-                        rollCompensating = false;
+                        if ((roll > _suspensionHightRoll && w.IsLeft) || (roll < -_suspensionHightRoll && !w.IsLeft))
+                        {
+                            var value = (float)Util.NormalizeClamp(Math.Abs(orientation.Roll), 0, 25, high, low);
+                            wheel.Height += (value - wheel.Height) * 0.2f;
+                            rollCompensating = true;
+                        }
+                        else
+                        {
+                            wheel.Height += (w.TargetHeight - wheel.Height) * 0.3f;
+                            rollCompensating = false;
+                        }
                     }
 
                     // update steering
@@ -268,13 +274,16 @@ namespace IngameScript
                         }
                         else w.Friction = 100;
 
-                    if (_suspensionHight && ((roll > _suspensionHightRoll && w.IsLeft) || (roll < -_suspensionHightRoll && !w.IsLeft)))
+                    if (_suspensionHight)
                     {
-                        var value = (float)Util.NormalizeClamp(Math.Abs(orientation.Roll), 0, 25, high, low);
-                        wheel.Height += (value - wheel.Height) * 0.5f;
+                        if ((roll > _suspensionHightRoll && w.IsLeft) || (roll < -_suspensionHightRoll && !w.IsLeft))
+                        {
+                            var value = (float)Util.NormalizeClamp(Math.Abs(orientation.Roll), 0, 25, high, low);
+                            wheel.Height += (value - wheel.Height) * 0.5f;
+                        }
+                        else
+                            wheel.Height += (w.TargetHeight - wheel.Height) * 0.3f;
                     }
-                    else
-                        wheel.Height += (w.TargetHeight - wheel.Height) * 0.3f;
 
                     if (_addWheels && !wheel.IsAttached)
                         wheel.ApplyAction("Add Top Part");

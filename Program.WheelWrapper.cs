@@ -20,11 +20,13 @@ namespace IngameScript
         void InitWheels()
         {
             AllWheels = Util.GetBlocks<IMyMotorSuspension>(b => Util.IsNotIgnored(b, _ignoreTag) && b.Enabled && b.IsSameConstructAs(Me));
+            if (AllWheels.Count() < 1) return;
 
             var T = MatrixD.Transpose(Controllers.MainController.WorldMatrix);
             var wh = AllWheels
                 .Where(w => w.CubeGrid == Me.CubeGrid)
                 .Select(w => new WheelWrapper(w, Controllers.MainController, this, T));
+
             var maxSteerAngle = _maxSteeringAngle;
             var distance = wh.Max(w => Math.Abs(w.ToFocalPoint.Z));
             var hight = wh.Min(w => w.Wheel.Height);
@@ -43,6 +45,7 @@ namespace IngameScript
             var sw = AllWheels
                 .Where(w => w.CubeGrid != Me.CubeGrid)
                 .Select(w => new WheelWrapper(w, Controllers, T));
+
             if (sw.Count() > 0)
             {
                 hight = sw.Min(w => w.Wheel.Height);
@@ -53,8 +56,6 @@ namespace IngameScript
                 });
             }
             SubWheels = sw.ToArray();
-
-            // GridUnsprungMass = Mass.PhysicalMass - MyWheels.Concat(SubWheels).Sum(w => w.Wheel.Top?.Mass ?? 0);
         }
 
         class WheelWrapper

@@ -316,6 +316,11 @@ namespace IngameScript
                 }
             }
 
+            public static string VectorToGPS(Vector3D coords, string name)
+            {
+                return string.Format("GPS:{0}:{1:R}:{2:R}:{3:R}:", name, coords.X, coords.Y, coords.Z);
+            }
+
         }
 
         static class TaskManager

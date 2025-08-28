@@ -28,6 +28,7 @@ namespace IngameScript
     partial class Program : MyGridProgram
     {
         IEnumerable<IMyTextSurface> ScreensStat;
+        int CurrentScreenType = 0;
         void InitScreens()
         {
             ScreensStat = Util.GetScreens("ddas-status").ToArray();
@@ -37,32 +38,119 @@ namespace IngameScript
         {
             return state ? $"[{flag}]" : flag;
         }
+
+        void ChangeScreenType()
+        {
+            CurrentScreenType = (CurrentScreenType + 1) % 3;
+        }
+
+        void DisplayStatus(StringBuilder s)
+        {
+            var propulsion = TaskManager.GetTaskResult<CruiseTaskResult>();
+            var power = TaskManager.GetTaskResult<PowerTaskResult>();
+            var autopilot = TaskManager.GetTaskResult<AutopilotTaskResult>();
+            var orientation = TaskManager.GetTaskResult<GridOrientation>();
+
+            s.Clear();
+            s.AppendLine($"Speed:       {Speed * 3.6:N2} km/h");
+            s.AppendLine($"Roll:        {orientation.Roll:N2} Degrees");
+            s.AppendLine($"Pitch:       {orientation.Pitch:N2} Degrees");
+            s.AppendLine($"Yaw:         {orientation.Yaw:N2} Degrees");
+            s.AppendLine($"CruiseSpeed: {CruiseSpeed:N2} km/h");
+            s.AppendLine($"Power:       {power.Power:N2}");
+            s.AppendLine($"Propulsion:  {propulsion.Propulsion:N2}");
+            s.AppendLine("============");
+            s.AppendLine($"{F("Cruise", Cruise)}  {F("Rec", Recording)}  {F("Flip", Flipping)}  {F("Level", _autoLevel)}");
+            // screenText.AppendLine($"Steer:       {autopilot.Steer}");
+            s.AppendLine($"Waypoint:    {autopilot.Waypoint}");
+            s.AppendLine($"Waypoint #:  {autopilot.WaypointCount}");
+            s.AppendLine($"Mode:        {autopilot.Mode}");
+        }
+
+        IEnumerable<IEnumerable<T>> ZipPairs<T>(IEnumerable<T> list)
+        {
+            var length = list.Count();
+            for (int i = 0; i < length / 2; i++)
+            {
+                yield return list.Take(2);
+                list = list.Skip(2);
+            }
+        }
+
+        void DisplayWheelStrength(StringBuilder s)
+        {
+            var frontWheels = MyWheels.Where(w => w.IsFront).OrderBy(w => w.ToCoM.Z);
+            var backWheels = MyWheels.Where(w => !w.IsFront).OrderBy(w => w.ToCoM.Z);
+            var subWheels = SubWheels.OrderBy(w => $"{w.ToCoM.Z:N3} {Convert.ToInt16(!w.IsLeft)}");
+
+            Action<IEnumerable<IEnumerable<WheelWrapper>>> PrintAxel = wheels =>
+            {
+                foreach (var g in wheels)
+                {
+                    var axel = g.OrderBy(w => !w.IsLeft).ToArray();
+                    s.AppendLine($"|{axel[0].Wheel.Strength,3:N0}%|          |{axel[1].Wheel.Strength,3:N0}%|");
+                    s.AppendLine("----------------------");
+                }
+            };
+
+            s.Clear();
+            s.AppendLine("=Suspension Strength==");
+            s.AppendLine("--Front---------------");
+            PrintAxel(ZipPairs(frontWheels));
+            s.AppendLine("--Rear----------------");
+            PrintAxel(ZipPairs(backWheels));
+            if (subWheels.Count() < 1) return;
+            s.AppendLine("--Trailer-------------");
+            PrintAxel(ZipPairs(subWheels));
+        }
+
+        void DisplayWheelHeight(StringBuilder s)
+        {
+            var frontWheels = MyWheels.Where(w => w.IsFront).OrderBy(w => w.ToCoM.Z);
+            var backWheels = MyWheels.Where(w => !w.IsFront).OrderBy(w => w.ToCoM.Z);
+            var subWheels = SubWheels.OrderBy(w => w.ToCoM.Z);
+
+            Action<IEnumerable<IEnumerable<WheelWrapper>>> PrintAxel = wheels =>
+            {
+                foreach (var g in wheels)
+                {
+                    var axel = g.OrderBy(w => !w.IsLeft).ToArray();
+                    var right = -axel[0].Wheel.Height * 100;
+                    var left  = -axel[1].Wheel.Height * 100;
+                    s.AppendLine($"|{right,4:N1}cm|      |{left,4:N1}cm|");
+                    s.AppendLine("----------------------");
+                }
+            };
+
+            s.Clear();
+            s.AppendLine("==Suspension Height===");
+            s.AppendLine("--Front---------------");
+            PrintAxel(ZipPairs(frontWheels));
+            s.AppendLine("--Rear----------------");
+            PrintAxel(ZipPairs(backWheels));
+            if (subWheels.Count() < 1) return;
+            s.AppendLine("--Trailer-------------");
+            PrintAxel(ZipPairs(subWheels));
+        }
+
         IEnumerable ScreensTask()
         {
             var screenText = new StringBuilder();
 
             while (true)
             {
-                var propulsion = TaskManager.GetTaskResult<CruiseTaskResult>();
-                var power = TaskManager.GetTaskResult<PowerTaskResult>();
-                var autopilot = TaskManager.GetTaskResult<AutopilotTaskResult>();
-                var orientation = TaskManager.GetTaskResult<GridOrientation>();
-
-                screenText.Clear();
-                screenText.AppendLine($"Speed:       {Speed * 3.6:N2} km/h");
-                screenText.AppendLine($"Roll:        {orientation.Roll:N2} Degrees");
-                screenText.AppendLine($"Pitch:       {orientation.Pitch:N2} Degrees");
-                screenText.AppendLine($"Yaw:         {orientation.Yaw:N2} Degrees");
-                screenText.AppendLine($"CruiseSpeed: {CruiseSpeed:N2} km/h");
-                screenText.AppendLine($"Power:       {power.Power:N2}");
-                screenText.AppendLine($"Propulsion:  {propulsion.Propulsion:N2}");
-                screenText.AppendLine("============");
-                screenText.AppendLine($"{F("Cruise", Cruise)}  {F("Rec", Recording)}  {F("Flip", Flipping)}  {F("Level", _autoLevel)}");
-                // screenText.AppendLine($"Steer:       {autopilot.Steer}");
-                screenText.AppendLine($"Waypoint:    {autopilot.Waypoint}");
-                screenText.AppendLine($"Waypoint #:  {autopilot.WaypointCount}");
-                screenText.AppendLine($"Mode:        {autopilot.Mode}");
-
+                switch (CurrentScreenType)
+                {
+                    case 2:
+                        DisplayWheelHeight(screenText);
+                        break;
+                    case 1:
+                        DisplayWheelStrength(screenText);
+                        break;
+                    default:
+                        DisplayStatus(screenText);
+                        break;
+                }
                 foreach (var s in ScreensStat)
                 {
                     s.ContentType = ContentType.TEXT_AND_IMAGE;
