@@ -40,7 +40,7 @@ namespace IngameScript
         bool _subWheelsStrength = true;
         double _strengthFactor = 0.6;
 
-        FocalPoint _ackermanFocalPoint = FocalPoint.CoM;
+        FocalPoint _ackermanFocalPoint = FocalPoint.RC;
         double _ackermanFocalPointOffset = 0;
         double _maxSteeringAngle = 25;
 
@@ -57,13 +57,13 @@ namespace IngameScript
         bool _addWheels = true;
         bool _power = true;
         bool _stopLights = true;
-        #endregion
 
         enum FocalPoint
         {
             CoM,
             RC
         }
+        #endregion
         public Program()
         {
             Runtime.UpdateFrequency = UpdateFrequency.Update10;
