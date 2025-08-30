@@ -41,30 +41,40 @@ namespace IngameScript
 
         void ChangeScreenType()
         {
-            CurrentScreenType = (CurrentScreenType + 1) % 3;
+            CurrentScreenType = (CurrentScreenType + 1) % 4;
         }
 
         void DisplayStatus(StringBuilder s)
         {
-            var propulsion = TaskManager.GetTaskResult<CruiseTaskResult>();
+            var propulsionSystemStatus = TaskManager.GetTaskResult<CruiseTaskResult>();
             var power = TaskManager.GetTaskResult<PowerTaskResult>();
-            var autopilot = TaskManager.GetTaskResult<AutopilotTaskResult>();
             var orientation = TaskManager.GetTaskResult<GridOrientation>();
+            var propulsion = Util.NormalizeValue(propulsionSystemStatus.Propulsion, 0, 1, 0, 100);
 
             s.Clear();
-            s.AppendLine($"Speed:       {Speed * 3.6:N2} km/h");
-            s.AppendLine($"Roll:        {orientation.Roll:N2} Degrees");
-            s.AppendLine($"Pitch:       {orientation.Pitch:N2} Degrees");
-            s.AppendLine($"Yaw:         {orientation.Yaw:N2} Degrees");
-            s.AppendLine($"CruiseSpeed: {CruiseSpeed:N2} km/h");
-            s.AppendLine($"Power:       {power.Power:N2}");
-            s.AppendLine($"Propulsion:  {propulsion.Propulsion:N2}");
-            s.AppendLine("============");
-            s.AppendLine($"{F("Cruise", Cruise)}  {F("Rec", Recording)}  {F("Flip", Flipping)}  {F("Level", _autoLevel)}");
-            // screenText.AppendLine($"Steer:       {autopilot.Steer}");
-            s.AppendLine($"Waypoint:    {autopilot.Waypoint}");
-            s.AppendLine($"Waypoint #:  {autopilot.WaypointCount}");
-            s.AppendLine($"Mode:        {autopilot.Mode}");
+            s.AppendLine("==Status==============");
+            s.AppendLine($" Speed:      {Speed * 3.6,3:N0} km/h");
+            s.AppendLine($" CruiseSpeed:{CruiseSpeed,3:N0} km/h");
+            s.AppendLine("======================");
+            s.AppendLine($" Roll:       {orientation.Roll,6:N1} °");
+            s.AppendLine($" Pitch:      {orientation.Pitch,6:N1} °");
+            s.AppendLine($" Yaw:        {orientation.Yaw,6:N1} °");
+            s.AppendLine("======================");
+            s.AppendLine($" Power:      {power.Power,6:N1} %");
+            s.AppendLine($" Propulsion: {propulsion,6:N1} %");
+            s.AppendLine("======================");
+            s.AppendLine($" {F("Cruise", Cruise),-10}{F("Rec", Recording),11}");
+            s.AppendLine($" {F("Flip", Flipping),-10}{F("Level", _autoLevel),11}");
+        }
+
+        void DisplayAutopilot(StringBuilder s)
+        {
+            var autopilot = TaskManager.GetTaskResult<AutopilotTaskResult>();
+            s.Clear();
+            s.AppendLine("==Autopilot===========\n");
+            s.AppendLine($" Waypoint:   {autopilot.Waypoint}");
+            s.AppendLine($" Waypoint #: {autopilot.WaypointCount}");
+            s.AppendLine($" Mode:       {autopilot.Mode}");
         }
 
         IEnumerable<IEnumerable<T>> ZipPairs<T>(IEnumerable<T> list)
@@ -116,7 +126,7 @@ namespace IngameScript
                 {
                     var axel = g.OrderBy(w => !w.IsLeft).ToArray();
                     var right = -axel[0].Wheel.Height * 100;
-                    var left  = -axel[1].Wheel.Height * 100;
+                    var left = -axel[1].Wheel.Height * 100;
                     s.AppendLine($"|{right,4:N1}cm|      |{left,4:N1}cm|");
                     s.AppendLine("----------------------");
                 }
@@ -141,6 +151,9 @@ namespace IngameScript
             {
                 switch (CurrentScreenType)
                 {
+                    case 3:
+                        DisplayAutopilot(screenText);
+                        break;
                     case 2:
                         DisplayWheelHeight(screenText);
                         break;

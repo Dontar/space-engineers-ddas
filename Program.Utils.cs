@@ -159,10 +159,10 @@ namespace IngameScript
 
             public static IEnumerable<IMyTextSurface> GetScreens(string screenTag = "")
             {
-                return GetScreens(b => IsTagged(b, screenTag));
+                return GetScreens(b => IsTagged(b, screenTag), screenTag);
             }
 
-            public static IEnumerable<IMyTextSurface> GetScreens(Func<IMyTerminalBlock, bool> collect)
+            public static IEnumerable<IMyTextSurface> GetScreens(Func<IMyTerminalBlock, bool> collect, string screenTag = "")
             {
                 var screens = GetBlocks<IMyTerminalBlock>(b => (b is IMyTextSurface || HasScreens(b)) && collect(b));
                 return screens.Select(s =>
@@ -170,7 +170,7 @@ namespace IngameScript
                     if (s is IMyTextSurface)
                         return s as IMyTextSurface;
                     var provider = s as IMyTextSurfaceProvider;
-                    var regex = new System.Text.RegularExpressions.Regex(@"^@(\d+)$", System.Text.RegularExpressions.RegexOptions.Multiline);
+                    var regex = new System.Text.RegularExpressions.Regex(screenTag + @"@(\d+)$", System.Text.RegularExpressions.RegexOptions.Multiline);
                     var match = regex.Match(s.CustomData);
                     if (match.Success)
                     {
