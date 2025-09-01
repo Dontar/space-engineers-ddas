@@ -149,6 +149,9 @@ namespace IngameScript
                 case "status":
                     ChangeScreenType();
                     break;
+                case "rest_turrets":
+                    RestTurrets();
+                    break;
                 default:
                     // menuSystem.ProcessMenuCommands(argument);
                     break;
@@ -365,6 +368,15 @@ namespace IngameScript
             foreach (var w in SubWheels) w.TargetHeight = targetHeight;
 
             yield return null;
+        }
+
+        void RestTurrets()
+        {
+            var turr = Util.GetBlocks<IMySearchlight>();
+            foreach (var item in turr)
+            {
+                item.SetManualAzimuthAndElevation(0, 0);
+            }
         }
     }
 }
