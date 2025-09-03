@@ -27,14 +27,17 @@ namespace IngameScript
 {
     partial class Program : MyGridProgram
     {
-        public bool Cruise = false;
-        public float CruiseSpeed = 0;
-
         struct CruiseTaskResult
         {
             public float Propulsion;
         }
-        IEnumerable<CruiseTaskResult> CruiseTask(float cruiseSpeed = -1, Func<bool> cruiseWhile = null)
+
+        bool Cruise = false;
+        float CruiseSpeed = 0;
+
+        CruiseTaskResult CruiseResult = new CruiseTaskResult();
+
+        IEnumerable CruiseTask(float cruiseSpeed = -1, Func<bool> cruiseWhile = null)
         {
             if (Cruise) yield break;
 
@@ -56,10 +59,13 @@ namespace IngameScript
                 var error = targetSpeed - currentSpeedKmh;
                 var propulsion = MathHelper.Clamp(pid.Signal(error, dt), -1, 1);
 
-                yield return new CruiseTaskResult { Propulsion = (float)propulsion };
+                CruiseResult.Propulsion = (float)propulsion;
+
+                yield return null;
             }
             Cruise = false;
             CruiseSpeed = 0;
+            CruiseResult.Propulsion = 0;
         }
     }
 }

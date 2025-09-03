@@ -74,7 +74,6 @@ namespace IngameScript
             TaskManager.AddTask(AutopilotTask());
             TaskManager.AddTask(StopLightsTask(), 0, !_stopLights);
             TaskManager.AddTask(PowerTask(), 0, !_power);
-            TaskManager.AddTask(SuspensionStrengthTask(), 5f, !_suspensionStrength);
             _AutoLevelTask = TaskManager.AddTask(AutoLevelTask(), 0, !_autoLevel);
             TaskManager.AddTask(ScreensTask(), 0.5f);
             TaskManager.AddTask(GridOrientationsTask());
@@ -83,6 +82,7 @@ namespace IngameScript
 
         readonly int _AutoLevelTask;
         float BaseMass;
+        float PhysicalMass;
 
         public void Main(string argument, UpdateType updateSource)
         {
@@ -99,7 +99,7 @@ namespace IngameScript
 
             if (BaseMass != Mass.BaseMass)
             {
-                InitGridProps();
+                if (BaseMass != 0) InitGridProps();
                 InitWheels();
                 InitPower();
                 InitStopLights();
@@ -107,6 +107,12 @@ namespace IngameScript
                 InitAutopilot();
                 InitScreens();
                 BaseMass = Mass.BaseMass;
+            }
+
+            if (PhysicalMass != Mass.PhysicalMass)
+            {
+                InitStrength();
+                PhysicalMass = Mass.PhysicalMass;
             }
 
             TaskManager.RunTasks(Runtime.TimeSinceLastRun);
@@ -119,7 +125,7 @@ namespace IngameScript
                 case "low":
                 case "high":
                 case "toggle_hight":
-                    TaskManager.AddTaskOnce(ToggleHightModeTask());
+                    ToggleHightMode();
                     break;
                 case "flip":
                     TaskManager.AddTaskOnce(FlipGridTask(), 1f);
@@ -171,17 +177,15 @@ namespace IngameScript
 
             while (true)
             {
-                var gravityMagnitude = GravityMagnitude;
                 var speed = Speed;
                 var leftRight = LeftRight;
                 var upDown = UpDown;
                 var forwardBackward = ForwardBackward;
 
-                var updateStrength = TaskManager.GetTaskResult<StrengthTaskResult>();
-                var propulsion = TaskManager.GetTaskResult<CruiseTaskResult>().Propulsion;
-                var power = TaskManager.GetTaskResult<PowerTaskResult>().Power;
-                var autopilot = TaskManager.GetTaskResult<AutopilotTaskResult>();
-                var orientation = TaskManager.GetTaskResult<GridOrientation>();
+                var propulsion = CruiseResult.Propulsion;
+                var power = PowerResult.Power;
+                var autopilot = AutopilotResult;
+                var orientation = OrientationResult;
 
                 var roll = orientation.Roll + (rollCompensating ? (orientation.Roll > 0 ? 6 : -6) : 0);
 
@@ -190,7 +194,7 @@ namespace IngameScript
                 var isHalfBreaking = upDown > 0 && forwardBackward < 0;
 
                 if (Controllers.SubController != null)
-                    Controllers.SubController.HandBrake = Controller.HandBrake;
+                    Controllers.SubController.HandBrake = Controller.HandBrake || upDown > 0;
 
                 foreach (var w in MyWheels)
                 {
@@ -201,7 +205,6 @@ namespace IngameScript
                     // update strength
                     if (_suspensionStrength)
                     {
-                        updateStrength.Action?.Invoke(w, GridUnsprungMass * gravityMagnitude);
                         wheel.Strength += (float)((w.TargetStrength - wheel.Strength) * 0.5);
                     }
 
@@ -266,7 +269,6 @@ namespace IngameScript
 
                     if (_subWheelsStrength)
                     {
-                        updateStrength.SubAction?.Invoke(w, GridUnsprungMass * gravityMagnitude);
                         wheel.Strength += (float)((w.TargetStrength - wheel.Strength) * 0.5);
                     }
 
@@ -342,7 +344,7 @@ namespace IngameScript
             }
         }
 
-        IEnumerable ToggleHightModeTask()
+        void ToggleHightMode()
         {
             var controlWheel = MyWheels.FirstOrDefault();
             var currentHeight = controlWheel.TargetHeight;// -31.9
@@ -357,7 +359,7 @@ namespace IngameScript
 
             foreach (var w in MyWheels) w.TargetHeight = targetHeight;
 
-            if (SubWheels.Count() == 0) yield break;
+            if (SubWheels.Count() == 0) return;
             var controlSubWheel = SubWheels.FirstOrDefault();
             currentHeight = controlSubWheel.TargetHeight;
 
@@ -366,8 +368,6 @@ namespace IngameScript
             closeLow = currentHeight - low;
             targetHeight = Math.Abs(closeHigh) < Math.Abs(closeLow) ? low : high;
             foreach (var w in SubWheels) w.TargetHeight = targetHeight;
-
-            yield return null;
         }
 
         void RestTurrets()

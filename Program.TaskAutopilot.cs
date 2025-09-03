@@ -53,6 +53,8 @@ namespace IngameScript
             public FlightMode Mode;
         }
 
+        AutopilotTaskResult AutopilotResult = new AutopilotTaskResult();
+
         IEnumerable AutopilotTask()
         {
             var controller = Remote;
@@ -63,18 +65,19 @@ namespace IngameScript
             var sensor = Sensor;
 
             var wayPoints = autopilot.Waypoints;
-            int wayPointsCount = wayPoints.Count();
-            var wayPointsEnum = wayPoints.GetEnumerator();
-            if (wayPointsCount > 1)
+            bool hasManyWaypoints = wayPoints.Count() > 1;
+            var wayPointsIter = wayPoints.GetEnumerator();
+
+            if (hasManyWaypoints)
             {
                 var closest = wayPoints.OrderBy(w => Vector3D.Distance(w.Coords, autopilot.GetPosition())).FirstOrDefault().Coords;
-                wayPointsEnum = closest.Equals(wayPoints.Last()) ? wayPointsEnum : wayPoints.SkipWhile(w => !w.Equals(closest)).Skip(1).GetEnumerator();
+                wayPointsIter = closest.Equals(wayPoints.Last()) ? wayPointsIter : wayPoints.SkipWhile(w => !w.Equals(closest)).Skip(1).GetEnumerator();
             }
-            wayPointsEnum.MoveNext();
+            wayPointsIter.MoveNext();
 
             while (autopilot.IsAutoPilotEnabled)
             {
-                var currentWaypoint = wayPointsCount > 1 ? wayPointsEnum.Current : autopilot.CurrentWaypoint;
+                var currentWaypoint = hasManyWaypoints ? wayPointsIter.Current : autopilot.CurrentWaypoint;
 
                 if (currentWaypoint.Equals(MyWaypointInfo.Empty))
                 {
@@ -106,49 +109,43 @@ namespace IngameScript
                 var direction = Vector3D.TransformNormal(destinationVector, T); direction.Y = 0;
                 var directionAngle = Util.ToAzimuth(direction);
 
-                var isWayPointReached = direction.Length() < autopilot.Block.CubeGrid.WorldVolume.Radius;
-
-                if (isWayPointReached)
+                if (direction.Length() < autopilot.Block.CubeGrid.WorldVolume.Radius)
                 {
-                    if (wayPointsCount > 1)
+                    if (!wayPointsIter.MoveNext())
                     {
-                        if (!wayPointsEnum.MoveNext())
+                        switch (autopilot.FlightMode)
                         {
-                            switch (autopilot.FlightMode)
-                            {
-                                case FlightMode.Circle:
-                                    wayPointsEnum = wayPoints.GetEnumerator();
-                                    wayPointsEnum.MoveNext();
-                                    break;
-                                case FlightMode.Patrol:
-                                    var distanceFirst = Vector3D.Distance(wayPoints.First().Coords, currentPosition);
-                                    var distanceLast = Vector3D.Distance(wayPoints.Last().Coords, currentPosition);
-                                    wayPointsEnum = (distanceLast < distanceFirst ? wayPoints.Select(w => w).Reverse() : wayPoints).Skip(1).GetEnumerator();
-                                    wayPointsEnum.MoveNext();
-                                    break;
-                                default:
-                                    controller.HandBrake = true;
-                                    autopilot.SetAutoPilotEnabled(false);
-                                    yield break;
-                            }
+                            case FlightMode.Circle:
+                                wayPointsIter = wayPoints.GetEnumerator();
+                                wayPointsIter.MoveNext();
+                                break;
+                            case FlightMode.Patrol:
+                                var distanceFirst = Vector3D.Distance(wayPoints.First().Coords, currentPosition);
+                                var distanceLast = Vector3D.Distance(wayPoints.Last().Coords, currentPosition);
+                                wayPointsIter = (distanceLast < distanceFirst ? wayPoints.Select(w => w).Reverse() : wayPoints).Skip(1).GetEnumerator();
+                                wayPointsIter.MoveNext();
+                                break;
+                            default:
+                                controller.HandBrake = true;
+                                autopilot.SetAutoPilotEnabled(false);
+                                yield break;
                         }
-                    }
-                    else
-                    {
-                        controller.HandBrake = true;
-                        yield break;
                     }
                 }
 
-                yield return new AutopilotTaskResult
-                {
-                    Waypoint = (wayPointsCount > 1 ? wayPointsEnum.Current.Name : autopilot.CurrentWaypoint.Name) ?? "None",
-                    Direction = direction,
-                    Steer = (float)MathHelper.Clamp(directionAngle, -1, 1),
-                    Mode = autopilot.FlightMode,
-                    WaypointCount = wayPointsCount
-                };
+                AutopilotResult.Waypoint = (hasManyWaypoints ? wayPointsIter.Current.Name : autopilot.CurrentWaypoint.Name) ?? "None";
+                AutopilotResult.Direction = direction;
+                AutopilotResult.Steer = (float)MathHelper.Clamp(directionAngle, -1, 1);
+                AutopilotResult.Mode = autopilot.FlightMode;
+                AutopilotResult.WaypointCount = wayPoints.Count();
+
+                yield return null;
             }
+            AutopilotResult.Waypoint = "None";
+            AutopilotResult.Direction = Vector3D.Zero;
+            AutopilotResult.Steer = 0;
+            AutopilotResult.Mode = FlightMode.Patrol;
+            AutopilotResult.WaypointCount = 0;
         }
 
         double AvoidCollision(IMyTerminalBlock autopilot, IMySensorBlock sensor, Vector3D currentPosition)

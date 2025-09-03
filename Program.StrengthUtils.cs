@@ -29,6 +29,7 @@ namespace IngameScript
     {
         double CalcStrength(IEnumerable<WheelWrapper> wheels)
         {
+            if (wheels.Count() < 1) return 0;
             var frontMostAxel = wheels.Min(w => w.ToCoM.Z);
             var rearMostAxel = wheels.Max(w => w.ToCoM.Z);
             var chassisLength = rearMostAxel + Math.Abs(frontMostAxel);
@@ -51,31 +52,25 @@ namespace IngameScript
             });
         }
 
-        struct StrengthTaskResult
+        void InitStrength()
         {
-            public Action<WheelWrapper, double> Action;
-            public Action<WheelWrapper, double> SubAction;
-        }
-        IEnumerable<StrengthTaskResult> SuspensionStrengthTask()
-        {
-            var myWheels = MyWheels;
-            var subWheels = SubWheels;
-
-            var normalizeFactor = myWheels.Count() > 0 ? CalcStrength(myWheels) : 0;
-            var subNormalizeFactor = subWheels.Count() > 0 ? CalcStrength(subWheels) : 0;
-
-            Func<double, Action<WheelWrapper, double>> action = (factor) => (w, GridUnsprungWeight) =>
+            var gridUnsprungWeight = GridUnsprungMass * GravityMagnitude;
+            if (_suspensionStrength)
             {
-                w.TargetStrength = MathHelper.Clamp(Math.Sqrt(w.WeightRatio / factor * GridUnsprungWeight) / w.BlackMagicFactor, 5, 100) * _strengthFactor;
-            };
-
-            while (myWheels == MyWheels && subWheels == SubWheels)
-            {
-                yield return new StrengthTaskResult
+                var normalizeFactor = CalcStrength(MyWheels);
+                foreach (var w in MyWheels)
                 {
-                    Action = action(normalizeFactor),
-                    SubAction = action(subNormalizeFactor)
-                };
+                    w.TargetStrength = MathHelper.Clamp(Math.Sqrt(w.WeightRatio / normalizeFactor * gridUnsprungWeight) / w.BlackMagicFactor, 5, 100) * _strengthFactor;
+                }
+            }
+
+            if (_subWheelsStrength)
+            {
+                var subNormalizeFactor = CalcStrength(SubWheels);
+                foreach (var w in SubWheels)
+                {
+                    w.TargetStrength = MathHelper.Clamp(Math.Sqrt(w.WeightRatio / subNormalizeFactor * gridUnsprungWeight) / w.BlackMagicFactor, 5, 100) * _strengthFactor;
+                }
             }
         }
     }

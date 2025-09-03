@@ -1,8 +1,8 @@
 using Sandbox.ModAPI.Ingame;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using VRage.Game.ModAPI.Ingame.Utilities;
 using VRageMath;
 
 namespace IngameScript
@@ -15,7 +15,10 @@ namespace IngameScript
             public double Pitch;
             public double Yaw;
         }
-        IEnumerable<GridOrientation> GridOrientationsTask()
+
+        GridOrientation OrientationResult = new GridOrientation();
+
+        IEnumerable GridOrientationsTask()
         {
             while (true)
             {
@@ -26,7 +29,11 @@ namespace IngameScript
                 var roll = Math.Atan2(grav.Dot(matrix.Right), grav.Dot(matrix.Down));
                 var pitch = Math.Atan2(grav.Dot(matrix.Backward), grav.Dot(matrix.Down));
 
-                yield return new GridOrientation { Roll = MathHelper.ToDegrees(roll), Pitch = MathHelper.ToDegrees(pitch), Yaw = MathHelper.ToDegrees(yaw) };
+                OrientationResult.Roll = MathHelper.ToDegrees(roll);
+                OrientationResult.Pitch = MathHelper.ToDegrees(pitch);
+                OrientationResult.Yaw = MathHelper.ToDegrees(yaw);
+
+                yield return null;
             }
         }
 
@@ -48,7 +55,7 @@ namespace IngameScript
         public double Speed => Controllers.MainController.GetShipSpeed();
 
         void InitGridProps()
-        { 
+        {
             var controllers = Util.GetBlocks<IMyShipController>(b => Util.IsNotIgnored(b, _ignoreTag) && b.IsSameConstructAs(Me));
             var myControllers = controllers.Where(c => c.CubeGrid == Me.CubeGrid && c.CanControlShip);
             var subControllers = controllers.Where(c => c.CubeGrid != Me.CubeGrid);

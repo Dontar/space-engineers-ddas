@@ -46,9 +46,9 @@ namespace IngameScript
 
         void DisplayStatus(StringBuilder s)
         {
-            var propulsionSystemStatus = TaskManager.GetTaskResult<CruiseTaskResult>();
-            var power = TaskManager.GetTaskResult<PowerTaskResult>();
-            var orientation = TaskManager.GetTaskResult<GridOrientation>();
+            var propulsionSystemStatus = CruiseResult;
+            var power = PowerResult;
+            var orientation = OrientationResult;
             var propulsion = Util.NormalizeValue(propulsionSystemStatus.Propulsion, 0, 1, 0, 100);
 
             s.Clear();
@@ -69,7 +69,7 @@ namespace IngameScript
 
         void DisplayAutopilot(StringBuilder s)
         {
-            var autopilot = TaskManager.GetTaskResult<AutopilotTaskResult>();
+            var autopilot = AutopilotResult;
             s.Clear();
             s.AppendLine("==Autopilot===========\n");
             s.AppendLine($" Waypoint:   {autopilot.Waypoint}");
@@ -91,7 +91,7 @@ namespace IngameScript
         {
             var frontWheels = MyWheels.Where(w => w.IsFront).OrderBy(w => w.ToCoM.Z);
             var backWheels = MyWheels.Where(w => !w.IsFront).OrderBy(w => w.ToCoM.Z);
-            var subWheels = SubWheels.OrderBy(w => $"{w.ToCoM.Z:N3} {Convert.ToInt16(!w.IsLeft)}");
+            var subWheels = SubWheels.OrderBy(w => w.ToCoM.Z);
 
             Action<IEnumerable<IEnumerable<WheelWrapper>>> PrintAxel = wheels =>
             {
