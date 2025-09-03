@@ -4,9 +4,7 @@ using System;
 using System.Collections.Generic;
 using VRageMath;
 using VRage.Game;
-using VRage.Game.ModAPI.Ingame.Utilities;
 using System.Linq;
-using System.Numerics;
 
 namespace IngameScript
 {
