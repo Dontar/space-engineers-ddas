@@ -14,6 +14,7 @@ namespace IngameScript
             public double Roll;
             public double Pitch;
             public double Yaw;
+            public double Elevation;
         }
 
         GridOrientation OrientationResult = new GridOrientation();
@@ -22,16 +23,20 @@ namespace IngameScript
         {
             while (true)
             {
-                var speed = Controllers.MainController.GetShipVelocities().LinearVelocity.Normalized();
+                var controller = Controllers.MainController;
+                var speed = controller.GetShipVelocities().LinearVelocity.Normalized();
                 var grav = Gravity;
-                var matrix = Controllers.MainController.WorldMatrix;
+                var matrix = controller.WorldMatrix;
                 var yaw = Math.Atan2(speed.Dot(matrix.Right), speed.Dot(matrix.Forward));
                 var roll = Math.Atan2(grav.Dot(matrix.Right), grav.Dot(matrix.Down));
                 var pitch = Math.Atan2(grav.Dot(matrix.Backward), grav.Dot(matrix.Down));
+                double elevation;
+                controller.TryGetPlanetElevation(MyPlanetElevation.Surface, out elevation);
 
                 OrientationResult.Roll = MathHelper.ToDegrees(roll);
                 OrientationResult.Pitch = MathHelper.ToDegrees(pitch);
                 OrientationResult.Yaw = MathHelper.ToDegrees(yaw);
+                OrientationResult.Elevation = elevation;
 
                 yield return null;
             }

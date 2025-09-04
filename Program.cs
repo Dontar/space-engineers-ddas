@@ -31,8 +31,10 @@ namespace IngameScript
         float _frictionOuter = 60;
         double _frictionMinSpeed = 5;
 
-        bool _autoLevel = false;
-        float _autoLevelPower = 30;
+        bool _autoLevel = true;
+        string _pidRoll = "3/0/8/0";
+        string _pidPitch = "3/0/12/0";
+        string _pidLevelPower = "10/0/0/0";
 
         string _pidCruise = "0.5/0/0/0";
         string _pidPower = "10/0/0/0";
@@ -110,7 +112,7 @@ namespace IngameScript
                     ToggleHightMode();
                     break;
                 case "flip":
-                    TaskManager.AddTaskOnce(FlipGridTask(), 1f);
+                    TaskManager.AddTaskOnce(FlipGridTask());
                     break;
                 case "cruise":
                     TaskManager.AddTaskOnce(CruiseTask());
@@ -234,6 +236,7 @@ namespace IngameScript
                 }
                 if (SubWheels.Count() > 0)
                 {
+                    yield return null;
                     if (!double.TryParse(_highModeHight, out high))
                     {
                         high = SubWheels.FirstOrDefault().HeightOffsetMin;

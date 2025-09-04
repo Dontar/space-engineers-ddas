@@ -230,7 +230,7 @@ namespace IngameScript
                     g.Yaw = (float)transformedRotationVec.Y;
                     g.Roll = (float)transformedRotationVec.Z;
                     g.GyroOverride = true;
-                    g.GyroPower = power;
+                    g.GyroPower = power / 100;
                 }
             }
 
