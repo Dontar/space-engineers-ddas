@@ -35,6 +35,8 @@ namespace IngameScript
 
         AutopilotTaskResult AutopilotResult = new AutopilotTaskResult();
 
+        Timer EmergencyTurnTimer = new Timer(3);
+
         IEnumerable AutopilotTask()
         {
             var controller = Remote;
@@ -62,6 +64,7 @@ namespace IngameScript
                 if (currentWaypoint.Equals(MyWaypointInfo.Empty))
                 {
                     controller.HandBrake = true;
+                    EmergencyTurnTimer.Reset();
                     yield break;
                 }
                 else
@@ -79,46 +82,61 @@ namespace IngameScript
                 if (UpDown > 0)
                 {
                     autopilot.SetAutoPilotEnabled(false);
+                    EmergencyTurnTimer.Reset();
                     yield break;
                 }
 
-                var currentPosition = autopilot.GetPosition();
-                var destinationVector = currentWaypoint.Coords - currentPosition + AvoidCollision(autopilot.Block, sensor, currentPosition);
-
-                var T = MatrixD.Transpose(autopilot.WorldMatrix);
-                var direction = Vector3D.TransformNormal(destinationVector, T); direction.Y = 0;
-                var directionAngle = Util.ToAzimuth(direction);
-
-                if (direction.Length() < autopilot.Block.CubeGrid.WorldVolume.Radius)
+                if (LeftRight != 0)
                 {
-                    if (!wayPointsIter.MoveNext())
-                    {
-                        switch (autopilot.FlightMode)
-                        {
-                            case FlightMode.Circle:
-                                wayPointsIter = wayPoints.GetEnumerator();
-                                wayPointsIter.MoveNext();
-                                break;
-                            case FlightMode.Patrol:
-                                var distanceFirst = Vector3D.Distance(wayPoints.First().Coords, currentPosition);
-                                var distanceLast = Vector3D.Distance(wayPoints.Last().Coords, currentPosition);
-                                wayPointsIter = (distanceLast < distanceFirst ? wayPoints.Select(w => w).Reverse() : wayPoints).Skip(1).GetEnumerator();
-                                wayPointsIter.MoveNext();
-                                break;
-                            default:
-                                controller.HandBrake = true;
-                                autopilot.SetAutoPilotEnabled(false);
-                                yield break;
-                        }
-                    }
+                    EmergencyTurnTimer.Reset();
+                    EmergencyTurnTimer.Active = true;
                 }
 
-                AutopilotResult.Waypoint = (hasManyWaypoints ? wayPointsIter.Current.Name : autopilot.CurrentWaypoint.Name) ?? "None";
-                AutopilotResult.Direction = direction;
-                AutopilotResult.Steer = (float)MathHelper.Clamp(directionAngle, -1, 1);
-                AutopilotResult.Mode = autopilot.FlightMode;
-                AutopilotResult.WaypointCount = wayPoints.Count();
+                if (EmergencyTurnTimer.Active)
+                {
+                    EmergencyTurnTimer.Update(TaskManager.CurrentTaskLastRun);
+                    AutopilotResult.Steer = -LeftRight;
+                }
+                else
+                {
+                    var currentPosition = autopilot.GetPosition();
+                    var destinationVector = currentWaypoint.Coords - currentPosition + AvoidCollision(autopilot.Block, sensor, currentPosition);
 
+                    var T = MatrixD.Transpose(autopilot.WorldMatrix);
+                    var direction = Vector3D.TransformNormal(destinationVector, T); direction.Y = 0;
+                    var directionAngle = Util.ToAzimuth(direction);
+
+                    if (direction.Length() < autopilot.Block.CubeGrid.WorldVolume.Radius)
+                    {
+                        if (!wayPointsIter.MoveNext())
+                        {
+                            switch (autopilot.FlightMode)
+                            {
+                                case FlightMode.Circle:
+                                    wayPointsIter = wayPoints.GetEnumerator();
+                                    wayPointsIter.MoveNext();
+                                    break;
+                                case FlightMode.Patrol:
+                                    var distanceFirst = Vector3D.Distance(wayPoints.First().Coords, currentPosition);
+                                    var distanceLast = Vector3D.Distance(wayPoints.Last().Coords, currentPosition);
+                                    wayPointsIter = (distanceLast < distanceFirst ? wayPoints.Select(w => w).Reverse() : wayPoints).Skip(1).GetEnumerator();
+                                    wayPointsIter.MoveNext();
+                                    break;
+                                default:
+                                    controller.HandBrake = true;
+                                    autopilot.SetAutoPilotEnabled(false);
+                                    EmergencyTurnTimer.Reset();
+                                    yield break;
+                            }
+                        }
+                    }
+
+                    AutopilotResult.Waypoint = (hasManyWaypoints ? wayPointsIter.Current.Name : autopilot.CurrentWaypoint.Name) ?? "None";
+                    AutopilotResult.Direction = direction;
+                    AutopilotResult.Steer = (float)MathHelper.Clamp(directionAngle, -1, 1);
+                    AutopilotResult.Mode = autopilot.FlightMode;
+                    AutopilotResult.WaypointCount = wayPoints.Count();
+                }
                 yield return null;
             }
             AutopilotResult.Waypoint = "None";
