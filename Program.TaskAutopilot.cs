@@ -76,6 +76,7 @@ namespace IngameScript
                 {
                     controller.HandBrake = true;
                     EmergencyTurnTimer.Reset();
+                    AutopilotResult.Reset();
                     yield break;
                 }
                 else
