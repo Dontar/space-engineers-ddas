@@ -44,7 +44,7 @@ namespace IngameScript
 
         AutopilotTaskResult AutopilotResult = new AutopilotTaskResult();
 
-        Timer EmergencyTurnTimer = new Timer(3);
+        Timer EmergencySteerTimer = new Timer(3);
 
         IEnumerable AutopilotTask()
         {
@@ -75,7 +75,7 @@ namespace IngameScript
                 if (currentWaypoint.Equals(MyWaypointInfo.Empty))
                 {
                     controller.HandBrake = true;
-                    EmergencyTurnTimer.Reset();
+                    EmergencySteerTimer.Reset();
                     AutopilotResult.Reset();
                     yield break;
                 }
@@ -94,20 +94,20 @@ namespace IngameScript
                 if (UpDown > 0)
                 {
                     autopilot.SetAutoPilotEnabled(false);
-                    EmergencyTurnTimer.Reset();
+                    EmergencySteerTimer.Reset();
                     AutopilotResult.Reset();
                     yield break;
                 }
 
                 if (LeftRight != 0)
                 {
-                    EmergencyTurnTimer.Reset();
-                    EmergencyTurnTimer.Active = true;
+                    EmergencySteerTimer.Reset();
+                    EmergencySteerTimer.Active = true;
                 }
 
-                if (EmergencyTurnTimer.Active)
+                if (EmergencySteerTimer.Active)
                 {
-                    EmergencyTurnTimer.Update(TaskManager.CurrentTaskLastRun);
+                    EmergencySteerTimer.Update(TaskManager.CurrentTaskLastRun);
                     AutopilotResult.Steer = -LeftRight;
                 }
                 else
@@ -147,10 +147,10 @@ namespace IngameScript
                                     continue;
                                 default:
                                     controller.HandBrake = true;
-                                    EmergencyTurnTimer.Reset();
-                                    AutopilotResult.Reset();
+                                    EmergencySteerTimer.Reset();
                                     if (!autopilot.IsFollowing)
                                     {
+                                        AutopilotResult.Reset();
                                         autopilot.SetAutoPilotEnabled(false);
                                         yield break;
                                     }
