@@ -4,6 +4,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using VRage.Game.ModAPI.Ingame.Utilities;
 using VRageMath;
 
 namespace IngameScript
@@ -48,12 +49,12 @@ namespace IngameScript
 
         IEnumerable AutopilotTask()
         {
-            var controller = Remote;
+            var controller = Controllers.MainController;
             var autopilot = Pilot;
-
-            if (autopilot == null || !autopilot.IsAutoPilotEnabled) yield break;
-
             var sensor = Sensor;
+
+            if (!autopilot.IsAutoPilotEnabled) yield break;
+
 
             var wayPoints = autopilot.Waypoints;
             bool hasManyWaypoints = wayPoints.Count() > 1;
@@ -61,12 +62,17 @@ namespace IngameScript
 
             if (hasManyWaypoints)
             {
-                var closest = wayPoints.OrderBy(w => Vector3D.Distance(w.Coords, autopilot.GetPosition())).FirstOrDefault().Coords;
-                wayPointsIter = closest.Equals(wayPoints.Last()) ? wayPointsIter : wayPoints.SkipWhile(w => !w.Equals(closest)).Skip(1).GetEnumerator();
+                var currentPos = autopilot.GetPosition();
+                var closest = wayPoints.OrderBy(w => Vector3D.Distance(w.Coords, currentPos)).First().Coords;
+                wayPointsIter =
+                    closest.Equals(wayPoints.Last()) || closest.Equals(wayPoints.First())
+                    ? wayPointsIter
+                    : wayPoints.SkipWhile(w => !w.Coords.Equals(closest)).Skip(1).GetEnumerator();
             }
             wayPointsIter.MoveNext();
 
             var previousTargetPos = Vector3D.Zero;
+            double previousDistance = double.MaxValue;
 
             while (autopilot.IsAutoPilotEnabled)
             {
@@ -118,19 +124,20 @@ namespace IngameScript
                     var T = MatrixD.Transpose(autopilot.WorldMatrix);
                     var direction = Vector3D.TransformNormal(destinationVector, T);
                     var directionAngle = Util.ToAzimuth(direction);
+                    double distance = direction.Length();
 
-
-                    if (direction.Length() < autopilot.MaxDistance)
+                    if (distance < autopilot.MaxDistance)
                     {
-                        var targetSpeed = CalcSpeed(previousTargetPos, currentWaypoint.Coords, TaskManager.CurrentTaskLastRun);
+                        var targetSpeed = Math.Abs(Vector3D.Distance(previousTargetPos, currentWaypoint.Coords)) / TaskManager.CurrentTaskLastRun.TotalSeconds;
                         if (targetSpeed > 0)
                         {
                             CruiseSpeed = (float)Math.Min(CruiseSpeed, targetSpeed * 3.6f);
                         }
                     }
 
-                    if (direction.Length() < autopilot.MinDistance)
+                    if (distance < autopilot.MinDistance || (distance < 50 && distance > previousDistance))
                     {
+                        previousDistance = double.MaxValue;
                         if (!wayPointsIter.MoveNext())
                         {
                             switch (autopilot.FlightMode)
@@ -158,6 +165,8 @@ namespace IngameScript
                             }
                         }
                     }
+                    else
+                        previousDistance = distance;
 
                     previousTargetPos = currentWaypoint.Coords;
 
@@ -194,19 +203,14 @@ namespace IngameScript
             return 0;
         }
 
-        double CalcSpeed(Vector3D previousTargetPos, Vector3D currentTargetPos, TimeSpan time)
-        {
-            return Vector3D.Distance(previousTargetPos, currentTargetPos) / time.TotalSeconds;
-        }
-
         class Autopilot
         {
             private readonly IEnumerable<IMyBasicMissionBlock> TaskBlocks = null;
             public Autopilot(IMyTerminalBlock[] blocks)
             {
                 Blocks = blocks;
-                    TaskBlocks = Util.GetBlocks<IMyBasicMissionBlock>();
-                }
+                TaskBlocks = Util.GetBlocks<IMyBasicMissionBlock>();
+            }
 
             public IMyTerminalBlock[] Blocks;
 
@@ -238,10 +242,10 @@ namespace IngameScript
                 get
                 {
                     if (Block is IMyRemoteControl) return (Block as IMyRemoteControl).CurrentWaypoint;
-                        var autopilot = Block as IMyFlightMovementBlock;
-                        if (autopilot.CurrentWaypoint == null)
-                            return MyWaypointInfo.Empty;
-                        return new MyWaypointInfo(autopilot.CurrentWaypoint.Name, autopilot.CurrentWaypoint.Matrix.Translation);
+                    var autopilot = Block as IMyFlightMovementBlock;
+                    if (autopilot.CurrentWaypoint == null)
+                        return MyWaypointInfo.Empty;
+                    return new MyWaypointInfo(autopilot.CurrentWaypoint.Name, autopilot.CurrentWaypoint.Matrix.Translation);
                 }
             }
             public FlightMode FlightMode => Block is IMyRemoteControl ? (Block as IMyRemoteControl).FlightMode : (Block as IMyFlightMovementBlock).FlightMode;
