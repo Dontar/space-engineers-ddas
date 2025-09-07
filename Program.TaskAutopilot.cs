@@ -201,54 +201,47 @@ namespace IngameScript
 
         class Autopilot
         {
-            IEnumerable<IMyBasicMissionBlock> TaskBlocks = null;
-            public Autopilot(IMyTerminalBlock block)
+            private readonly IEnumerable<IMyBasicMissionBlock> TaskBlocks = null;
+            public Autopilot(IMyTerminalBlock[] blocks)
             {
-                Block = block;
-                if (Block is IMyFlightMovementBlock)
-                {
+                Blocks = blocks;
                     TaskBlocks = Util.GetBlocks<IMyBasicMissionBlock>();
                 }
-            }
 
-            public IMyTerminalBlock Block;
-            public bool IsAutoPilotEnabled => Block is IMyRemoteControl ? (Block as IMyRemoteControl).IsAutoPilotEnabled : (Block as IMyFlightMovementBlock).IsAutoPilotEnabled;
+            public IMyTerminalBlock[] Blocks;
+
+            public IMyTerminalBlock Block => Blocks.FirstOrDefault(b =>
+                b != null &&
+                ((b is IMyRemoteControl && ((IMyRemoteControl)b).IsAutoPilotEnabled) ||
+                 (b is IMyFlightMovementBlock && ((IMyFlightMovementBlock)b).IsAutoPilotEnabled))
+            );
+
+            public bool IsAutoPilotEnabled => Block != null;
+
             public IEnumerable<MyWaypointInfo> Waypoints
             {
                 get
                 {
                     if (Block is IMyRemoteControl)
                     {
-                        var autopilot = Block as IMyRemoteControl;
                         var waypoints = new List<MyWaypointInfo>();
-                        autopilot.GetWaypointInfo(waypoints);
+                        (Block as IMyRemoteControl).GetWaypointInfo(waypoints);
                         return waypoints;
                     }
-                    else
-                    {
-                        var autopilot = Block as IMyFlightMovementBlock;
-                        var waypoints = new List<IMyAutopilotWaypoint>();
-                        autopilot.GetWaypoints(waypoints);
-                        return waypoints.Select(w => new MyWaypointInfo(w.Name, w.Matrix.Translation));
-                    }
+                    var aiWaypoints = new List<IMyAutopilotWaypoint>();
+                    (Block as IMyFlightMovementBlock).GetWaypoints(aiWaypoints);
+                    return aiWaypoints.Select(w => new MyWaypointInfo(w.Name, w.Matrix.Translation));
                 }
             }
             public MyWaypointInfo CurrentWaypoint
             {
                 get
                 {
-                    if (Block is IMyRemoteControl)
-                    {
-                        var autopilot = Block as IMyRemoteControl;
-                        return autopilot.CurrentWaypoint;
-                    }
-                    else
-                    {
+                    if (Block is IMyRemoteControl) return (Block as IMyRemoteControl).CurrentWaypoint;
                         var autopilot = Block as IMyFlightMovementBlock;
                         if (autopilot.CurrentWaypoint == null)
                             return MyWaypointInfo.Empty;
                         return new MyWaypointInfo(autopilot.CurrentWaypoint.Name, autopilot.CurrentWaypoint.Matrix.Translation);
-                    }
                 }
             }
             public FlightMode FlightMode => Block is IMyRemoteControl ? (Block as IMyRemoteControl).FlightMode : (Block as IMyFlightMovementBlock).FlightMode;
@@ -258,7 +251,7 @@ namespace IngameScript
             {
                 get
                 {
-                    if (TaskBlocks == null) return false;
+                    if (Block is IMyRemoteControl || TaskBlocks.Count() < 1) return false;
 
                     var activeTask = TaskBlocks.FirstOrDefault(t => t.GetValueBool("ActivateBehavior"));
                     if (activeTask == null) return false;
@@ -270,8 +263,8 @@ namespace IngameScript
             {
                 get
                 {
-                    var defaultDistance = Block.CubeGrid.WorldVolume.Radius;
-                    if (TaskBlocks == null) return defaultDistance;
+                    var defaultDistance = Block.CubeGrid.WorldVolume.Radius + 2;
+                    if (Block is IMyRemoteControl || TaskBlocks.Count() < 1) return defaultDistance;
 
                     var activeTask = TaskBlocks.FirstOrDefault(t => t.GetValueBool("ActivateBehavior"));
                     if (activeTask == null) return defaultDistance;
@@ -292,7 +285,7 @@ namespace IngameScript
                 get
                 {
                     var defaultDistance = Block.CubeGrid.WorldVolume.Radius + 1;
-                    if (TaskBlocks == null) return defaultDistance;
+                    if (Block is IMyRemoteControl || TaskBlocks.Count() < 1) return defaultDistance;
 
                     var activeTask = TaskBlocks.FirstOrDefault(t => t.GetValueBool("ActivateBehavior"));
                     if (activeTask == null) return defaultDistance;
@@ -310,19 +303,27 @@ namespace IngameScript
             }
             public Vector3D GetPosition()
             {
-                return Block.GetPosition();
+                return Block?.GetPosition() ?? Vector3D.Zero;
             }
             public void SetAutoPilotEnabled(bool enabled)
             {
-                Block.SetValueBool(Block is IMyFlightMovementBlock ? "ActivateBehavior" : "AutoPilot", enabled);
+                Block?.SetValueBool(Block is IMyFlightMovementBlock ? "ActivateBehavior" : "AutoPilot", enabled);
             }
-            public static Autopilot FromBlock(IMyTerminalBlock block)
+            public static Autopilot FromBlock(IMyTerminalBlock[] blocks)
             {
-                if (block != null)
-                    return new Autopilot(block);
-                else
-                    return null;
+                return new Autopilot(blocks);
             }
+        }
+
+        Random Rand = new Random((int)DateTime.Now.Ticks & 0x0000FFFF);
+        string GenerateRandomStr()
+        {
+            var suffix = "";
+            for (int i = 0; i < 3; i++)
+            {
+                suffix += (char)('A' + Rand.Next(0, 26));
+            }
+            return suffix;
         }
 
         IEnumerable RecordPathTask()
