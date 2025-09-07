@@ -20,8 +20,8 @@ namespace IngameScript
         {
             AutopilotBlock = Util.GetBlocks<IMyFlightMovementBlock>().FirstOrDefault();
             Sensor = Util.GetBlocks<IMySensorBlock>(b => Util.IsNotIgnored(b, _ignoreTag)).FirstOrDefault();
-            Remote = (Controllers.MainController is IMyRemoteControl ? Controllers.MainController : null) as IMyRemoteControl;
-            Pilot = Autopilot.FromBlock(AutopilotBlock ?? Remote);
+            Pilot = Autopilot.FromBlock(new IMyTerminalBlock[] { AutopilotBlock, Controllers.MainController });
+            Remote = Controllers.MainController is IMyRemoteControl ? (IMyRemoteControl)Controllers.MainController : null;
         }
 
         struct AutopilotTaskResult
@@ -326,13 +326,14 @@ namespace IngameScript
             return suffix;
         }
 
-        IEnumerable RecordPathTask()
+        IEnumerable RecordRouteTask()
         {
             if (Remote == null || Recording) yield break;
             var minDistance = Remote.CubeGrid.WorldVolume.Radius * 2;
             var wayPoints = new List<MyWaypointInfo>();
             var counter = 0;
             Recording = true;
+
             while (Recording)
             {
                 var current = Remote.GetPosition();
@@ -342,38 +343,95 @@ namespace IngameScript
                 }
                 yield return null;
             }
-            Remote.CustomData = string.Join("\n", wayPoints);
-            TaskManager.AddTaskOnce(ImportPathTask());
+
+            var routeList = new MyIni();
+            routeList.TryParse(Remote.CustomData);
+
+            var newRouteName = $"Route-#{GenerateRandomStr()}";
+            while (routeList.ContainsSection(newRouteName))
+            {
+                newRouteName = $"Route-#{GenerateRandomStr()}";
+            }
+
+            for (int i = 0; i < wayPoints.Count; i++)
+            {
+                routeList.Set(newRouteName, $"#{i}", wayPoints[i].ToString());
+            }
+
+            Remote.CustomData = routeList.ToString();
         }
 
-        IEnumerable ImportPathTask()
+        void PlayRoute(string route, bool reverse, bool play = false)
         {
-            if (Remote == null) yield break;
-            var wayPoints = new List<MyWaypointInfo>();
-            MyWaypointInfo.FindAll(Remote.CustomData, wayPoints);
+            if (Remote == null) return;
+            var routeList = new MyIni();
+            routeList.TryParse(Remote.CustomData);
+
+            var wayPoints = new List<MyIniKey>();
+            routeList.GetKeys(route, wayPoints);
             Remote.ClearWaypoints();
-            wayPoints.ForEach(w => Remote.AddWaypoint(w));
-            yield return null;
+            IEnumerable<MyIniKey> list = reverse ? wayPoints.AsEnumerable().Reverse() : wayPoints;
+            foreach (var w in list)
+            {
+                MyWaypointInfo wayPoint;
+                if (MyWaypointInfo.TryParse(routeList.Get(w).ToString(), out wayPoint))
+                {
+                    Remote.AddWaypoint(wayPoint);
+                }
+            }
+            Remote.SetAutoPilotEnabled(play);
         }
 
-        IEnumerable ReversePathTask()
+        void SaveRoute()
         {
-            if (Remote == null) yield break;
+            if (Remote == null) return;
             var wayPoints = new List<MyWaypointInfo>();
             Remote.GetWaypointInfo(wayPoints);
-            Remote.ClearWaypoints();
-            wayPoints.Reverse();
-            wayPoints.ForEach(w => Remote.AddWaypoint(w));
-            yield return null;
+
+            var routeList = new MyIni();
+            routeList.TryParse(Remote.CustomData);
+
+            var newRouteName = $"Route-#{GenerateRandomStr()}";
+            while (routeList.ContainsSection(newRouteName))
+            {
+                newRouteName = $"Route-#{GenerateRandomStr()}";
+            }
+
+            for (int i = 0; i < wayPoints.Count; i++)
+            {
+                routeList.Set(newRouteName, $"#{i}", wayPoints[i].ToString());
+            }
+
+            Remote.CustomData = routeList.ToString();
         }
 
-        IEnumerable ExportPathTask()
+        bool ProcessAICommands(string args)
         {
-            if (Remote == null) yield break;
-            var wayPoints = new List<MyWaypointInfo>();
-            Remote.GetWaypointInfo(wayPoints);
-            Remote.CustomData = string.Join("\n", wayPoints);
-            yield return null;
+            var commandLine = args.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+            if (commandLine.Length < 1) return false;
+
+            var command = commandLine[0].ToLower();
+
+            switch (command)
+            {
+                case "record":
+                    if (!Recording)
+                        TaskManager.AddTaskOnce(RecordRouteTask(), 1.7f);
+                    else
+                        Recording = false;
+                    return true;
+                case "load":
+                case "play":
+                    var route = commandLine.Last();
+                    var reverse = commandLine.Any(s => s.ToLower() == "reverse");
+                    var play = command == "play";
+                    PlayRoute(route, reverse, play);
+                    return true;
+                case "save":
+                    SaveRoute();
+                    return true;
+            }
+            return false;
         }
     }
 }

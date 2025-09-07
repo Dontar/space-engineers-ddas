@@ -121,21 +121,6 @@ namespace IngameScript
                     _autoLevel = !_autoLevel;
                     TaskManager.PauseTask(_AutoLevelTask, !_autoLevel);
                     break;
-                case "record":
-                    if (!Recording)
-                        TaskManager.AddTaskOnce(RecordPathTask(), 1.7f);
-                    else
-                        Recording = false;
-                    break;
-                case "import":
-                    TaskManager.AddTaskOnce(ImportPathTask());
-                    break;
-                case "reverse":
-                    TaskManager.AddTaskOnce(ReversePathTask());
-                    break;
-                case "export":
-                    TaskManager.AddTaskOnce(ExportPathTask());
-                    break;
                 case "status":
                     ChangeScreenType();
                     break;
@@ -143,7 +128,7 @@ namespace IngameScript
                     RestTurrets();
                     break;
                 default:
-                    // menuSystem.ProcessMenuCommands(argument);
+                    ProcessAICommands(argument);
                     break;
             }
         }
