@@ -39,7 +39,6 @@ namespace IngameScript
                 Steer = 0;
                 Mode = FlightMode.Patrol;
                 WaypointCount = 0;
-
             }
         }
 
@@ -53,14 +52,20 @@ namespace IngameScript
             var autopilot = Pilot;
             var sensor = Sensor;
 
+            EmergencySteerTimer.Reset();
+            AutopilotResult.Reset();
+
+            foreach (var g in Gyros) g.Enabled = true;
+
             if (!autopilot.IsAutoPilotEnabled) yield break;
 
+            foreach (var g in Gyros) g.Enabled = false;
 
             var wayPoints = autopilot.Waypoints;
-            bool hasManyWaypoints = wayPoints.Count() > 1;
+            bool isRoute = wayPoints.Count() > 1;
             var wayPointsIter = wayPoints.GetEnumerator();
 
-            if (hasManyWaypoints)
+            if (isRoute)
             {
                 var currentPos = autopilot.GetPosition();
                 var closest = wayPoints.OrderBy(w => Vector3D.Distance(w.Coords, currentPos)).First().Coords;
@@ -76,13 +81,11 @@ namespace IngameScript
 
             while (autopilot.IsAutoPilotEnabled)
             {
-                var currentWaypoint = hasManyWaypoints ? wayPointsIter.Current : autopilot.CurrentWaypoint;
+                var currentWaypoint = isRoute ? wayPointsIter.Current : autopilot.CurrentWaypoint;
 
                 if (currentWaypoint.Equals(MyWaypointInfo.Empty))
                 {
                     controller.HandBrake = true;
-                    EmergencySteerTimer.Reset();
-                    AutopilotResult.Reset();
                     yield break;
                 }
                 else
@@ -100,8 +103,6 @@ namespace IngameScript
                 if (UpDown > 0)
                 {
                     autopilot.SetAutoPilotEnabled(false);
-                    EmergencySteerTimer.Reset();
-                    AutopilotResult.Reset();
                     yield break;
                 }
 
@@ -126,16 +127,9 @@ namespace IngameScript
                     var directionAngle = Util.ToAzimuth(direction);
                     double distance = direction.Length();
 
-                    if (distance < autopilot.MaxDistance)
-                    {
-                        var targetSpeed = Math.Abs(Vector3D.Distance(previousTargetPos, currentWaypoint.Coords)) / TaskManager.CurrentTaskLastRun.TotalSeconds;
-                        if (targetSpeed > 0)
-                        {
-                            CruiseSpeed = (float)Math.Min(CruiseSpeed, targetSpeed * 3.6f);
-                        }
-                    }
+                    MatchSpeed(autopilot, previousTargetPos, currentWaypoint, distance);
 
-                    if (distance < autopilot.MinDistance || (distance < 50 && distance > previousDistance))
+                    if (distance < autopilot.MinDistance + (isRoute ? Util.NormalizeValue(Speed * 3.6, 10, 180, 0, 50) : 0))
                     {
                         previousDistance = double.MaxValue;
                         if (!wayPointsIter.MoveNext())
@@ -157,7 +151,6 @@ namespace IngameScript
                                     EmergencySteerTimer.Reset();
                                     if (!autopilot.IsFollowing)
                                     {
-                                        AutopilotResult.Reset();
                                         autopilot.SetAutoPilotEnabled(false);
                                         yield break;
                                     }
@@ -170,7 +163,7 @@ namespace IngameScript
 
                     previousTargetPos = currentWaypoint.Coords;
 
-                    AutopilotResult.Waypoint = (hasManyWaypoints ? wayPointsIter.Current.Name : autopilot.CurrentWaypoint.Name) ?? "None";
+                    AutopilotResult.Waypoint = (isRoute ? wayPointsIter.Current.Name : autopilot.CurrentWaypoint.Name) ?? "None";
                     AutopilotResult.Direction = direction;
                     AutopilotResult.Steer = (float)MathHelper.Clamp(directionAngle, -1, 1);
                     AutopilotResult.Mode = autopilot.FlightMode;
@@ -179,6 +172,19 @@ namespace IngameScript
                 yield return null;
             }
             AutopilotResult.Reset();
+            foreach (var g in Gyros) g.Enabled = true;
+        }
+
+        private void MatchSpeed(Autopilot autopilot, Vector3D previousTargetPos, MyWaypointInfo currentWaypoint, double distance)
+        {
+            if (distance < autopilot.MaxDistance)
+            {
+                var targetSpeed = Math.Abs(Vector3D.Distance(previousTargetPos, currentWaypoint.Coords)) / TaskManager.CurrentTaskLastRun.TotalSeconds;
+                if (targetSpeed > 0)
+                {
+                    CruiseSpeed = (float)Math.Min(CruiseSpeed, targetSpeed * 3.6f);
+                }
+            }
         }
 
         double AvoidCollision(IMyTerminalBlock autopilot, IMySensorBlock sensor, Vector3D currentPosition)

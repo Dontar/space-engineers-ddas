@@ -15,7 +15,7 @@ namespace IngameScript
 
         void InitAutoLevel()
         {
-            Gyros = Util.GetBlocks<IMyGyro>(b => Util.IsNotIgnored(b, _ignoreTag) && b.Enabled);
+            Gyros = Util.GetBlocks<IMyGyro>(b => Util.IsNotIgnored(b, _ignoreTag));
         }
 
         IEnumerable FlipGridTask()
@@ -42,12 +42,17 @@ namespace IngameScript
             pidRoll.Clear();
             pidPower.Clear();
 
+            ResetGyros();
+            Flipping = false;
+            TaskManager.PauseTask(_AutoLevelTask, !_autoLevel);
+        }
+
+        private void ResetGyros()
+        {
             foreach (var g in Gyros)
             {
                 g.Roll = g.Yaw = g.Pitch = 0; g.GyroOverride = false;
             }
-            Flipping = false;
-            TaskManager.PauseTask(_AutoLevelTask, !_autoLevel);
         }
 
         IEnumerable AutoLevelTask()
@@ -81,18 +86,11 @@ namespace IngameScript
                     pidRoll.Clear();
                     pidPitch.Clear();
                     pidPower.Clear();
-
-                    foreach (var g in Gyros)
-                    {
-                        g.Roll = g.Yaw = g.Pitch = 0; g.GyroOverride = false;
-                    }
+                    ResetGyros();
                 }
                 yield return null;
             }
-            foreach (var g in Gyros)
-            {
-                g.Roll = g.Yaw = g.Pitch = 0; g.GyroOverride = false;
-            }
+            ResetGyros();
         }
     }
 }

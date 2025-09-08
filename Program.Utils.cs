@@ -234,6 +234,8 @@ namespace IngameScript
                 }
             }
 
+            // Returns the azimuth (horizontal angle in radians) of a vector relative to the forward direction.
+            // Azimuth is the angle between the projection of the vector onto the XZ plane and the forward (Z) axis.
             public static double ToAzimuth(Vector3D v)
             {
                 v.Y = 0;
