@@ -212,13 +212,15 @@ namespace IngameScript
                     {
                         var matchedSpeed = MatchSpeed(queue);
                         AutopilotResult.TargetSpeed = (float)matchedSpeed * 3.6f;
-                        CruiseSpeed = (float)MathHelper.Clamp(matchedSpeed * 3.6, 5, autopilot.SpeedLimit * 3.6);
+                        CruiseSpeed = (float)MathHelper.Clamp(matchedSpeed * 3.6, 10, autopilot.SpeedLimit * 3.6);
                     }
+                    else
+                        AutopilotResult.TargetSpeed = 0;
 
                     var distanceModifier = Util.NormalizeValue(Speed * 3.6, 10, 180, 0, 50);
                     var threshold = wayPointReachThreshold + distanceModifier;
 
-                    if (distanceToTarget < threshold) controller.HandBrake = true;
+                    controller.HandBrake = distanceToTarget < threshold;
 
                     if (distance < threshold) queue.TryDequeue();
                 }
