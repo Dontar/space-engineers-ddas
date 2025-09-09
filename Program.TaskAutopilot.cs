@@ -32,6 +32,7 @@ namespace IngameScript
             public string Waypoint;
             public int WaypointCount;
             public FlightMode Mode;
+            public float TargetSpeed;
             public void Reset()
             {
                 Waypoint = "None";
@@ -39,6 +40,92 @@ namespace IngameScript
                 Steer = 0;
                 Mode = FlightMode.Patrol;
                 WaypointCount = 0;
+                TargetSpeed = 0;
+            }
+        }
+
+        class Timer
+        {
+            private TimeSpan interval;
+            private TimeSpan timeSinceLastTrigger = TimeSpan.Zero;
+
+            public bool Active = false;
+
+            public Timer(float intervalSeconds)
+            {
+                interval = TimeSpan.FromSeconds(intervalSeconds);
+            }
+
+            public bool Update(TimeSpan timeSinceLastRun)
+            {
+                timeSinceLastTrigger += timeSinceLastRun;
+                if (timeSinceLastTrigger >= interval)
+                {
+                    timeSinceLastTrigger = TimeSpan.Zero;
+                    Active = false;
+                    return true;
+                }
+                Active = true;
+                return false;
+            }
+
+            public void Reset()
+            {
+                timeSinceLastTrigger = TimeSpan.Zero;
+            }
+        }
+
+        struct TimedItem<T>
+        {
+            public T Item;
+            public TimeSpan TimeAdded;
+            public TimedItem(T item)
+            {
+                Item = item;
+                TimeAdded = DateTime.Now.TimeOfDay;
+            }
+        }
+
+        class UniqueTimedQueue : Queue<TimedItem<MyWaypointInfo>>
+        {
+            private int _capacity = 10;
+
+            public UniqueTimedQueue() : base() { }
+
+            public UniqueTimedQueue(int capacity) : base(capacity)
+            {
+                _capacity = capacity;
+            }
+
+            public void Enqueue(MyWaypointInfo item, Func<MyWaypointInfo, bool> compare)
+            {
+                if (compare(item))
+                {
+                    Enqueue(new TimedItem<MyWaypointInfo>(item));
+                }
+                if (Count > _capacity)
+                {
+                    Dequeue();
+                }
+            }
+
+            public MyWaypointInfo TryDequeue()
+            {
+                if (Count > 0)
+                {
+                    return Dequeue().Item;
+                }
+                return default(MyWaypointInfo);
+            }
+
+
+            public MyWaypointInfo TryPeek()
+            {
+                if (Count > 0)
+                {
+                    return Peek().Item;
+                }
+                return default(MyWaypointInfo);
             }
         }
 
@@ -61,77 +148,122 @@ namespace IngameScript
 
             foreach (var g in Gyros) g.Enabled = false;
 
-            var wayPoints = autopilot.Waypoints;
-            bool isRoute = wayPoints.Count() > 1;
-            var wayPointsIter = wayPoints.GetEnumerator();
+            bool isRoute = autopilot.Waypoints.Count() > 1;
+
+            var wayPointReachThreshold = autopilot.Block.CubeGrid.WorldVolume.Radius + 2;
+            var wayPointCloseThreshold = wayPointReachThreshold + 40;
+
+            // if (currentWaypoint.Equals(MyWaypointInfo.Empty))
+            // {
+            //     controller.HandBrake = true;
+            //     yield break;
+            // }
+            // else
+            //     controller.HandBrake = false;
+
 
             if (isRoute)
             {
-                var currentPos = autopilot.GetPosition();
-                var closest = wayPoints.OrderBy(w => Vector3D.Distance(w.Coords, currentPos)).First().Coords;
-                wayPointsIter =
-                    closest.Equals(wayPoints.Last()) || closest.Equals(wayPoints.First())
-                    ? wayPointsIter
-                    : wayPoints.SkipWhile(w => !w.Coords.Equals(closest)).Skip(1).GetEnumerator();
+                foreach (var _ in FollowRoute(controller, autopilot, sensor, wayPointReachThreshold))
+                {
+                    yield return null;
+                }
             }
-            wayPointsIter.MoveNext();
+            else
+            {
+                foreach (var _ in FollowTarget(controller, autopilot, sensor, wayPointReachThreshold, wayPointCloseThreshold))
+                {
+                    yield return null;
+                }
+            }
+            AutopilotResult.Reset();
+            foreach (var g in Gyros) g.Enabled = true;
+        }
 
-            var previousTargetPos = Vector3D.Zero;
-            double previousDistance = double.MaxValue;
-
+        private IEnumerable FollowTarget(IMyShipController controller, Autopilot autopilot, IMySensorBlock sensor, double wayPointReachThreshold, double wayPointCloseThreshold)
+        {
+            var queue = new UniqueTimedQueue(5);
+            AutopilotResult.Mode = autopilot.FlightMode;
             while (autopilot.IsAutoPilotEnabled)
             {
-                var currentWaypoint = isRoute ? wayPointsIter.Current : autopilot.CurrentWaypoint;
+                queue.Enqueue(autopilot.CurrentWaypoint, i => queue.Count == 0 || !queue.LastOrDefault().Item.Equals(i, 20));
+                var currentWaypoint = queue.TryPeek();
 
-                if (currentWaypoint.Equals(MyWaypointInfo.Empty))
-                {
-                    controller.HandBrake = true;
-                    yield break;
-                }
-                else
-                    controller.HandBrake = false;
-
-
-                if (!Cruise && !controller.HandBrake)
-                {
-                    TaskManager.AddTaskOnce(CruiseTask(autopilot.SpeedLimit * 3.6f, () => autopilot.IsAutoPilotEnabled && !controller.HandBrake));
-                }
-                else
-                    CruiseSpeed = autopilot.SpeedLimit * 3.6f;
-
+                SetCruiseControl(controller, autopilot);
 
                 if (UpDown > 0)
                 {
                     autopilot.SetAutoPilotEnabled(false);
                     yield break;
                 }
-
-                if (LeftRight != 0)
+                if (CheckNoEmergencySteer())
                 {
-                    EmergencySteerTimer.Reset();
-                    EmergencySteerTimer.Active = true;
-                }
+                    Vector3D currentPosition, direction;
+                    double directionAngle, distance;
+                    CalcSteer(autopilot, sensor, currentWaypoint, out currentPosition, out direction, out directionAngle, out distance);
 
-                if (EmergencySteerTimer.Active)
-                {
-                    EmergencySteerTimer.Update(TaskManager.CurrentTaskLastRun);
-                    AutopilotResult.Steer = -LeftRight;
-                }
-                else
-                {
-                    var currentPosition = autopilot.GetPosition();
-                    var destinationVector = currentWaypoint.Coords - currentPosition + AvoidCollision(autopilot.Block, sensor, currentPosition);
+                    AutopilotResult.Waypoint = queue.TryPeek().Name ?? "None";
+                    AutopilotResult.Direction = direction;
+                    AutopilotResult.Steer = (float)MathHelper.Clamp(directionAngle, -1, 1);
+                    AutopilotResult.WaypointCount = queue.Count;
 
-                    var T = MatrixD.Transpose(autopilot.WorldMatrix);
-                    var direction = Vector3D.TransformNormal(destinationVector, T);
-                    var directionAngle = Util.ToAzimuth(direction);
-                    double distance = direction.Length();
-
-                    MatchSpeed(autopilot, previousTargetPos, currentWaypoint, distance);
-
-                    if (distance < autopilot.MinDistance + (isRoute ? Util.NormalizeValue(Speed * 3.6, 10, 180, 0, 50) : 0))
+                    var distanceToTarget = Math.Abs(Vector3D.Distance(currentPosition, queue.Last().Item.Coords));
+                    if (distanceToTarget < wayPointCloseThreshold)
                     {
-                        previousDistance = double.MaxValue;
+                        var matchedSpeed = MatchSpeed(queue);
+                        AutopilotResult.TargetSpeed = (float)matchedSpeed * 3.6f;
+                        CruiseSpeed = (float)MathHelper.Clamp(matchedSpeed * 3.6, 5, autopilot.SpeedLimit * 3.6);
+                    }
+
+                    var distanceModifier = Util.NormalizeValue(Speed * 3.6, 10, 180, 0, 50);
+                    var threshold = wayPointReachThreshold + distanceModifier;
+
+                    if (distanceToTarget < threshold) controller.HandBrake = true;
+
+                    if (distance < threshold) queue.TryDequeue();
+                }
+                yield return null;
+            }
+        }
+
+        private IEnumerable FollowRoute(IMyShipController controller, Autopilot autopilot, IMySensorBlock sensor, double wayPointReachThreshold)
+        {
+            var wayPoints = autopilot.Waypoints;
+            var wayPointsIter = wayPoints.GetEnumerator();
+
+            var currentPos = autopilot.GetPosition();
+            var closest = wayPoints.OrderBy(w => Vector3D.Distance(w.Coords, currentPos)).First();
+            wayPointsIter =
+                closest.Equals(wayPoints.Last())
+                ? wayPointsIter
+                : wayPoints.SkipWhile(w => !w.Equals(closest)).Skip(1).GetEnumerator();
+
+            wayPointsIter.MoveNext();
+            AutopilotResult.Mode = autopilot.FlightMode;
+            AutopilotResult.WaypointCount = wayPoints.Count();
+
+            while (autopilot.IsAutoPilotEnabled)
+            {
+                var currentWaypoint = wayPointsIter.Current;
+                SetCruiseControl(controller, autopilot);
+                if (UpDown > 0)
+                {
+                    autopilot.SetAutoPilotEnabled(false);
+                    yield break;
+                }
+                if (CheckNoEmergencySteer())
+                {
+                    Vector3D currentPosition, direction;
+                    double directionAngle, distance;
+                    CalcSteer(autopilot, sensor, currentWaypoint, out currentPosition, out direction, out directionAngle, out distance);
+                    var distanceModifier = Util.NormalizeValue(Speed * 3.6, 10, 180, 0, 50);
+
+                    AutopilotResult.Waypoint = wayPointsIter.Current.Name ?? "None";
+                    AutopilotResult.Direction = direction;
+                    AutopilotResult.Steer = (float)MathHelper.Clamp(directionAngle, -1, 1);
+
+                    if (distance < wayPointReachThreshold + distanceModifier)
+                    {
                         if (!wayPointsIter.MoveNext())
                         {
                             switch (autopilot.FlightMode)
@@ -147,44 +279,85 @@ namespace IngameScript
                                     wayPointsIter.MoveNext();
                                     continue;
                                 default:
+                                    autopilot.SetAutoPilotEnabled(false);
                                     controller.HandBrake = true;
-                                    EmergencySteerTimer.Reset();
-                                    if (!autopilot.IsFollowing)
-                                    {
-                                        autopilot.SetAutoPilotEnabled(false);
-                                        yield break;
-                                    }
-                                    break;
+                                    yield break;
                             }
                         }
                     }
-                    else
-                        previousDistance = distance;
-
-                    previousTargetPos = currentWaypoint.Coords;
-
-                    AutopilotResult.Waypoint = (isRoute ? wayPointsIter.Current.Name : autopilot.CurrentWaypoint.Name) ?? "None";
-                    AutopilotResult.Direction = direction;
-                    AutopilotResult.Steer = (float)MathHelper.Clamp(directionAngle, -1, 1);
-                    AutopilotResult.Mode = autopilot.FlightMode;
-                    AutopilotResult.WaypointCount = wayPoints.Count();
                 }
                 yield return null;
             }
-            AutopilotResult.Reset();
-            foreach (var g in Gyros) g.Enabled = true;
         }
 
-        private void MatchSpeed(Autopilot autopilot, Vector3D previousTargetPos, MyWaypointInfo currentWaypoint, double distance)
+        private bool CheckNoEmergencySteer()
         {
-            if (distance < autopilot.MaxDistance)
+            if (LeftRight != 0)
             {
-                var targetSpeed = Math.Abs(Vector3D.Distance(previousTargetPos, currentWaypoint.Coords)) / TaskManager.CurrentTaskLastRun.TotalSeconds;
-                if (targetSpeed > 0)
-                {
-                    CruiseSpeed = (float)Math.Min(CruiseSpeed, targetSpeed * 3.6f);
-                }
+                EmergencySteerTimer.Reset();
+                EmergencySteerTimer.Active = true;
             }
+            if (EmergencySteerTimer.Active)
+            {
+                EmergencySteerTimer.Update(TaskManager.CurrentTaskLastRun);
+                AutopilotResult.Steer = -LeftRight;
+                return false;
+            }
+            return true;
+        }
+
+        private void CalcSteer(
+            Autopilot autopilot,
+            IMySensorBlock sensor,
+            MyWaypointInfo currentWaypoint,
+            out Vector3D currentPosition,
+            out Vector3D direction,
+            out double directionAngle,
+            out double distance
+        )
+        {
+            currentPosition = autopilot.GetPosition();
+            var destinationVector = currentWaypoint.Coords - currentPosition + AvoidCollision(autopilot.Block, sensor, currentPosition);
+
+            var T = MatrixD.Transpose(autopilot.WorldMatrix);
+            direction = Vector3D.TransformNormal(destinationVector, T);
+            directionAngle = Util.ToAzimuth(direction);
+            distance = direction.Length();
+        }
+
+        private void SetCruiseControl(IMyShipController controller, Autopilot autopilot)
+        {
+            if (!Cruise && !controller.HandBrake)
+            {
+                TaskManager.AddTaskOnce(CruiseTask(autopilot.SpeedLimit * 3.6f, () => autopilot.IsAutoPilotEnabled && !controller.HandBrake));
+            }
+            else
+                CruiseSpeed = autopilot.SpeedLimit * 3.6f;
+        }
+
+        private double MatchSpeed(UniqueTimedQueue queue)
+        {
+            if (queue.Count > 1)
+            {
+                var list = queue.ToArray();
+                // Calculate average speed from list
+                double totalDistance = 0;
+                double totalTime = 0;
+                for (int i = 1; i < list.Length; i++)
+                {
+                    var prev = list[i - 1];
+                    var curr = list[i];
+                    double distance = Math.Abs(Vector3D.Distance(prev.Item.Coords, curr.Item.Coords));
+                    double time = Math.Abs((curr.TimeAdded - prev.TimeAdded).TotalSeconds);
+                    if (time > 0)
+                    {
+                        totalDistance += distance;
+                        totalTime += time;
+                    }
+                }
+                return totalTime > 0 ? totalDistance / totalTime : 0;
+            }
+            return 0;
         }
 
         double AvoidCollision(IMyTerminalBlock autopilot, IMySensorBlock sensor, Vector3D currentPosition)
@@ -211,11 +384,9 @@ namespace IngameScript
 
         class Autopilot
         {
-            private readonly IEnumerable<IMyBasicMissionBlock> TaskBlocks = null;
             public Autopilot(IMyTerminalBlock[] blocks)
             {
                 Blocks = blocks;
-                TaskBlocks = Util.GetBlocks<IMyBasicMissionBlock>();
             }
 
             public IMyTerminalBlock[] Blocks;
@@ -257,60 +428,7 @@ namespace IngameScript
             public FlightMode FlightMode => Block is IMyRemoteControl ? (Block as IMyRemoteControl).FlightMode : (Block as IMyFlightMovementBlock).FlightMode;
             public float SpeedLimit => Block is IMyRemoteControl ? (Block as IMyRemoteControl).SpeedLimit : (Block as IMyFlightMovementBlock).SpeedLimit;
             public MatrixD WorldMatrix => Block.WorldMatrix;
-            public bool IsFollowing
-            {
-                get
-                {
-                    if (Block is IMyRemoteControl || TaskBlocks.Count() < 1) return false;
 
-                    var activeTask = TaskBlocks.FirstOrDefault(t => t.GetValueBool("ActivateBehavior"));
-                    if (activeTask == null) return false;
-
-                    return activeTask.SelectedMissionId < 3;
-                }
-            }
-            public double MinDistance
-            {
-                get
-                {
-                    var defaultDistance = Block.CubeGrid.WorldVolume.Radius + 2;
-                    if (Block is IMyRemoteControl || TaskBlocks.Count() < 1) return defaultDistance;
-
-                    var activeTask = TaskBlocks.FirstOrDefault(t => t.GetValueBool("ActivateBehavior"));
-                    if (activeTask == null) return defaultDistance;
-
-                    switch (activeTask.SelectedMissionId)
-                    {
-                        case 1:
-                            return activeTask.GetValueFloat("FollowDistance");
-                        case 2:
-                            return activeTask.GetValueFloat("FollowHomeMinRange");
-                        default:
-                            return defaultDistance;
-                    }
-                }
-            }
-            public double MaxDistance
-            {
-                get
-                {
-                    var defaultDistance = Block.CubeGrid.WorldVolume.Radius + 1;
-                    if (Block is IMyRemoteControl || TaskBlocks.Count() < 1) return defaultDistance;
-
-                    var activeTask = TaskBlocks.FirstOrDefault(t => t.GetValueBool("ActivateBehavior"));
-                    if (activeTask == null) return defaultDistance;
-
-                    switch (activeTask.SelectedMissionId)
-                    {
-                        case 1:
-                            return activeTask.GetValueFloat("FollowDistance") + 20;
-                        case 2:
-                            return activeTask.GetValueFloat("FollowHomeMaxRange");
-                        default:
-                            return defaultDistance;
-                    }
-                }
-            }
             public Vector3D GetPosition()
             {
                 return Block?.GetPosition() ?? Vector3D.Zero;
