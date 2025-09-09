@@ -504,36 +504,5 @@ namespace IngameScript
                 return true;
             }
         }
-
-        class Timer
-        {
-            private TimeSpan interval;
-            private TimeSpan timeSinceLastTrigger = TimeSpan.Zero;
-
-            public bool Active = false;
-
-            public Timer(float intervalSeconds)
-            {
-                interval = TimeSpan.FromSeconds(intervalSeconds);
-            }
-
-            public bool Update(TimeSpan timeSinceLastRun)
-            {
-                timeSinceLastTrigger += timeSinceLastRun;
-                if (timeSinceLastTrigger >= interval)
-                {
-                    timeSinceLastTrigger = TimeSpan.Zero;
-                    Active = false;
-                    return true;
-                }
-                Active = true;
-                return false;
-            }
-
-            public void Reset()
-            {
-                timeSinceLastTrigger = TimeSpan.Zero;
-            }
-        }
     }
 }
