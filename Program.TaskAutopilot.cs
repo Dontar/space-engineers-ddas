@@ -17,23 +17,14 @@ namespace IngameScript
         IMyRemoteControl Remote;
         Autopilot Pilot;
         IMyBasicMissionBlock Basic;
-        IMyPathRecorderBlock Recorder;
-        IMyDefensiveCombatBlock Defensive;
-        IMyOffensiveCombatBlock Offensive;
 
         void InitAutopilot()
         {
             AutopilotBlock = Util.GetBlocks<IMyFlightMovementBlock>().FirstOrDefault();
             Remote = Controllers.MainController is IMyRemoteControl ? (IMyRemoteControl)Controllers.MainController : null;
             Pilot = Autopilot.FromBlock(new IMyTerminalBlock[] { AutopilotBlock, Remote });
-
             Sensor = Util.GetBlocks<IMySensorBlock>(b => Util.IsNotIgnored(b, _ignoreTag)).FirstOrDefault();
-
-            Defensive = Util.GetBlocks<IMyDefensiveCombatBlock>(b => Util.IsNotIgnored(b, _ignoreTag)).FirstOrDefault();
-            Offensive = Util.GetBlocks<IMyOffensiveCombatBlock>(b => Util.IsNotIgnored(b, _ignoreTag)).FirstOrDefault();
-
             Basic = Util.GetBlocks<IMyBasicMissionBlock>(b => Util.IsNotIgnored(b, _ignoreTag)).FirstOrDefault();
-            Recorder = Util.GetBlocks<IMyPathRecorderBlock>(b => Util.IsNotIgnored(b, _ignoreTag)).FirstOrDefault();
         }
 
         struct AutopilotTaskResult
