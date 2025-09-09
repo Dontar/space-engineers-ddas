@@ -58,6 +58,7 @@ namespace IngameScript
             s.AppendLine($" Waypoint:   {autopilot.Waypoint}");
             s.AppendLine($" Waypoint #: {autopilot.WaypointCount}");
             s.AppendLine($" Mode:       {autopilot.Mode}");
+            s.AppendLine($" Tar Speed:  {autopilot.TargetSpeed,3:N0} km/h");
         }
 
         IEnumerable<IEnumerable<T>> ZipPairs<T>(IEnumerable<T> list)
