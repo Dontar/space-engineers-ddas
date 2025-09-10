@@ -33,16 +33,14 @@ namespace IngameScript
             public float Steer;
             public string Waypoint;
             public int WaypointCount;
-            public FlightMode Mode;
-            public float TargetSpeed;
+            public string Mode;
             public void Reset()
             {
                 Waypoint = "None";
                 Direction = Vector3D.Zero;
                 Steer = 0;
-                Mode = FlightMode.Patrol;
+                Mode = "Idle";
                 WaypointCount = 0;
-                TargetSpeed = 0;
             }
         }
 
@@ -148,16 +146,18 @@ namespace IngameScript
 
             bool isRoute = Pilot.Waypoints.Count() > 1;
 
-            var wayPointReachThreshold = Pilot.Block.CubeGrid.WorldVolume.Radius + 2;
-            var wayPointCloseThreshold = wayPointReachThreshold + 40;
+            float wayPointReachThreshold = (float)Pilot.Block.CubeGrid.WorldVolume.Radius + 2;
+            float wayPointCloseThreshold = wayPointReachThreshold + 40;
 
-            var basic = Basic != null && Basic.GetValueBool("ActivateBehavior") && Basic.SelectedMissionId == 2;
+            // var basic = Basic != null && Basic.GetValueBool("ActivateBehavior") && Basic.SelectedMissionId == 2;
 
-            var routine = isRoute
-                ? FollowRoute(wayPointReachThreshold)
-                : basic
-                    ? FollowTarget(wayPointReachThreshold, wayPointCloseThreshold)
-                    : TrackTarget(wayPointReachThreshold);
+            // var routine = isRoute
+            //     ? FollowRoute(wayPointReachThreshold)
+            //     : basic
+            //         ? FollowTarget(wayPointReachThreshold, wayPointCloseThreshold)
+            //         : TrackTarget(wayPointReachThreshold);
+
+            var routine = FollowRoute(wayPointReachThreshold);
 
             foreach (var _ in routine)
             {
@@ -169,10 +169,11 @@ namespace IngameScript
         {
             var controller = Controllers.MainController;
             var queue = new UniqueTimedQueue(5);
-            AutopilotResult.Mode = Pilot.FlightMode;
+            AutopilotResult.Mode = "Follow";
             while (Pilot.IsAutoPilotEnabled)
             {
                 queue.Enqueue(Pilot.CurrentWaypoint, i => queue.Count == 0 || !queue.LastOrDefault().Item.Equals(i, 20));
+                // queue.Enqueue(Pilot.CurrentWaypoint, i => queue.Count == 0 || Math.Abs(Vector3D.Distance(i.Coords, queue.Last().Item.Coords)) > 10);
                 var currentWaypoint = queue.TryPeek();
 
                 SetCruiseControl();
@@ -198,13 +199,10 @@ namespace IngameScript
                     if (distanceToTarget < wayPointCloseThreshold)
                     {
                         var matchedSpeed = MatchSpeed(queue);
-                        AutopilotResult.TargetSpeed = (float)matchedSpeed * 3.6f;
                         CruiseSpeed = (float)MathHelper.Clamp(matchedSpeed * 3.6, 10, Pilot.SpeedLimit * 3.6);
                     }
-                    else
-                        AutopilotResult.TargetSpeed = 0;
 
-                    var distanceModifier = Util.NormalizeValue(Speed * 3.6, 10, 180, 0, 50);
+                    var distanceModifier = Util.NormalizeValue(Speed * 3.6, 0, 180, 0, 50);
                     var threshold = wayPointReachThreshold + distanceModifier;
 
                     controller.HandBrake = distanceToTarget < threshold;
@@ -215,10 +213,10 @@ namespace IngameScript
             }
         }
 
-        private IEnumerable TrackTarget(double wayPointReachThreshold)
+        private IEnumerable TrackTarget(float wayPointReachThreshold)
         {
             var controller = Controllers.MainController;
-            AutopilotResult.Mode = Pilot.FlightMode;
+            AutopilotResult.Mode = "Track";
             while (Pilot.IsAutoPilotEnabled)
             {
                 var currentWaypoint = Pilot.CurrentWaypoint;
@@ -243,7 +241,7 @@ namespace IngameScript
                     AutopilotResult.Steer = (float)MathHelper.Clamp(directionAngle, -1, 1);
                     AutopilotResult.WaypointCount = 1;
 
-                    var distanceModifier = Util.NormalizeValue(Speed * 3.6, 10, 180, 0, 50);
+                    var distanceModifier = Util.NormalizeValue(Speed * 3.6, 0, 180, 0, 50);
                     var threshold = wayPointReachThreshold + distanceModifier;
 
                     controller.HandBrake = distance < threshold;
@@ -252,7 +250,7 @@ namespace IngameScript
             }
         }
 
-        private IEnumerable FollowRoute(double wayPointReachThreshold)
+        private IEnumerable FollowRoute(float wayPointReachThreshold)
         {
             var controller = Controllers.MainController;
             var wayPoints = Pilot.Waypoints;
@@ -266,7 +264,7 @@ namespace IngameScript
                 : wayPoints.SkipWhile(w => !w.Equals(closest)).Skip(1).GetEnumerator();
 
             wayPointsIter.MoveNext();
-            AutopilotResult.Mode = Pilot.FlightMode;
+            AutopilotResult.Mode = "Route";
             AutopilotResult.WaypointCount = wayPoints.Count();
 
             while (Pilot.IsAutoPilotEnabled)

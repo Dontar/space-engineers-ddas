@@ -55,7 +55,7 @@ namespace IngameScript
             InitGridProps();
             TaskManager.AddTask(Util.StatusMonitor(this));
             TaskManager.AddTask(MainTask());
-            TaskManager.AddTask(AutopilotTask());
+            // TaskManager.AddTask(AutopilotTask(), 1 / 3);
             TaskManager.AddTask(StopLightsTask(), 0, !_stopLights);
             TaskManager.AddTask(PowerTask(), 0, !_power);
             _AutoLevelTask = TaskManager.AddTask(AutoLevelTask(), 0, !_autoLevel);
