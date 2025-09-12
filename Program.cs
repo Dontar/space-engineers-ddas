@@ -36,7 +36,7 @@ namespace IngameScript
         string _pidPitch = "3/0/12/0";
         string _pidLevelPower = "10/0/0/0";
 
-        string _pidCruise = "0.5/0/0/0";
+        string _pidCruise = "5/5/0/0";
         string _pidPower = "10/0/0/0";
         bool _addWheels = true;
         bool _power = true;

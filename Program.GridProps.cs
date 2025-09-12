@@ -27,7 +27,7 @@ namespace IngameScript
                 var speed = controller.GetShipVelocities().LinearVelocity.Normalized();
                 var grav = Gravity;
                 var matrix = controller.WorldMatrix;
-                var yaw = Math.Atan2(speed.Dot(matrix.Right), speed.Dot(matrix.Forward));
+                // var yaw = Math.Atan2(speed.Dot(matrix.Right), speed.Dot(matrix.Forward));
                 var roll = Math.Atan2(grav.Dot(matrix.Right), grav.Dot(matrix.Down));
                 var pitch = Math.Atan2(grav.Dot(matrix.Backward), grav.Dot(matrix.Down));
                 double elevation;
@@ -35,7 +35,7 @@ namespace IngameScript
 
                 OrientationResult.Roll = MathHelper.ToDegrees(roll);
                 OrientationResult.Pitch = MathHelper.ToDegrees(pitch);
-                OrientationResult.Yaw = MathHelper.ToDegrees(yaw);
+                // OrientationResult.Yaw = MathHelper.ToDegrees(yaw);
                 OrientationResult.Elevation = elevation;
 
                 yield return null;
@@ -57,7 +57,8 @@ namespace IngameScript
         public MyShipMass Mass => Controllers.MainController.CalculateShipMass();
         public Vector3D Gravity => Controllers.MainController.GetTotalGravity();
         public double GravityMagnitude => Gravity.Length();
-        public double Speed => Controllers.MainController.GetShipSpeed();
+        public MyShipVelocities Velocities => Controllers.MainController.GetShipVelocities();
+        public double Speed => Velocities.LinearVelocity.Length();
 
         void InitGridProps()
         {

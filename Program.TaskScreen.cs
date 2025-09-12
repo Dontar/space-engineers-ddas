@@ -32,7 +32,7 @@ namespace IngameScript
             var propulsionSystemStatus = CruiseResult;
             var power = PowerResult;
             var orientation = OrientationResult;
-            var propulsion = Util.NormalizeValue(propulsionSystemStatus.Propulsion, 0, 1, 0, 100);
+            var propulsion = propulsionSystemStatus.Propulsion * 100;
 
             s.Clear();
             s.AppendLine("==Status==============");

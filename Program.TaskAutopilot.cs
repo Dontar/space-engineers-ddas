@@ -138,11 +138,7 @@ namespace IngameScript
             EmergencySteerTimer.Reset();
             AutopilotResult.Reset();
 
-            foreach (var g in Gyros) g.Enabled = true;
-
             if (!Pilot.IsAutoPilotEnabled) yield break;
-
-            foreach (var g in Gyros) g.Enabled = false;
 
             bool isRoute = Pilot.Waypoints.Count() > 1;
 
@@ -202,8 +198,7 @@ namespace IngameScript
                         CruiseSpeed = (float)MathHelper.Clamp(matchedSpeed * 3.6, 10, Pilot.SpeedLimit * 3.6);
                     }
 
-                    var distanceModifier = Util.NormalizeValue(Speed * 3.6, 0, 180, 0, 50);
-                    var threshold = wayPointReachThreshold + distanceModifier;
+                    var threshold = wayPointReachThreshold + Speed * 3.6 * 50 / 180;
 
                     controller.HandBrake = distanceToTarget < threshold;
 
