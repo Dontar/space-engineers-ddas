@@ -41,7 +41,7 @@ namespace IngameScript
             s.AppendLine("======================");
             s.AppendLine($" Roll:       {orientation.Roll,6:N1} °");
             s.AppendLine($" Pitch:      {orientation.Pitch,6:N1} °");
-            s.AppendLine($" Yaw:        {orientation.Yaw,6:N1} °");
+            // s.AppendLine($" Yaw:        {orientation.Yaw,6:N1} °");
             s.AppendLine("======================");
             s.AppendLine($" Power:      {power.Power,6:N1} %");
             s.AppendLine($" Propulsion: {propulsion,6:N1} %");

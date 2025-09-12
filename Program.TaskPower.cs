@@ -25,6 +25,7 @@ namespace IngameScript
                 MaxOutput = () => blocks.Sum(b => b.Enabled ? b.MaxOutput : 0),
                 CurrentOutput = () => blocks.Sum(b => b.CurrentOutput)
             };
+            PowerResult.MaxPowerPercent = 100;
         }
 
         struct PowerTaskResult
@@ -36,28 +37,40 @@ namespace IngameScript
         }
         PowerTaskResult PowerResult;
 
-        IEnumerable PowerTask()
+        IEnumerable PowerConsumptionTask()
         {
             var myWheels = MyWheels;
-            var PID = new PID(_pidPower);
             var wheelPower = myWheels.Concat(SubWheels).Sum(w => w.MaxPower);
             float passivePower = 0;
-            while (myWheels == MyWheels)
+
+            while (true)
             {
                 var powerProducersPower = PowerProducersPower;
                 double speed = Speed;
                 if (speed < 0.1) passivePower = powerProducersPower.CurrentOutput();
                 var vehicleMaxPower = powerProducersPower.MaxOutput();
-                var powerMaxPercent = MathHelper.Clamp((vehicleMaxPower - passivePower) / wheelPower, 0, 1);
-                var dt = TaskManager.CurrentTaskLastRun.TotalSeconds;
-                var targetSpeed = Cruise ? CruiseSpeed : (ForwardBackward != 0 ? MyWheels.First().SpeedLimit : 0);
-                var error = targetSpeed - speed * 3.6;
-                var power = MathHelper.Clamp(PID.Signal(error, dt), 5, 100 * powerMaxPercent);
+                var powerMaxPercent = MathHelper.Clamp((vehicleMaxPower - passivePower) * 100 / wheelPower, 0, 100);
 
-                PowerResult.Power = (float)power;
                 PowerResult.WheelMaxPower = (float)wheelPower;
                 PowerResult.GridMaxPower = vehicleMaxPower;
                 PowerResult.MaxPowerPercent = (float)powerMaxPercent;
+
+                yield return null;
+            }
+        }
+
+        IEnumerable PowerTask()
+        {
+            var PID = new PID(_pidPower);
+
+            while (true)
+            {
+                var dt = TaskManager.CurrentTaskLastRun.TotalSeconds;
+                var targetSpeed = Cruise ? CruiseSpeed : (ForwardBackward != 0 ? MyWheels.First().SpeedLimit * 0.9f : 0);
+                var error = targetSpeed - Speed * 3.6;
+                var power = MathHelper.Clamp(PID.Signal(error, dt), 5, PowerResult.MaxPowerPercent);
+
+                PowerResult.Power = (float)power;
                 yield return null;
             }
         }

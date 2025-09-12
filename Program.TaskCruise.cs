@@ -30,17 +30,16 @@ namespace IngameScript
 
             while (cruiseWhile())
             {
+                var maxSpeed = MyWheels.First().SpeedLimit * 0.9f;
                 if (cruiseSpeed == -1)
                 {
-                    CruiseSpeed = MathHelper.Clamp(CruiseSpeed + (float)ForwardBackward * -5f, 5, MyWheels.First().SpeedLimit);
+                    CruiseSpeed = MathHelper.Clamp(CruiseSpeed + (float)ForwardBackward * -5f, 5, maxSpeed);
                 }
                 var dt = TaskManager.CurrentTaskLastRun.TotalSeconds;
-                var currentSpeedKmh = Speed * 3.6;
-                var targetSpeed = CruiseSpeed;
-                var error = targetSpeed - currentSpeedKmh;
-                var propulsion = MathHelper.Clamp(pid.Signal(error, dt), -1, 1);
+                var error = CruiseSpeed - Speed * 3.6;
+                var propulsion = pid.Signal(error, dt);
 
-                CruiseResult.Propulsion = (float)propulsion;
+                CruiseResult.Propulsion = (float)MathHelper.Clamp(propulsion / maxSpeed, -1f, 1f);
 
                 yield return null;
             }

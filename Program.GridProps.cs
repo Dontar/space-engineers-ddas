@@ -13,7 +13,7 @@ namespace IngameScript
         {
             public double Roll;
             public double Pitch;
-            public double Yaw;
+            // public double Yaw;
             public double Elevation;
         }
 

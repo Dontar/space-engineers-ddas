@@ -36,8 +36,8 @@ namespace IngameScript
         string _pidPitch = "3/0/12/0";
         string _pidLevelPower = "10/0/0/0";
 
-        string _pidCruise = "5/5/0/0";
-        string _pidPower = "10/0/0/0";
+        string _pidCruise = "8/1/0/0";
+        string _pidPower = "8/0/0/0";
         bool _addWheels = true;
         bool _power = true;
         bool _stopLights = true;
@@ -58,6 +58,7 @@ namespace IngameScript
             // TaskManager.AddTask(AutopilotTask(), 1 / 3);
             TaskManager.AddTask(StopLightsTask(), 0, !_stopLights);
             TaskManager.AddTask(PowerTask(), 0, !_power);
+            TaskManager.AddTask(PowerConsumptionTask(), 3);
             _AutoLevelTask = TaskManager.AddTask(AutoLevelTask(), 0, !_autoLevel);
             TaskManager.AddTask(ScreensTask(), 0.5f);
             TaskManager.AddTask(GridOrientationsTask());
@@ -152,7 +153,7 @@ namespace IngameScript
                 var forwardBackward = ForwardBackward;
 
                 var propulsion = CruiseResult.Propulsion;
-                var power = PowerResult.Power;
+                var power = PowerResult;
                 var autopilot = AutopilotResult;
                 var orientation = OrientationResult;
 
@@ -185,7 +186,9 @@ namespace IngameScript
                         else w.Friction = 100;
 
                     if (_power)
-                        wheel.Power = power;
+                        wheel.Power = power.Power;
+                    else if (wheel.Power > power.MaxPowerPercent)
+                        wheel.Power = power.MaxPowerPercent;
 
                     // update height
                     if (_suspensionHight)
@@ -235,7 +238,9 @@ namespace IngameScript
                     wheel.PropulsionOverride = w.IsLeft ? subWheelPropulsion : -subWheelPropulsion;
 
                     if (_power)
-                        wheel.Power = power;
+                        wheel.Power = power.Power;
+                    else if (wheel.Power > power.MaxPowerPercent)
+                        wheel.Power = power.MaxPowerPercent;
 
                     if (_subWheelsStrength)
                     {
