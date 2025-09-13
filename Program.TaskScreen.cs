@@ -57,8 +57,10 @@ namespace IngameScript
             s.Clear();
             s.AppendLine("==Autopilot===========\n");
             s.AppendLine($" Waypoint:   {autopilot.Waypoint}");
-            s.AppendLine($" Waypoint #: {autopilot.WaypointCount}");
+            s.AppendLine($" Distance:   {autopilot.Distance,6:N1} m");
+            s.AppendLine("======================\n");
             s.AppendLine($" Mode:       {autopilot.Mode}");
+            s.AppendLine($" Waypoint #: {autopilot.WaypointCount}");
         }
 
         IEnumerable<IEnumerable<T>> ZipPairs<T>(IEnumerable<T> list)

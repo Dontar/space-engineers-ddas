@@ -34,6 +34,7 @@ namespace IngameScript
             public string Waypoint;
             public int WaypointCount;
             public string Mode;
+            public double Distance;
             public void Reset()
             {
                 Waypoint = "None";
@@ -41,6 +42,7 @@ namespace IngameScript
                 Steer = 0;
                 Mode = "Idle";
                 WaypointCount = 0;
+                Distance = 0;
             }
         }
 
@@ -145,15 +147,13 @@ namespace IngameScript
             float wayPointReachThreshold = (float)Pilot.Block.CubeGrid.WorldVolume.Radius + 2;
             float wayPointCloseThreshold = wayPointReachThreshold + 40;
 
-            // var basic = Basic != null && Basic.GetValueBool("ActivateBehavior") && Basic.SelectedMissionId == 2;
+            var basic = Basic != null && Basic.GetValueBool("ActivateBehavior") && Basic.SelectedMissionId == 2;
 
-            // var routine = isRoute
-            //     ? FollowRoute(wayPointReachThreshold)
-            //     : basic
-            //         ? FollowTarget(wayPointReachThreshold, wayPointCloseThreshold)
-            //         : TrackTarget(wayPointReachThreshold);
-
-            var routine = FollowRoute(wayPointReachThreshold);
+            var routine = isRoute
+                ? FollowRoute(wayPointReachThreshold)
+                : basic
+                    ? FollowTarget(wayPointReachThreshold, wayPointCloseThreshold)
+                    : TrackTarget(wayPointReachThreshold);
 
             foreach (var _ in routine)
             {
@@ -190,6 +190,7 @@ namespace IngameScript
                     AutopilotResult.Direction = direction;
                     AutopilotResult.Steer = (float)MathHelper.Clamp(directionAngle, -1, 1);
                     AutopilotResult.WaypointCount = queue.Count;
+                    AutopilotResult.Distance = distance;
 
                     var distanceToTarget = Math.Abs(Vector3D.Distance(currentPosition, queue.Last().Item.Coords));
                     if (distanceToTarget < wayPointCloseThreshold)
@@ -235,9 +236,9 @@ namespace IngameScript
                     AutopilotResult.Direction = direction;
                     AutopilotResult.Steer = (float)MathHelper.Clamp(directionAngle, -1, 1);
                     AutopilotResult.WaypointCount = 1;
+                    AutopilotResult.Distance = distance;
 
-                    var distanceModifier = Util.NormalizeValue(Speed * 3.6, 0, 180, 0, 50);
-                    var threshold = wayPointReachThreshold + distanceModifier;
+                    var threshold = wayPointReachThreshold + Speed * 3.6 * 50 / 180;
 
                     controller.HandBrake = distance < threshold;
                 }
@@ -276,13 +277,13 @@ namespace IngameScript
                     Vector3D currentPosition, direction;
                     double directionAngle, distance;
                     CalcSteer(currentWaypoint, out currentPosition, out direction, out directionAngle, out distance);
-                    var distanceModifier = Util.NormalizeValue(Speed * 3.6, 10, 180, 0, 50);
 
                     AutopilotResult.Waypoint = wayPointsIter.Current.Name ?? "None";
                     AutopilotResult.Direction = direction;
                     AutopilotResult.Steer = (float)MathHelper.Clamp(directionAngle, -1, 1);
+                    AutopilotResult.Distance = distance;
 
-                    if (distance < wayPointReachThreshold + distanceModifier)
+                    if (distance < wayPointReachThreshold + Speed * 3.6 * 50 / 180)
                     {
                         if (!wayPointsIter.MoveNext())
                         {
@@ -339,8 +340,8 @@ namespace IngameScript
 
             var T = MatrixD.Transpose(Pilot.WorldMatrix);
             direction = Vector3D.TransformNormal(destinationVector, T);
-            directionAngle = Util.ToAzimuth(direction);
             distance = direction.Length();
+            directionAngle = Util.ToAzimuth(direction);
         }
 
         private void SetCruiseControl()
