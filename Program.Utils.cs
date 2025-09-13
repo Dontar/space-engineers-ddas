@@ -225,7 +225,7 @@ namespace IngameScript
 
                 foreach (var g in gyros)
                 {
-                    if (g.GyroPower != power / 100) g.GyroPower = power;
+                    if (g.GyroPower != power) g.GyroPower = power;
                     g.GyroOverride = true;
                     var transformedRotationVec = Vector3D.TransformNormal(relativeRotationVec, Matrix.Transpose(g.WorldMatrix));
                     g.Pitch = (float)transformedRotationVec.X;
