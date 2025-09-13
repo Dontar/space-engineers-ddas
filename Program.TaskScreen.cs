@@ -36,8 +36,9 @@ namespace IngameScript
 
             s.Clear();
             s.AppendLine("==Status==============");
-            s.AppendLine($" Speed:      {Speed * 3.6,3:N0} km/h");
             s.AppendLine($" CruiseSpeed:{CruiseSpeed,3:N0} km/h");
+            s.AppendLine($" Speed:      {Speed * 3.6,3:N0} km/h");
+            s.AppendLine($" A Speed:    {Velocities.AngularVelocity.Length(),3:N1} m/s");
             s.AppendLine("======================");
             s.AppendLine($" Roll:       {orientation.Roll,6:N1} °");
             s.AppendLine($" Pitch:      {orientation.Pitch,6:N1} °");

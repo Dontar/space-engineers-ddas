@@ -34,7 +34,9 @@ namespace IngameScript
         bool _autoLevel = true;
         string _pidRoll = "3/0/8/0";
         string _pidPitch = "3/0/12/0";
-        string _pidLevelPower = "10/0/0/0";
+        string _pidLevelPower = "10/1/0/0";
+        int _flipDitherAmplitude = 11;
+        int _flipDitherFrequency = 2;
 
         string _pidCruise = "8/1/0/0";
         string _pidPower = "8/0/0/0";
