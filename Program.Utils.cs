@@ -228,9 +228,9 @@ namespace IngameScript
                     if (g.GyroPower != power) g.GyroPower = power;
                     g.GyroOverride = true;
                     var transformedRotationVec = Vector3D.TransformNormal(relativeRotationVec, Matrix.Transpose(g.WorldMatrix));
-                    g.Pitch = (float)transformedRotationVec.X;
-                    g.Yaw = (float)transformedRotationVec.Y;
-                    g.Roll = (float)transformedRotationVec.Z;
+                    g.Pitch = (float)transformedRotationVec.X * MathHelper.RPMToRadiansPerSecond;
+                    g.Yaw = (float)transformedRotationVec.Y * MathHelper.RPMToRadiansPerSecond;
+                    g.Roll = (float)transformedRotationVec.Z * MathHelper.RPMToRadiansPerSecond;
                 }
             }
 
