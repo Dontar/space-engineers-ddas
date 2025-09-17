@@ -36,10 +36,10 @@ namespace IngameScript
                     CruiseSpeed = MathHelper.Clamp(CruiseSpeed + (float)ForwardBackward * -5f, 5, maxSpeed);
                 }
                 var dt = TaskManager.CurrentTaskLastRun.TotalSeconds;
-                var error = CruiseSpeed - Speed * 3.6;
+                var error = (CruiseSpeed - Speed * 3.6) / maxSpeed;
                 var propulsion = pid.Signal(error, dt);
 
-                CruiseResult.Propulsion = (float)MathHelper.Clamp(propulsion / maxSpeed, -1f, 1f);
+                CruiseResult.Propulsion = (float)MathHelper.Clamp(propulsion, -1f, 1f);
 
                 yield return null;
             }

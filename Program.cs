@@ -38,8 +38,8 @@ namespace IngameScript
         int _flipDitherAmplitude = 11;
         int _flipDitherFrequency = 2;
 
-        string _pidCruise = "8/1/0/0";
-        string _pidPower = "8/0/0/0";
+        string _pidCruise = "18/5/0/0";
+        string _pidPower = "18/0/0/0";
         bool _addWheels = true;
         bool _power = true;
         bool _stopLights = true;

@@ -63,9 +63,10 @@ namespace IngameScript
 
             while (true)
             {
+                var maxSpeed = MyWheels.First().SpeedLimit * 0.9f;
                 var dt = TaskManager.CurrentTaskLastRun.TotalSeconds;
-                var targetSpeed = Cruise ? CruiseSpeed : (ForwardBackward != 0 ? MyWheels.First().SpeedLimit * 0.9f : 0);
-                var error = targetSpeed - Speed * 3.6;
+                var targetSpeed = Cruise ? CruiseSpeed : maxSpeed * Math.Abs(ForwardBackward);
+                var error = (targetSpeed - Speed * 3.6) * 100 / maxSpeed;
                 var power = MathHelper.Clamp(PID.Signal(error, dt), 5, PowerResult.MaxPowerPercent);
 
                 PowerResult.Power = (float)power;
