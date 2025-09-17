@@ -4,7 +4,9 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using VRage.Game;
 using VRage.Game.GUI.TextPanel;
+using VRageMath;
 
 namespace IngameScript
 {
@@ -24,7 +26,7 @@ namespace IngameScript
 
         void ChangeScreenType()
         {
-            CurrentScreenType = (CurrentScreenType + 1) % 4;
+            CurrentScreenType = (CurrentScreenType + 1) % 5;
         }
 
         void DisplayStatus(StringBuilder s)
@@ -51,6 +53,31 @@ namespace IngameScript
             s.AppendLine($" {F("Flip", Flipping),-10}{F("Level", _autoLevel),11}");
         }
 
+        void DisplayRollPitchStatus(StringBuilder s)
+        {
+            var orientation = OrientationResult;
+            var gyro = Gyros.FirstOrDefault();
+
+            s.Clear();
+            s.AppendLine("==Orientation========");
+            s.AppendLine($" Roll:   {orientation.Roll,6:N1} °");
+            s.AppendLine($" Pitch:  {orientation.Pitch,6:N1} °");
+            s.AppendLine("==Gyros==============");
+            if (gyro != null)
+            {
+                s.AppendLine($" Yaw:    {gyro.Yaw * MathHelper.RadiansPerSecondToRPM,6:N1} RPM");
+                s.AppendLine($" Pitch:  {gyro.Pitch * MathHelper.RadiansPerSecondToRPM,6:N1} RPM");
+                s.AppendLine($" Roll:   {gyro.Roll * MathHelper.RadiansPerSecondToRPM,6:N1} RPM");
+                s.AppendLine($" Power:  {gyro.GyroPower * 100,6:N1} %");
+                s.AppendLine($" Override: {gyro.GyroOverride}");
+            }
+            else
+            {
+                s.AppendLine(" No Gyros Found");
+            }
+
+        }
+
         void DisplayAutopilot(StringBuilder s)
         {
             var autopilot = AutopilotResult;
@@ -58,7 +85,7 @@ namespace IngameScript
             s.AppendLine("==Autopilot===========\n");
             s.AppendLine($" Waypoint:   {autopilot.Waypoint}");
             s.AppendLine($" Distance:   {autopilot.Distance,6:N1} m");
-            s.AppendLine("======================\n");
+            s.AppendLine("\n======================\n");
             s.AppendLine($" Mode:       {autopilot.Mode}");
             s.AppendLine($" Waypoint #: {autopilot.WaypointCount}");
         }
@@ -137,6 +164,9 @@ namespace IngameScript
             {
                 switch (CurrentScreenType)
                 {
+                    case 4:
+                        DisplayRollPitchStatus(screenText);
+                        break;
                     case 3:
                         DisplayAutopilot(screenText);
                         break;
