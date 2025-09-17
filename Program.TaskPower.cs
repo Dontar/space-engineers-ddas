@@ -45,10 +45,8 @@ namespace IngameScript
 
             while (true)
             {
-                var powerProducersPower = PowerProducersPower;
-                double speed = Speed;
-                if (speed < 0.1) passivePower = powerProducersPower.CurrentOutput();
-                var vehicleMaxPower = powerProducersPower.MaxOutput();
+                if (Speed < 0.1) passivePower = PowerProducersPower.CurrentOutput();
+                var vehicleMaxPower = PowerProducersPower.MaxOutput();
                 var powerMaxPercent = MathHelper.Clamp((vehicleMaxPower - passivePower) * 100 / wheelPower, 0, 100);
 
                 PowerResult.WheelMaxPower = (float)wheelPower;

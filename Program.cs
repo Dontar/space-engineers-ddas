@@ -232,7 +232,7 @@ namespace IngameScript
                         high = SubWheels.FirstOrDefault().HeightOffsetMin;
                     }
                 }
-                var subWheelPropulsion = Cruise ? propulsion : (forwardBackward != 0 && !(upDown > 0) ? (forwardBackward < 0 ? 1 : -1) : 0);
+                var subWheelPropulsion = Cruise ? propulsion : forwardBackward;
                 foreach (var w in SubWheels)
                 {
                     IMyMotorSuspension wheel = w.Wheel;
