@@ -41,16 +41,16 @@ namespace IngameScript
                 var normalizeFactor = CalcStrength(MyWheels);
                 foreach (var w in MyWheels)
                 {
-                    w.TargetStrength = MathHelper.Clamp(Math.Sqrt(w.WeightRatio / normalizeFactor * gridUnsprungWeight) / w.BlackMagicFactor, 5, 100) * _strengthFactor;
+                    w.TargetStrength = MathHelper.Clamp(Math.Sqrt(w.WeightRatio / normalizeFactor * gridUnsprungWeight) / w.BlackMagicFactor * _strengthFactor, 5, 100);
                 }
             }
 
             if (_subWheelsStrength)
             {
-                var subNormalizeFactor = CalcStrength(SubWheels);
+                var normalizeFactor = CalcStrength(SubWheels);
                 foreach (var w in SubWheels)
                 {
-                    w.TargetStrength = MathHelper.Clamp(Math.Sqrt(w.WeightRatio / subNormalizeFactor * gridUnsprungWeight) / w.BlackMagicFactor, 5, 100) * _strengthFactor;
+                    w.TargetStrength = MathHelper.Clamp(Math.Sqrt(w.WeightRatio / normalizeFactor * gridUnsprungWeight) / w.BlackMagicFactor * _strengthFactor, 5, 100);
                 }
             }
         }
