@@ -12,7 +12,9 @@ namespace IngameScript
         struct GridOrientation
         {
             public double Roll;
+            public double RadRoll;
             public double Pitch;
+            public double RadPitch;
             // public double Yaw;
             public double Elevation;
         }
@@ -24,18 +26,17 @@ namespace IngameScript
             while (true)
             {
                 var controller = Controllers.MainController;
-                var speed = controller.GetShipVelocities().LinearVelocity.Normalized();
                 var grav = Gravity;
                 var matrix = controller.WorldMatrix;
-                // var yaw = Math.Atan2(speed.Dot(matrix.Right), speed.Dot(matrix.Forward));
                 var roll = Math.Atan2(grav.Dot(matrix.Right), grav.Dot(matrix.Down));
                 var pitch = Math.Atan2(grav.Dot(matrix.Backward), grav.Dot(matrix.Down));
                 double elevation;
                 controller.TryGetPlanetElevation(MyPlanetElevation.Surface, out elevation);
 
+                OrientationResult.RadRoll = roll;
                 OrientationResult.Roll = MathHelper.ToDegrees(roll);
+                OrientationResult.RadPitch = pitch;
                 OrientationResult.Pitch = MathHelper.ToDegrees(pitch);
-                // OrientationResult.Yaw = MathHelper.ToDegrees(yaw);
                 OrientationResult.Elevation = elevation;
 
                 yield return null;

@@ -3,6 +3,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using VRage.Game;
 using VRageMath;
 
 namespace IngameScript
@@ -12,10 +13,45 @@ namespace IngameScript
         bool Flipping = false;
 
         IEnumerable<IMyGyro> Gyros;
+        struct GridDimensions
+        {
+            public float Width;
+            public float Height;
+            public float Length;
+        }
+
+        GridDimensions Dimensions;
 
         void InitAutoLevel()
         {
             Gyros = Util.GetBlocks<IMyGyro>(b => Util.IsNotIgnored(b, _ignoreTag) && b.IsSameConstructAs(Me));
+
+            double blockSize = (Me.CubeGrid.GridSizeEnum == MyCubeSize.Large) ? 2.5 : 0.5; // meters
+            var min = Me.CubeGrid.Min;
+            var max = Me.CubeGrid.Max;
+            var size = (max - min + Vector3I.One) * blockSize;
+
+            Dimensions.Width = (float)size.X;
+            Dimensions.Height = (float)size.Y;
+            Dimensions.Length = (float)size.Z;
+        }
+
+        float CalcRequiredGyroForce(float roll, int magnitude = 10)
+        {
+            if (Gyros.Count() < 1) return 0;
+
+            var width = Dimensions.Width;
+            var height = Dimensions.Height;
+
+            var pivotPoint = width / 2;
+            var maxForce = Gyros.Sum(g => g.CubeGrid.GridSizeEnum == MyCubeSize.Small ? 448000 : 3.36E+07) * pivotPoint;
+
+            var force = Mass.PhysicalMass * GravityMagnitude * pivotPoint;
+
+            var inertia = 1.0 / 12.0 * Mass.PhysicalMass * (width * width + height * height);
+            var torqueAccel = inertia * Math.Abs(roll) * magnitude;
+
+            return (float)(Math.Min(force + torqueAccel, maxForce) / maxForce);
         }
 
         IEnumerable FlipGridTask()
@@ -25,15 +61,12 @@ namespace IngameScript
             Flipping = true;
             TaskManager.PauseTask(_AutoLevelTask, true);
 
-            var roll = -60 * Math.Sign(OrientationResult.Roll);
-            Util.ApplyGyroOverride(0, 0, roll, 1f, Gyros, Controllers.MainController.WorldMatrix);
+            var roll = -10 * Math.Sign(OrientationResult.Roll) * MathHelper.RPMToRadiansPerSecond;
+            var force = CalcRequiredGyroForce(roll);
+
+            Util.ApplyGyroOverride(0, 0, roll, force, Gyros, Controllers.MainController.WorldMatrix);
             while (Math.Abs(OrientationResult.Roll) > 25 && UpDown == 0)
             {
-                if (Math.Abs(OrientationResult.Roll) < 90)
-                {
-                    roll = -30 * Math.Sign(OrientationResult.Roll);
-                    Util.ApplyGyroOverride(0, 0, roll, 1f, Gyros, Controllers.MainController.WorldMatrix);
-                }
                 yield return null;
             }
             ResetGyros();
@@ -53,13 +86,20 @@ namespace IngameScript
         {
             if (Gyros.Count() == 0) yield break;
             var isFastEnough = Speed * 3.6 > 20;
-            if (!isFastEnough) yield break;
+            if (!isFastEnough)
+            {
+                if (Speed < 0.7 && Math.Abs(OrientationResult.Roll) >= 60)
+                {
+                    TaskManager.AddTaskOnce(FlipGridTask());
+                }
+                yield break;
+            }
             var mainController = Controllers.MainController;
 
             var pidRoll = new PID(_pidRoll);
             var pidPitch = new PID(_pidPitch);
-            var pidPower = new PID(_pidLevelPower);
 
+            var power = CalcRequiredGyroForce(30 * MathHelper.RPMToRadiansPerSecond, 5);
             while (isFastEnough)
             {
                 var orientation = OrientationResult;
@@ -68,10 +108,8 @@ namespace IngameScript
                 {
                     isFastEnough = Speed * 3.6 > 20;
                     var dt = TaskManager.CurrentTaskLastRun.TotalSeconds;
-                    var rollSpeed = MathHelper.Clamp(pidRoll.Signal(orientation.Roll, dt) * 60 / 180, -60, 60);
-                    var pitchSpeed = MathHelper.Clamp(pidPitch.Signal(orientation.Pitch - 5, dt) * 60 / 180, -60, 60);
-                    var powerError = Math.Abs(orientation.Pitch - 5 + orientation.Roll);
-                    var power = MathHelperD.Clamp(Math.Round(pidPower.Signal(powerError, dt) * 5 / 270 / 5, 1), 0.2, 1);
+                    var rollSpeed = pidRoll.Signal(orientation.RadRoll, dt);
+                    var pitchSpeed = pidPitch.Signal(orientation.RadPitch - MathHelper.ToRadians(5), dt);
 
                     Util.ApplyGyroOverride(pitchSpeed, /* yawSpeed */0, -rollSpeed, (float)power, Gyros, mainController.WorldMatrix);
                 }
@@ -79,25 +117,11 @@ namespace IngameScript
                 {
                     pidRoll.Clear();
                     pidPitch.Clear();
-                    pidPower.Clear();
                     ResetGyros();
                 }
                 yield return null;
             }
             ResetGyros();
-        }
-        public double DitherWindow(double rpm, double angleError, double dt, ref bool activeState)
-        {
-            double absRpm = Math.Abs(rpm);
-            double absAngle = Math.Abs(angleError);
-            var A = _flipDitherAmplitude;
-            var F = _flipDitherFrequency;
-
-            // Toggle activeState based on thresholds
-            activeState = (activeState && !(absRpm > 5 || absAngle < 60))
-                       || (!activeState && absRpm < 1 && absAngle >= 60);
-
-            return (activeState ? 1.0 : 0.0) * (A * Math.Sin(2 * Math.PI * F * dt));
         }
     }
 }

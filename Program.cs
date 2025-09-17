@@ -32,16 +32,15 @@ namespace IngameScript
         double _frictionMinSpeed = 5;
 
         bool _autoLevel = true;
-        string _pidRoll = "3/0/8/0";
-        string _pidPitch = "3/0/12/0";
-        string _pidLevelPower = "10/1/0/0";
-        int _flipDitherAmplitude = 11;
-        int _flipDitherFrequency = 2;
+        string _pidRoll = "10/0/0/0";
+        string _pidPitch = "10/0/0/0";
 
-        string _pidCruise = "18/5/0/0";
-        string _pidPower = "18/0/0/0";
-        bool _addWheels = true;
+        string _pidCruise = "18/1/0/0";
+
         bool _power = true;
+        string _pidPower = "18/0/0/0";
+
+        bool _addWheels = true;
         bool _stopLights = true;
 
         enum FocalPoint
