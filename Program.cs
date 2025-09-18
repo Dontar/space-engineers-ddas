@@ -56,7 +56,7 @@ namespace IngameScript
             InitGridProps();
             TaskManager.AddTask(Util.StatusMonitor(this));
             TaskManager.AddTask(MainTask());
-            // TaskManager.AddTask(AutopilotTask(), 1 / 3);
+            TaskManager.AddTask(AutopilotTask(), 1 / 3);
             TaskManager.AddTask(StopLightsTask(), 0, !_stopLights);
             TaskManager.AddTask(PowerTask(), 0, !_power);
             TaskManager.AddTask(PowerConsumptionTask(), 3);
@@ -67,8 +67,6 @@ namespace IngameScript
         }
 
         readonly int _AutoLevelTask;
-        float BaseMass;
-        float PhysicalMass;
 
         public void Main(string argument, UpdateType updateSource)
         {
@@ -83,7 +81,7 @@ namespace IngameScript
 
             if (!updateSource.HasFlag(UpdateType.Update10)) return;
 
-            if (BaseMass != Mass.BaseMass)
+            Memo.Of((BaseMass) =>
             {
                 if (BaseMass != 0) InitGridProps();
                 InitWheels();
@@ -92,14 +90,10 @@ namespace IngameScript
                 InitAutoLevel();
                 InitAutopilot();
                 InitScreens();
-                BaseMass = Mass.BaseMass;
-            }
 
-            if (PhysicalMass != Mass.PhysicalMass)
-            {
-                InitStrength();
-                PhysicalMass = Mass.PhysicalMass;
-            }
+            }, "OnMassChange", Mass.BaseMass);
+
+            Memo.Of((_) => InitStrength(), "OnPhysicalMassChange", Mass.PhysicalMass);
 
             TaskManager.RunTasks(Runtime.TimeSinceLastRun);
         }
