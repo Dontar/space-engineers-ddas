@@ -252,15 +252,6 @@ namespace IngameScript
                 }
             }
 
-            // Returns the azimuth (horizontal angle in radians) of a vector relative to the forward direction.
-            // Azimuth is the angle between the projection of the vector onto the XZ plane and the forward (Z) axis.
-            public static double ToAzimuth(Vector3D v)
-            {
-                v.Y = 0;
-                v.Normalize();
-                return v.X >= 0.0 ? 0.0 - Math.Acos(v.Dot(Vector3D.Forward)) : Math.Acos(v.Dot(Vector3D.Forward));
-            }
-
             public static IEnumerable DisplayLogo(string logo, IMyTextSurface screen)
             {
                 var progress = (new char[] { '/', '-', '\\', '|' }).GetEnumerator();
@@ -521,6 +512,37 @@ namespace IngameScript
                 }
                 return true;
             }
+        }
+
+        class InfoDisplay
+        {
+            public StringBuilder Sb;
+            int _lineLength;
+
+            public InfoDisplay(StringBuilder stringBuilder, int lineLength)
+            {
+                _lineLength = lineLength;
+                Sb = stringBuilder;
+            }
+
+            public void Sep() => Label("");
+
+            public void Label(string label, char filler = '=')
+            {
+                var prefix = string.Join("", Enumerable.Repeat(filler.ToString(), 2));
+                var suffix = string.Join("", Enumerable.Repeat(filler.ToString(), _lineLength - label.Length - 2));
+                Sb.AppendLine(prefix + label + suffix);
+            }
+            public void Row(string label, object value, string format = "", string unitType = "")
+            {
+                int width = _lineLength / 2;
+                var labelWidth = width - 1;
+                var valueWidth = label.Length > labelWidth ? width - unitType.Length - (label.Length - labelWidth):  width - unitType.Length;
+                format = string.IsNullOrEmpty(format) ? "" : ":" + format;
+
+                Sb.AppendFormat(" {0,-" + labelWidth + "}{1," + valueWidth + format + "}" + unitType + "\n", label, value);
+            }
+
         }
     }
 }

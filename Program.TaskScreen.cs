@@ -29,65 +29,63 @@ namespace IngameScript
             CurrentScreenType = (CurrentScreenType + 1) % 5;
         }
 
-        void DisplayStatus(StringBuilder s)
+        void DisplayStatus(InfoDisplay s)
         {
             var propulsionSystemStatus = CruiseResult;
             var power = PowerResult;
             var orientation = OrientationResult;
             var propulsion = propulsionSystemStatus.Propulsion * 100;
 
-            s.Clear();
-            s.AppendLine("==Status==============");
-            s.AppendLine($" CruiseSpeed:{CruiseSpeed,3:N0} km/h");
-            s.AppendLine($" Speed:      {Speed * 3.6,3:N0} km/h");
-            s.AppendLine($" A Speed:    {Velocities.AngularVelocity.Length(),3:N1} m/s");
-            s.AppendLine("======================");
-            s.AppendLine($" Roll:       {orientation.Roll,6:N1} °");
-            s.AppendLine($" Pitch:      {orientation.Pitch,6:N1} °");
-            // s.AppendLine($" Yaw:        {orientation.Yaw,6:N1} °");
-            s.AppendLine("======================");
-            s.AppendLine($" Power:      {power.Power,6:N1} %");
-            s.AppendLine($" Propulsion: {propulsion,6:N1} %");
-            s.AppendLine("======================");
-            s.AppendLine($" {F("Cruise", Cruise),-10}{F("Rec", Recording),11}");
-            s.AppendLine($" {F("Flip", Flipping),-10}{F("Level", _autoLevel),11}");
+            s.Sb.Clear();
+            s.Label("Status");
+            s.Row("CruiseSpeed", CruiseSpeed, "N0", " km/h");
+            s.Row("Speed", Speed * 3.6, "N0", " km/h");
+            s.Row("A Speed", Velocities.AngularVelocity.Length(), "N1", " m/s");
+            s.Sep();
+            s.Row("Roll", orientation.Roll, "N1", " °");
+            s.Row("Pitch", orientation.Pitch, "N1", " °");
+            s.Sep();
+            s.Row("Power", power.Power, "N1", " %");
+            s.Row("Propulsion", propulsion, "N1", " %");
+            s.Sep();
+            s.Row(F("Cruise", Cruise), F("Rec", Recording));
+            s.Row(F("Flip", Flipping), F("Level", _autoLevel));
         }
 
-        void DisplayRollPitchStatus(StringBuilder s)
+        void DisplayRollPitchStatus(InfoDisplay s)
         {
             var orientation = OrientationResult;
             var gyro = Gyros.FirstOrDefault();
 
-            s.Clear();
-            s.AppendLine("==Orientation========");
-            s.AppendLine($" Roll:   {orientation.Roll,6:N1} °");
-            s.AppendLine($" Pitch:  {orientation.Pitch,6:N1} °");
-            s.AppendLine("==Gyros==============");
+            s.Sb.Clear();
+            s.Label("Orientation");
+            s.Row("Roll", orientation.Roll, "N1", " °");
+            s.Row("Pitch", orientation.Pitch, "N1", " °");
+            s.Label("Gyros");
             if (gyro != null)
             {
-                s.AppendLine($" Yaw:    {gyro.Yaw * MathHelper.RadiansPerSecondToRPM,6:N1} RPM");
-                s.AppendLine($" Pitch:  {gyro.Pitch * MathHelper.RadiansPerSecondToRPM,6:N1} RPM");
-                s.AppendLine($" Roll:   {gyro.Roll * MathHelper.RadiansPerSecondToRPM,6:N1} RPM");
-                s.AppendLine($" Power:  {gyro.GyroPower * 100,6:N1} %");
-                s.AppendLine($" Override: {gyro.GyroOverride}");
+                s.Row("Yaw", gyro.Yaw * MathHelper.RadiansPerSecondToRPM, "N1", " RPM");
+                s.Row("Pitch", gyro.Pitch * MathHelper.RadiansPerSecondToRPM, "N1", " RPM");
+                s.Row("Roll", gyro.Roll * MathHelper.RadiansPerSecondToRPM, "N1", " RPM");
+                s.Row("Power", gyro.GyroPower * 100, "N1", " %");
+                s.Row("Override", gyro.GyroOverride);
             }
             else
             {
-                s.AppendLine(" No Gyros Found");
+                s.Row("No Gyros Found", "");
             }
-
         }
 
-        void DisplayAutopilot(StringBuilder s)
+        void DisplayAutopilot(InfoDisplay s)
         {
             var autopilot = AutopilotResult;
-            s.Clear();
-            s.AppendLine("==Autopilot===========\n");
-            s.AppendLine($" Waypoint:   {autopilot.Waypoint}");
-            s.AppendLine($" Distance:   {autopilot.Distance,6:N1} m");
-            s.AppendLine("\n======================\n");
-            s.AppendLine($" Mode:       {autopilot.Mode}");
-            s.AppendLine($" Waypoint #: {autopilot.WaypointCount}");
+            s.Sb.Clear();
+            s.Label("Autopilot");
+            s.Row("Waypoint", autopilot.Waypoint);
+            s.Row("Distance", autopilot.Distance, "N1", " m");
+            s.Sep();
+            s.Row("Mode", autopilot.Mode);
+            s.Row("Waypoint #", autopilot.WaypointCount);
         }
 
         IEnumerable<IEnumerable<T>> ZipPairs<T>(IEnumerable<T> list)
@@ -100,7 +98,7 @@ namespace IngameScript
             }
         }
 
-        void DisplayWheelStrength(StringBuilder s)
+        void DisplayWheelStrength(InfoDisplay s)
         {
             var frontWheels = MyWheels.Where(w => w.IsFront).OrderBy(w => w.ToCoM.Z);
             var backWheels = MyWheels.Where(w => !w.IsFront).OrderBy(w => w.ToCoM.Z);
@@ -111,23 +109,23 @@ namespace IngameScript
                 foreach (var g in wheels)
                 {
                     var axel = g.OrderBy(w => !w.IsLeft).ToArray();
-                    s.AppendLine($"|{axel[0].Wheel.Strength,3:N0}%|          |{axel[1].Wheel.Strength,3:N0}%|");
-                    s.AppendLine("----------------------");
+                    s.Row($"|{axel[0].Wheel.Strength,3:N0}%|", $"|{axel[1].Wheel.Strength,3:N0}%|", "");
+                    s.Label("", '-');
                 }
             };
 
-            s.Clear();
-            s.AppendLine("=Suspension Strength==");
-            s.AppendLine("--Front---------------");
+            s.Sb.Clear();
+            s.Label("Suspension Strength");
+            s.Label("Front", '-');
             PrintAxel(ZipPairs(frontWheels));
-            s.AppendLine("--Rear----------------");
+            s.Label("Rear", '-');
             PrintAxel(ZipPairs(backWheels));
             if (subWheels.Count() < 1) return;
-            s.AppendLine("--Trailer-------------");
+            s.Label("Trailer", '-');
             PrintAxel(ZipPairs(subWheels));
         }
 
-        void DisplayWheelHeight(StringBuilder s)
+        void DisplayWheelHeight(InfoDisplay s)
         {
             var frontWheels = MyWheels.Where(w => w.IsFront).OrderBy(w => w.ToCoM.Z);
             var backWheels = MyWheels.Where(w => !w.IsFront).OrderBy(w => w.ToCoM.Z);
@@ -140,25 +138,25 @@ namespace IngameScript
                     var axel = g.OrderBy(w => !w.IsLeft).ToArray();
                     var right = -axel[0].Wheel.Height * 100;
                     var left = -axel[1].Wheel.Height * 100;
-                    s.AppendLine($"|{right,4:N1}cm|      |{left,4:N1}cm|");
-                    s.AppendLine("----------------------");
+                    s.Row($"|{right,4:N1}cm|", $"|{left,4:N1}cm|");
+                    s.Label("", '-');
                 }
             };
 
-            s.Clear();
-            s.AppendLine("==Suspension Height===");
-            s.AppendLine("--Front---------------");
+            s.Sb.Clear();
+            s.Label("Suspension Height");
+            s.Label("Front", '-');
             PrintAxel(ZipPairs(frontWheels));
-            s.AppendLine("--Rear----------------");
+            s.Label("Rear", '-');
             PrintAxel(ZipPairs(backWheels));
             if (subWheels.Count() < 1) return;
-            s.AppendLine("--Trailer-------------");
+            s.Label("Trailer", '-');
             PrintAxel(ZipPairs(subWheels));
         }
 
         IEnumerable ScreensTask()
         {
-            var screenText = new StringBuilder();
+            var screenText = new InfoDisplay(new StringBuilder(), 22);
 
             while (true)
             {
@@ -184,7 +182,7 @@ namespace IngameScript
                 {
                     s.ContentType = ContentType.TEXT_AND_IMAGE;
                     s.Font = "Monospace";
-                    s.WriteText(screenText);
+                    s.WriteText(screenText.Sb);
                 }
                 yield return null;
             }
