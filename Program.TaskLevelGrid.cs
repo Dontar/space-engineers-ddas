@@ -76,9 +76,10 @@ namespace IngameScript
 
         private void ResetGyros()
         {
+            var ai = Pilot.IsAutoPilotEnabled;
             foreach (var g in Gyros)
             {
-                g.Roll = g.Yaw = g.Pitch = 0; g.GyroOverride = false; g.GyroPower = 1;
+                g.Roll = g.Yaw = g.Pitch = 0; g.GyroOverride = ai; g.GyroPower = 1;
             }
         }
 
@@ -88,7 +89,7 @@ namespace IngameScript
             var isFastEnough = Speed * 3.6 > 20;
             if (!isFastEnough)
             {
-                if (Speed < 0.7 && Math.Abs(OrientationResult.Roll) >= 60)
+                if (Speed < 0.1 && Math.Abs(OrientationResult.Roll) >= 60)
                 {
                     TaskManager.AddTaskOnce(FlipGridTask());
                 }

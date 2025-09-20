@@ -83,6 +83,7 @@ namespace IngameScript
             s.Label("Autopilot");
             s.Row("Waypoint", autopilot.Waypoint);
             s.Row("Distance", autopilot.Distance, "N1", " m");
+            s.Row("Steer", MathHelper.ToDegrees(autopilot.Steer), "N1", " °");
             s.Sep();
             s.Row("Mode", autopilot.Mode);
             s.Row("Waypoint #", autopilot.WaypointCount);

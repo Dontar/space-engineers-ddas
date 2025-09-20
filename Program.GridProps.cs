@@ -26,7 +26,7 @@ namespace IngameScript
             while (true)
             {
                 var controller = Controllers.MainController;
-                var grav = Gravity;
+                var grav = Gravity.Normalized();
                 var matrix = controller.WorldMatrix;
                 var roll = Math.Atan2(grav.Dot(matrix.Right), grav.Dot(matrix.Down));
                 var pitch = Math.Atan2(grav.Dot(matrix.Backward), grav.Dot(matrix.Down));
