@@ -339,6 +339,10 @@ namespace IngameScript
                     return this;
                 }
             }
+            public class Task<T> : Task
+            {
+                public new T TaskResult => (T)base.TaskResult;
+            }
             static readonly List<Task> tasks = new List<Task>();
 
             static Task AddTask(IEnumerable task, float intervalSeconds = 0, bool IsPaused = false, bool IsOnce = false)
@@ -357,6 +361,21 @@ namespace IngameScript
                 return newTask;
             }
             public static Task RunTask(IEnumerable task) => AddTask(task, 0, false, false);
+            static Task<T> AddTask<T>(IEnumerable<T> task, float intervalSeconds = 0, bool IsPaused = false, bool IsOnce = false)
+            {
+                var newTask = new Task<T>
+                {
+                    Ref = task,
+                    Enumerator = task.GetEnumerator(),
+                    Interval = TimeSpan.FromSeconds(intervalSeconds),
+                    TimeSinceLastRun = TimeSpan.Zero,
+                    IsPaused = IsPaused,
+                    IsOnce = IsOnce
+                };
+                tasks.Add(newTask);
+                return newTask;
+            }
+            public static Task<T> RunTask<T>(IEnumerable<T> task) => AddTask(task, 0, false, false);
 
             public static T GetTaskResult<T>() => tasks.Select(t => t.TaskResult).OfType<T>().FirstOrDefault();
             public static TimeSpan CurrentTaskLastRun;
