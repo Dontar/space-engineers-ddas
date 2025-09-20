@@ -78,30 +78,13 @@ namespace IngameScript
                 return result;
             }
 
-            public static R Of<R, T>(Func<T, R> f, string context, T dep)
-            {
-                return (R)IntOf((d) => f((T)d), context, dep);
-            }
-            public static void Of<T>(Action<T> f, string context, T dep)
-            {
-                IntOf((d) => { f((T)d); return null; }, context, dep);
-            }
-            public static void Of<T>(Action f, string context, T dep)
-            {
-                IntOf((_) => { f(); return null; }, context, dep);
-            }
-            public static R Of<R, T>(string context, T dep, Func<T, R> f)
-            {
-                return (R)IntOf((d) => f((T)d), context, dep);
-            }
-            public static void Of<T>(string context, T dep, Action<T> f)
-            {
-                IntOf((d) => { f((T)d); return null; }, context, dep);
-            }
-            public static void Of<T>(string context, T dep, Action f)
-            {
-                IntOf((_) => { f(); return null; }, context, dep);
-            }
+            public static R Of<R, T>(Func<T, R> f, string context, T dep) => (R)IntOf((d) => f((T)d), context, dep);
+            public static void Of<T>(Action<T> f, string context, T dep) => IntOf(d => { f((T)d); return null; }, context, dep);
+            public static void Of<T>(Action f, string context, T dep) => IntOf(_ => { f(); return null; }, context, dep);
+
+            public static R Of<R, T>(string context, T dep, Func<T, R> f) => (R)IntOf(d => f((T)d), context, dep);
+            public static void Of<T>(string context, T dep, Action<T> f) => IntOf(d => { f((T)d); return null; }, context, dep);
+            public static void Of<T>(string context, T dep, Action f) => IntOf(_ => { f(); return null; }, context, dep);
 
             private static void EvictOldestCacheItem()
             {
