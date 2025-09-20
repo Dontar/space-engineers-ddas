@@ -63,7 +63,7 @@ namespace IngameScript
                 }
 
                 int depHash = GetDepHash(dep);
-                string cacheKey = context + ":" + depHash;
+                string cacheKey = context;// + ":" + depHash;
 
                 CacheValue value;
                 if (_dependencyCache.TryGetValue(cacheKey, out value))
