@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Sandbox.ModAPI.Ingame;
 using Sandbox.ModAPI.Interfaces;
+using VRage.Game;
 using VRage.Game.ModAPI.Ingame.Utilities;
 using VRageMath;
 
@@ -25,6 +26,9 @@ namespace IngameScript
             Pilot = Autopilot.FromBlock(new IMyTerminalBlock[] { AutopilotBlock, Remote });
             Sensor = Util.GetBlocks<IMySensorBlock>(b => Util.IsNotIgnored(b, _ignoreTag)).FirstOrDefault();
             Basic = Util.GetBlocks<IMyBasicMissionBlock>(b => Util.IsNotIgnored(b, _ignoreTag)).FirstOrDefault();
+
+            WayPointReachThreshold = (float)Me.CubeGrid.WorldVolume.Radius + 2;
+            WayPointCloseThreshold = WayPointReachThreshold + 40;
 
             if (Sensor != null)
             {
@@ -81,7 +85,6 @@ namespace IngameScript
 
         struct AutopilotTaskResult
         {
-            public Vector3D Direction;
             public float Steer;
             public string Waypoint;
             public int WaypointCount;
@@ -90,7 +93,6 @@ namespace IngameScript
             public void Reset()
             {
                 Waypoint = "None";
-                Direction = Vector3D.Zero;
                 Steer = 0;
                 Mode = "Idle";
                 WaypointCount = 0;
@@ -187,6 +189,9 @@ namespace IngameScript
 
         Timer EmergencySteerTimer = new Timer(3);
 
+        float WayPointReachThreshold;
+        float WayPointCloseThreshold;
+
         IEnumerable AutopilotTask()
         {
             EmergencySteerTimer.Reset();
@@ -196,16 +201,13 @@ namespace IngameScript
 
             bool isRoute = Pilot.Waypoints.Count() > 1;
 
-            float wayPointReachThreshold = (float)Pilot.Block.CubeGrid.WorldVolume.Radius + 2;
-            float wayPointCloseThreshold = wayPointReachThreshold + 40;
-
             var basic = Basic != null && Basic.GetValueBool("ActivateBehavior") && Basic.SelectedMissionId == 2;
 
             var routine = isRoute
-                ? FollowRoute(wayPointReachThreshold)
+                ? FollowRoute()
                 : basic
-                    ? FollowTarget(wayPointReachThreshold, wayPointCloseThreshold)
-                    : TrackTarget(wayPointReachThreshold);
+                    ? FollowTarget()
+                    : TrackTarget();
 
             foreach (var _ in routine)
             {
@@ -213,7 +215,7 @@ namespace IngameScript
             }
         }
 
-        private IEnumerable FollowTarget(double wayPointReachThreshold, double wayPointCloseThreshold)
+        private IEnumerable FollowTarget()
         {
             var controller = Controllers.MainController;
             var queue = new UniqueTimedQueue(5);
@@ -239,19 +241,18 @@ namespace IngameScript
                     CalcSteer(currentWaypoint, out currentPosition, out direction, out directionAngle, out distance);
 
                     AutopilotResult.Waypoint = queue.TryPeek().Name ?? "None";
-                    AutopilotResult.Direction = direction;
                     AutopilotResult.Steer = (float)MathHelper.Clamp(directionAngle, -1, 1);
                     AutopilotResult.WaypointCount = queue.Count;
                     AutopilotResult.Distance = distance;
 
                     var distanceToTarget = Math.Abs(Vector3D.Distance(currentPosition, queue.Last().Item.Coords));
-                    if (distanceToTarget < wayPointCloseThreshold)
+                    if (distanceToTarget < WayPointCloseThreshold)
                     {
                         var matchedSpeed = MatchSpeed(queue);
                         CruiseSpeed = (float)MathHelper.Clamp(matchedSpeed * 3.6, 10, Pilot.SpeedLimit * 3.6);
                     }
 
-                    var threshold = wayPointReachThreshold + Speed * 3.6 * 50 / 180;
+                    var threshold = WayPointReachThreshold + Speed * 3.6 * 50 / 180;
 
                     controller.HandBrake = distanceToTarget < threshold;
 
@@ -261,7 +262,7 @@ namespace IngameScript
             }
         }
 
-        private IEnumerable TrackTarget(float wayPointReachThreshold)
+        private IEnumerable TrackTarget()
         {
             var controller = Controllers.MainController;
             AutopilotResult.Mode = "Track";
@@ -285,12 +286,11 @@ namespace IngameScript
                     CalcSteer(currentWaypoint, out currentPosition, out direction, out directionAngle, out distance);
 
                     AutopilotResult.Waypoint = currentWaypoint.Name ?? "None";
-                    AutopilotResult.Direction = direction;
-                    AutopilotResult.Steer = (float)MathHelper.Clamp(directionAngle, -1, 1);
+                    AutopilotResult.Steer = (float)directionAngle;
                     AutopilotResult.WaypointCount = 1;
                     AutopilotResult.Distance = distance;
 
-                    var threshold = wayPointReachThreshold + Speed * 3.6 * 50 / 180;
+                    var threshold = WayPointReachThreshold + Speed * 3.6 * 50 / 180;
 
                     controller.HandBrake = distance < threshold;
                 }
@@ -298,7 +298,7 @@ namespace IngameScript
             }
         }
 
-        private IEnumerable FollowRoute(float wayPointReachThreshold)
+        private IEnumerable FollowRoute()
         {
             var controller = Controllers.MainController;
             var wayPoints = Pilot.Waypoints;
@@ -331,11 +331,10 @@ namespace IngameScript
                     CalcSteer(currentWaypoint, out currentPosition, out direction, out directionAngle, out distance);
 
                     AutopilotResult.Waypoint = wayPointsIter.Current.Name ?? "None";
-                    AutopilotResult.Direction = direction;
                     AutopilotResult.Steer = (float)MathHelper.Clamp(directionAngle, -1, 1);
                     AutopilotResult.Distance = distance;
 
-                    if (distance < wayPointReachThreshold + Speed * 3.6 * 50 / 180)
+                    if (distance < WayPointReachThreshold + Speed * 3.6 * 50 / 180)
                     {
                         if (!wayPointsIter.MoveNext())
                         {
@@ -387,13 +386,11 @@ namespace IngameScript
             out double distance
         )
         {
+            var matrix = Pilot.WorldMatrix;
             currentPosition = Pilot.GetPosition();
-            var destinationVector = currentWaypoint.Coords - currentPosition + AvoidCollision(Pilot.Block, Sensor, currentPosition);
-
-            var T = MatrixD.Transpose(Pilot.WorldMatrix);
-            direction = Vector3D.TransformNormal(destinationVector, T);
+            direction = AvoidCollision(Pilot.Block, Sensor, currentPosition, currentWaypoint.Coords);
             distance = direction.Length();
-            directionAngle = Util.ToAzimuth(direction);
+            directionAngle = Math.Atan2(direction.Dot(matrix.Left), direction.Dot(matrix.Forward));
         }
 
         private void SetCruiseControl()
@@ -432,26 +429,74 @@ namespace IngameScript
             return 0;
         }
 
-        double AvoidCollision(IMyTerminalBlock autopilot, IMySensorBlock sensor, Vector3D currentPosition)
+        Vector3D AvoidanceVector = Vector3D.Zero;
+        Vector3D AvoidCollision(IMyTerminalBlock autopilot, IMySensorBlock sensor, Vector3D currentPosition, Vector3D destination)
         {
+            var up = autopilot.WorldMatrix.Up;
+            var right = autopilot.WorldMatrix.Right;
+            var directionRaw = destination - currentPosition;
+            var directionVector = Vector3D.ProjectOnPlane(ref directionRaw, ref up);
             if (autopilot.GetValueBool("CollisionAvoidance") && sensor != null)
             {
-                var detectionBox = new BoundingBoxD(
-                    currentPosition + autopilot.WorldMatrix.Forward * 15 - new Vector3D(5, 5, 5),
-                    currentPosition + autopilot.WorldMatrix.Forward * 15 + new Vector3D(5, 5, 5)
-                );
-
                 var obstructions = new List<MyDetectedEntityInfo>();
                 sensor.DetectedEntities(obstructions);
-                var obstruction = obstructions.FirstOrDefault(o => detectionBox.Intersects(o.BoundingBox));
-                if (!obstruction.IsEmpty())
+
+                if (obstructions.Count == 0) AvoidanceVector = Vector3D.Zero;
+
+                foreach (var obstruction in obstructions)
                 {
-                    var v = obstruction.BoundingBox.TransformFast(autopilot.WorldMatrix);
-                    return Enumerable.Range(0, 8).Select(i => v.GetCorner(i)).Max(i => Vector3D.DistanceSquared(i, currentPosition));
+                    if (!obstruction.IsEmpty())
+                    {
+                        if (!Vector3.IsZero(obstruction.Velocity))
+                        {
+                            var obstructionVelocity = new Vector3D(obstruction.Velocity);
+                            if (Vector3D.Dot(obstructionVelocity, Velocities.LinearVelocity) < 0)
+                            {
+                                var timeToCollision = Vector3D.Distance(obstruction.Position, currentPosition) / (obstruction.Velocity - Velocities.LinearVelocity).Length();
+                                if (timeToCollision < 10) // seconds
+                                {
+                                    var awayFromObstacle = currentPosition - obstruction.Position;
+                                    var rightDot = Vector3D.Dot(awayFromObstacle, right);
+                                    AvoidanceVector += (rightDot > 0 ? right : -right) * awayFromObstacle.LengthSquared();
+                                }
+                            }
+                        }
+                        else
+                        {
+                            var bbox = obstruction.BoundingBox;
+                            var closestPoint = Enumerable.Range(0, 8).Select(v => bbox.GetCorner(v)).OrderBy(v => Vector3D.DistanceSquared(v, currentPosition)).First();
+                            var awayFromObstacle = currentPosition - closestPoint;
+
+                            // Is it leftish or rightish
+                            var rightDot = Vector3D.Dot(Vector3D.Normalize(awayFromObstacle), right);
+                            var isLeftish = rightDot > 0;
+
+                            double distance = awayFromObstacle.Length();
+                            double minDistance = WayPointReachThreshold; // minimum effective distance (meters)
+                            double maxForce = WayPointCloseThreshold;   // maximum avoidance force
+
+                            double avoidanceStrength = maxForce / Math.Max(distance, minDistance);
+
+                            if (Math.Abs(rightDot) < 0.2)
+                            {
+                                AvoidanceVector += (isLeftish ? right : -right) * avoidanceStrength;
+                            }
+                            else if (Math.Abs(rightDot) < 0.4)
+                            {
+                                var forward = Me.CubeGrid.WorldMatrix.Forward;
+                                AvoidanceVector += (forward + (isLeftish ? right : -right)) * avoidanceStrength;
+                            }
+                        }
+                    }
+                }
+
+                if (AvoidanceVector.LengthSquared() > 0)
+                {
+                    return AvoidanceVector * WayPointCloseThreshold; // weight avoidance vector
                 }
             }
 
-            return 0;
+            return directionVector;
         }
 
         class Autopilot
