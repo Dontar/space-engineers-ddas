@@ -69,13 +69,10 @@ namespace IngameScript
                 if (_dependencyCache.TryGetValue(cacheKey, out value))
                 {
                     bool isNotStale = dep is int ? value.Decay() : value.DepHash == depHash;
-                    if (isNotStale)
-                    {
-                        return value.Value;
-                    }
+                    if (isNotStale) return value.Value;
                 }
 
-                var result = f(dep);
+                var result = f(value.Value);
                 _dependencyCache[cacheKey] = new CacheValue(depHash, result, dep is int ? (int)dep : 0);
                 _cacheOrder.Enqueue(cacheKey);
                 return result;
@@ -88,6 +85,22 @@ namespace IngameScript
             public static void Of<T>(Action<T> f, string context, T dep)
             {
                 IntOf((d) => { f((T)d); return null; }, context, dep);
+            }
+            public static void Of<T>(Action f, string context, T dep)
+            {
+                IntOf((_) => { f(); return null; }, context, dep);
+            }
+            public static R Of<R, T>(string context, T dep, Func<T, R> f)
+            {
+                return (R)IntOf((d) => f((T)d), context, dep);
+            }
+            public static void Of<T>(string context, T dep, Action<T> f)
+            {
+                IntOf((d) => { f((T)d); return null; }, context, dep);
+            }
+            public static void Of<T>(string context, T dep, Action f)
+            {
+                IntOf((_) => { f(); return null; }, context, dep);
             }
 
             private static void EvictOldestCacheItem()
@@ -318,7 +331,7 @@ namespace IngameScript
 
         static class TaskManager
         {
-            class Task
+            public class Task
             {
                 public IEnumerator Enumerator;
                 public IEnumerable Ref;
@@ -327,12 +340,27 @@ namespace IngameScript
                 public object TaskResult;
                 public bool IsPaused;
                 public bool IsOnce;
+                public Task Every(float seconds)
+                {
+                    Interval = TimeSpan.FromSeconds(seconds);
+                    return this;
+                }
+                public Task Pause(bool pause = true)
+                {
+                    IsPaused = pause;
+                    return this;
+                }
+                public Task Once(bool once = true)
+                {
+                    IsOnce = once;
+                    return this;
+                }
             }
             static readonly List<Task> tasks = new List<Task>();
 
-            public static int AddTask(IEnumerable task, float intervalSeconds = 0, bool IsPaused = false, bool IsOnce = false)
+            static Task AddTask(IEnumerable task, float intervalSeconds = 0, bool IsPaused = false, bool IsOnce = false)
             {
-                tasks.Add(new Task
+                var newTask = new Task
                 {
                     Ref = task,
                     Enumerator = task.GetEnumerator(),
@@ -341,19 +369,15 @@ namespace IngameScript
                     TaskResult = null,
                     IsPaused = IsPaused,
                     IsOnce = IsOnce
-                });
-                return tasks.Count - 1;
+                };
+                tasks.Add(newTask);
+                return newTask;
             }
-            public static int AddTaskOnce(IEnumerable task, float intervalSeconds = 0, bool IsPaused = false)
-            {
-                return AddTask(task, intervalSeconds, IsPaused, true);
-            }
-
-            public static void PauseTask(int taskId, bool pause) => tasks[taskId].IsPaused = pause;
+            public static Task RunTask(IEnumerable task) => AddTask(task, 0, false, false);
 
             public static T GetTaskResult<T>() => tasks.Select(t => t.TaskResult).OfType<T>().FirstOrDefault();
             public static TimeSpan CurrentTaskLastRun;
-            public static void RunTasks(TimeSpan TimeSinceLastRun)
+            public static void Tick(TimeSpan TimeSinceLastRun)
             {
                 for (int i = tasks.Count - 1; i >= 0; i--)
                 {
@@ -537,7 +561,7 @@ namespace IngameScript
             {
                 int width = _lineLength / 2;
                 var labelWidth = width - 1;
-                var valueWidth = label.Length > labelWidth ? width - unitType.Length - (label.Length - labelWidth):  width - unitType.Length;
+                var valueWidth = label.Length > labelWidth ? width - unitType.Length - (label.Length - labelWidth) : width - unitType.Length;
                 format = string.IsNullOrEmpty(format) ? "" : ":" + format;
 
                 Sb.AppendFormat(" {0,-" + labelWidth + "}{1," + valueWidth + format + "}" + unitType + "\n", label, value);

@@ -54,19 +54,19 @@ namespace IngameScript
             Runtime.UpdateFrequency = UpdateFrequency.Update10;
             Util.Init(this);
             InitGridProps();
-            TaskManager.AddTask(Util.StatusMonitor(this));
-            TaskManager.AddTask(MainTask());
-            TaskManager.AddTask(AutopilotTask(), 1 / 3);
-            TaskManager.AddTask(StopLightsTask(), 0, !_stopLights);
-            TaskManager.AddTask(PowerTask(), 0, !_power);
-            TaskManager.AddTask(PowerConsumptionTask(), 3);
-            _AutoLevelTask = TaskManager.AddTask(AutoLevelTask(), 0, !_autoLevel);
-            TaskManager.AddTask(ScreensTask(), 0.5f);
-            TaskManager.AddTask(GridOrientationsTask());
-            TaskManager.AddTask(Util.DisplayLogo("DDAS", Me.GetSurface(0)), 1.5f);
+            TaskManager.RunTask(Util.StatusMonitor(this));
+            TaskManager.RunTask(MainTask());
+            TaskManager.RunTask(AutopilotTask()).Every(1 / 3);
+            TaskManager.RunTask(StopLightsTask()).Pause(!_stopLights);
+            TaskManager.RunTask(PowerTask()).Pause(!_power);
+            TaskManager.RunTask(PowerConsumptionTask()).Every(3);
+            _AutoLevelTask = TaskManager.RunTask(AutoLevelTask()).Pause(!_autoLevel);
+            TaskManager.RunTask(ScreensTask()).Every(0.5f);
+            TaskManager.RunTask(GridOrientationsTask());
+            TaskManager.RunTask(Util.DisplayLogo("DDAS", Me.GetSurface(0))).Every(1.5f);
         }
 
-        readonly int _AutoLevelTask;
+        readonly TaskManager.Task _AutoLevelTask;
 
         public void Main(string argument, UpdateType updateSource)
         {
@@ -81,21 +81,20 @@ namespace IngameScript
 
             if (!updateSource.HasFlag(UpdateType.Update10)) return;
 
-            Memo.Of((BaseMass) =>
+            Memo.Of("OnBaseMassChange", Mass.BaseMass, (OldBaseMass) =>
             {
-                if (BaseMass != 0) InitGridProps();
+                if (OldBaseMass != 0) InitGridProps();
                 InitWheels();
                 InitPower();
                 InitStopLights();
                 InitAutoLevel();
                 InitAutopilot();
                 InitScreens();
+            });
 
-            }, "OnMassChange", Mass.BaseMass);
+            Memo.Of("OnPhysicalMassChange", Mass.PhysicalMass, () => InitStrength());
 
-            Memo.Of((_) => InitStrength(), "OnPhysicalMassChange", Mass.PhysicalMass);
-
-            TaskManager.RunTasks(Runtime.TimeSinceLastRun);
+            TaskManager.Tick(Runtime.TimeSinceLastRun);
         }
 
         private void ProcessCommands(string argument)
@@ -108,14 +107,14 @@ namespace IngameScript
                     ToggleHightMode();
                     break;
                 case "flip":
-                    TaskManager.AddTaskOnce(FlipGridTask());
+                    TaskManager.RunTask(FlipGridTask()).Once();
                     break;
                 case "cruise":
-                    TaskManager.AddTaskOnce(CruiseTask());
+                    TaskManager.RunTask(CruiseTask()).Once();
                     break;
                 case "level":
                     _autoLevel = !_autoLevel;
-                    TaskManager.PauseTask(_AutoLevelTask, !_autoLevel);
+                    _AutoLevelTask.Pause(!_autoLevel);
                     break;
                 case "status":
                     ChangeScreenType();

@@ -59,7 +59,7 @@ namespace IngameScript
             if (Flipping || Gyros.Count() == 0) yield break;
 
             Flipping = true;
-            TaskManager.PauseTask(_AutoLevelTask, true);
+            _AutoLevelTask.Pause();
 
             var roll = -10 * Math.Sign(OrientationResult.Roll) * MathHelper.RPMToRadiansPerSecond;
             var force = CalcRequiredGyroForce(roll);
@@ -71,7 +71,7 @@ namespace IngameScript
             }
             ResetGyros();
             Flipping = false;
-            TaskManager.PauseTask(_AutoLevelTask, !_autoLevel);
+            _AutoLevelTask.Pause(!_autoLevel);
         }
 
         private void ResetGyros()
@@ -89,9 +89,9 @@ namespace IngameScript
             var isFastEnough = Speed * 3.6 > 20;
             if (!isFastEnough)
             {
-                if (Speed < 0.1 && Math.Abs(OrientationResult.Roll) >= 60)
+                if (Speed < 1 && Math.Abs(OrientationResult.Roll) >= 60)
                 {
-                    TaskManager.AddTaskOnce(FlipGridTask());
+                    TaskManager.RunTask(FlipGridTask()).Once();
                 }
                 yield break;
             }

@@ -398,7 +398,7 @@ namespace IngameScript
             var controller = Controllers.MainController;
             if (!Cruise && !controller.HandBrake)
             {
-                TaskManager.AddTaskOnce(CruiseTask(Pilot.SpeedLimit * 3.6f, () => Pilot.IsAutoPilotEnabled && !controller.HandBrake));
+                TaskManager.RunTask(CruiseTask(Pilot.SpeedLimit * 3.6f, () => Pilot.IsAutoPilotEnabled && !controller.HandBrake)).Once();
             }
             else
                 CruiseSpeed = Pilot.SpeedLimit * 3.6f;
@@ -651,7 +651,7 @@ namespace IngameScript
             {
                 case "record":
                     if (!Recording)
-                        TaskManager.AddTaskOnce(RecordRouteTask(), 1.7f);
+                        TaskManager.RunTask(RecordRouteTask()).Every(1.7f).Once();
                     else
                         Recording = false;
                     return true;
