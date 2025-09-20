@@ -360,7 +360,6 @@ namespace IngameScript
                 tasks.Add(newTask);
                 return newTask;
             }
-            public static Task RunTask(IEnumerable task) => AddTask(task, 0, false, false);
             static Task<T> AddTask<T>(IEnumerable<T> task, float intervalSeconds = 0, bool IsPaused = false, bool IsOnce = false)
             {
                 var newTask = new Task<T>
@@ -375,6 +374,7 @@ namespace IngameScript
                 tasks.Add(newTask);
                 return newTask;
             }
+            public static Task RunTask(IEnumerable task) => AddTask(task, 0, false, false);
             public static Task<T> RunTask<T>(IEnumerable<T> task) => AddTask(task, 0, false, false);
 
             public static T GetTaskResult<T>() => tasks.Select(t => t.TaskResult).OfType<T>().FirstOrDefault();
