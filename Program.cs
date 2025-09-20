@@ -164,7 +164,7 @@ namespace IngameScript
                 foreach (var w in MyWheels)
                 {
                     IMyMotorSuspension wheel = w.Wheel;
-                    wheel.SteeringOverride = w.IsFrontFocal ? -autopilot.Steer : autopilot.Steer;
+                    wheel.SteeringOverride = MathHelper.Clamp(w.IsFrontFocal ? -autopilot.Steer : autopilot.Steer, -1, 1);
                     wheel.PropulsionOverride = w.IsLeft ? propulsion : -propulsion;
 
                     // update strength
