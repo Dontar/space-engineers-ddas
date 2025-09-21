@@ -377,6 +377,28 @@ namespace IngameScript
             public static Task RunTask(IEnumerable task) => AddTask(task, 0, false, false);
             public static Task<T> RunTask<T>(IEnumerable<T> task) => AddTask(task, 0, false, false);
 
+            static IEnumerable InternalTask(Action<object> cb, bool timeout = false)
+            {
+                if (timeout)
+                {
+                    cb(null);
+                    yield break;
+                }
+                var context = new Dictionary<string, object>();
+                while (true)
+                {
+                    cb(context);
+                    yield return null;
+                }
+            }
+            public static Task SetInterval(Action<Dictionary<string, object>> cb, float intervalSeconds) =>
+                RunTask(InternalTask(ctx => cb((Dictionary<string, object>)ctx))).Every(intervalSeconds);
+            public static void ClearInterval(Task task) => tasks.Remove(task);
+
+            public static Task SetTimeout(Action cb, float delaySeconds) =>
+                RunTask(InternalTask(_ => cb())).Once().Every(delaySeconds);
+            public static void ClearTimeout(Task task) => tasks.Remove(task);
+
             public static T GetTaskResult<T>() => tasks.Select(t => t.TaskResult).OfType<T>().FirstOrDefault();
             public static TimeSpan CurrentTaskLastRun;
             public static void Tick(TimeSpan TimeSinceLastRun)
