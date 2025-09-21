@@ -10,37 +10,6 @@ namespace IngameScript
 {
     partial class Program : MyGridProgram
     {
-        class Timer
-        {
-            private TimeSpan interval;
-            private TimeSpan timeSinceLastTrigger = TimeSpan.Zero;
-
-            public bool Active = false;
-
-            public Timer(float intervalSeconds)
-            {
-                interval = TimeSpan.FromSeconds(intervalSeconds);
-            }
-
-            public bool Update(TimeSpan timeSinceLastRun)
-            {
-                timeSinceLastTrigger += timeSinceLastRun;
-                if (timeSinceLastTrigger >= interval)
-                {
-                    timeSinceLastTrigger = TimeSpan.Zero;
-                    Active = false;
-                    return true;
-                }
-                Active = true;
-                return false;
-            }
-
-            public void Reset()
-            {
-                timeSinceLastTrigger = TimeSpan.Zero;
-            }
-        }
-
         struct TimedItem<T>
         {
             public T Item;
@@ -211,20 +180,16 @@ namespace IngameScript
             }
         }
 
+        TaskManager.Task EmergencySteer;
         bool CheckNoEmergencySteer()
         {
             if (LeftRight != 0)
             {
-                EmergencySteerTimer.Reset();
-                EmergencySteerTimer.Active = true;
+                AutopilotResult.Steer = 0;
+                TaskManager.ClearTimeout(EmergencySteer);
+                EmergencySteer = TaskManager.SetTimeout(() => EmergencySteer = null, 3);
             }
-            if (EmergencySteerTimer.Active)
-            {
-                EmergencySteerTimer.Update(TaskManager.CurrentTaskLastRun);
-                AutopilotResult.Steer = -LeftRight;
-                return false;
-            }
-            return true;
+            return EmergencySteer == null;
         }
 
         bool CheckEmergencyStop()

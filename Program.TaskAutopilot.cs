@@ -57,11 +57,8 @@ namespace IngameScript
 
         AutopilotTaskResult AutopilotResult = new AutopilotTaskResult();
 
-        Timer EmergencySteerTimer = new Timer(3);
-
         IEnumerable AutopilotTask()
         {
-            EmergencySteerTimer.Reset();
             AutopilotResult.Reset();
 
             if (!Pilot.IsAutoPilotEnabled) yield break;
