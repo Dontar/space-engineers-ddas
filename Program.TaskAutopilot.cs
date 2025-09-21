@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using System.Linq;
 using Sandbox.ModAPI.Ingame;
 using Sandbox.ModAPI.Interfaces;
-using VRage.Game;
 using VRage.Game.ModAPI.Ingame.Utilities;
 using VRageMath;
 
@@ -18,6 +17,9 @@ namespace IngameScript
         IMyRemoteControl Remote;
         Autopilot Pilot;
         IMyBasicMissionBlock Basic;
+
+        float WayPointReachThreshold;
+        float WayPointCloseThreshold;
 
         void InitAutopilot()
         {
@@ -33,53 +35,6 @@ namespace IngameScript
             if (Sensor != null)
             {
                 SetupSensor();
-            }
-        }
-
-        void SetSensorDimension(float value, Base6Directions.Direction direction)
-        {
-            value = MathHelper.Clamp(value, 0.1f, 50);
-            var dir = Sensor.Orientation.TransformDirectionInverse(direction);
-            switch (dir)
-            {
-                case Base6Directions.Direction.Forward:
-                    Sensor.FrontExtend = value;
-                    break;
-                case Base6Directions.Direction.Backward:
-                    Sensor.BackExtend = value;
-                    break;
-                case Base6Directions.Direction.Left:
-                    Sensor.LeftExtend = value;
-                    break;
-                case Base6Directions.Direction.Right:
-                    Sensor.RightExtend = value;
-                    break;
-                case Base6Directions.Direction.Up:
-                    Sensor.TopExtend = value;
-                    break;
-                case Base6Directions.Direction.Down:
-                    Sensor.BottomExtend = value;
-                    break;
-            }
-        }
-
-        void SetupSensor()
-        {
-            var halfHeight = Dimensions.Height / 2;
-            var vertPos = (Sensor.Position.Y - Me.CubeGrid.Min.Y) * (Me.CubeGrid.GridSizeEnum == MyCubeSize.Large ? 2.5 : 0.5); // meters;
-
-            var values = new float[] {
-                /* Forward */ 30,
-                /* Backward */ Dimensions.Length,
-                /* Left */ 20,
-                /* Right */ 20,
-                /* Up */ (float)(Dimensions.Height - vertPos),
-                /* Down */ (float)vertPos,
-            };
-
-            for (int i = 0; i < values.Length && i < Base6Directions.EnumDirections.Length; i++)
-            {
-                SetSensorDimension(values[i], Base6Directions.EnumDirections[i]);
             }
         }
 
@@ -100,97 +55,9 @@ namespace IngameScript
             }
         }
 
-        class Timer
-        {
-            private TimeSpan interval;
-            private TimeSpan timeSinceLastTrigger = TimeSpan.Zero;
-
-            public bool Active = false;
-
-            public Timer(float intervalSeconds)
-            {
-                interval = TimeSpan.FromSeconds(intervalSeconds);
-            }
-
-            public bool Update(TimeSpan timeSinceLastRun)
-            {
-                timeSinceLastTrigger += timeSinceLastRun;
-                if (timeSinceLastTrigger >= interval)
-                {
-                    timeSinceLastTrigger = TimeSpan.Zero;
-                    Active = false;
-                    return true;
-                }
-                Active = true;
-                return false;
-            }
-
-            public void Reset()
-            {
-                timeSinceLastTrigger = TimeSpan.Zero;
-            }
-        }
-
-        struct TimedItem<T>
-        {
-            public T Item;
-            public TimeSpan TimeAdded;
-            public TimedItem(T item)
-            {
-                Item = item;
-                TimeAdded = DateTime.Now.TimeOfDay;
-            }
-        }
-
-        class UniqueTimedQueue : Queue<TimedItem<MyWaypointInfo>>
-        {
-            private int _capacity = 10;
-
-            public UniqueTimedQueue() : base() { }
-
-            public UniqueTimedQueue(int capacity) : base(capacity)
-            {
-                _capacity = capacity;
-            }
-
-            public void Enqueue(MyWaypointInfo item, Func<MyWaypointInfo, bool> compare)
-            {
-                if (compare(item))
-                {
-                    Enqueue(new TimedItem<MyWaypointInfo>(item));
-                }
-                if (Count > _capacity)
-                {
-                    Dequeue();
-                }
-            }
-
-            public MyWaypointInfo TryDequeue()
-            {
-                if (Count > 0)
-                {
-                    return Dequeue().Item;
-                }
-                return default(MyWaypointInfo);
-            }
-
-
-            public MyWaypointInfo TryPeek()
-            {
-                if (Count > 0)
-                {
-                    return Peek().Item;
-                }
-                return default(MyWaypointInfo);
-            }
-        }
-
         AutopilotTaskResult AutopilotResult = new AutopilotTaskResult();
 
         Timer EmergencySteerTimer = new Timer(3);
-
-        float WayPointReachThreshold;
-        float WayPointCloseThreshold;
 
         IEnumerable AutopilotTask()
         {
@@ -215,7 +82,7 @@ namespace IngameScript
             }
         }
 
-        private IEnumerable FollowTarget()
+        IEnumerable FollowTarget()
         {
             var controller = Controllers.MainController;
             var queue = new UniqueTimedQueue(5);
@@ -223,16 +90,11 @@ namespace IngameScript
             while (Pilot.IsAutoPilotEnabled)
             {
                 queue.Enqueue(Pilot.CurrentWaypoint, i => queue.Count == 0 || !queue.LastOrDefault().Item.Equals(i, 20));
-                // queue.Enqueue(Pilot.CurrentWaypoint, i => queue.Count == 0 || Math.Abs(Vector3D.Distance(i.Coords, queue.Last().Item.Coords)) > 10);
                 var currentWaypoint = queue.TryPeek();
 
                 SetCruiseControl();
 
-                if (UpDown > 0)
-                {
-                    Pilot.SetAutoPilotEnabled(false);
-                    yield break;
-                }
+                if (CheckEmergencyStop()) yield break;
 
                 if (CheckNoEmergencySteer())
                 {
@@ -248,7 +110,7 @@ namespace IngameScript
                     var distanceToTarget = Math.Abs(Vector3D.Distance(currentPosition, queue.Last().Item.Coords));
                     if (distanceToTarget < WayPointCloseThreshold)
                     {
-                        var matchedSpeed = MatchSpeed(queue);
+                        var matchedSpeed = queue.CalcSpeed();
                         CruiseSpeed = (float)MathHelper.Clamp(matchedSpeed * 3.6, 10, Pilot.SpeedLimit * 3.6);
                     }
 
@@ -262,7 +124,7 @@ namespace IngameScript
             }
         }
 
-        private IEnumerable TrackTarget()
+        IEnumerable TrackTarget()
         {
             var controller = Controllers.MainController;
             AutopilotResult.Mode = "Track";
@@ -274,11 +136,8 @@ namespace IngameScript
 
                 SetCruiseControl();
 
-                if (UpDown > 0)
-                {
-                    Pilot.SetAutoPilotEnabled(false);
-                    yield break;
-                }
+                if (CheckEmergencyStop()) yield break;
+
                 if (CheckNoEmergencySteer())
                 {
                     Vector3D currentPosition, direction;
@@ -298,7 +157,7 @@ namespace IngameScript
             }
         }
 
-        private IEnumerable FollowRoute()
+        IEnumerable FollowRoute()
         {
             var controller = Controllers.MainController;
             var wayPoints = Pilot.Waypoints;
@@ -318,12 +177,11 @@ namespace IngameScript
             while (Pilot.IsAutoPilotEnabled)
             {
                 var currentWaypoint = wayPointsIter.Current;
+
                 SetCruiseControl();
-                if (UpDown > 0)
-                {
-                    Pilot.SetAutoPilotEnabled(false);
-                    yield break;
-                }
+
+                if (CheckEmergencyStop()) yield break;
+
                 if (CheckNoEmergencySteer())
                 {
                     Vector3D currentPosition, direction;
@@ -362,38 +220,17 @@ namespace IngameScript
             }
         }
 
-        private bool CheckNoEmergencySteer()
-        {
-            if (LeftRight != 0)
-            {
-                EmergencySteerTimer.Reset();
-                EmergencySteerTimer.Active = true;
-            }
-            if (EmergencySteerTimer.Active)
-            {
-                EmergencySteerTimer.Update(TaskManager.CurrentTaskLastRun);
-                AutopilotResult.Steer = -LeftRight;
-                return false;
-            }
-            return true;
-        }
-
-        private void CalcSteer(
-            MyWaypointInfo currentWaypoint,
-            out Vector3D currentPosition,
-            out Vector3D direction,
-            out double directionAngle,
-            out double distance
-        )
+        void CalcSteer(MyWaypointInfo currentWaypoint, out Vector3D currentPosition, out Vector3D direction, out double directionAngle, out double distance)
         {
             var matrix = Pilot.WorldMatrix;
             currentPosition = Pilot.GetPosition();
             direction = AvoidCollision(Pilot.Block, Sensor, currentPosition, currentWaypoint.Coords);
             distance = direction.Length();
-            directionAngle = Math.Atan2(direction.Dot(matrix.Left), direction.Dot(matrix.Forward));
+            var directionNormal = Vector3D.Normalize(direction);
+            directionAngle = Math.Atan2(directionNormal.Dot(matrix.Left), directionNormal.Dot(matrix.Forward));
         }
 
-        private void SetCruiseControl()
+        void SetCruiseControl()
         {
             var controller = Controllers.MainController;
             if (!Cruise && !controller.HandBrake)
@@ -402,152 +239,6 @@ namespace IngameScript
             }
             else
                 CruiseSpeed = Pilot.SpeedLimit * 3.6f;
-        }
-
-        private double MatchSpeed(UniqueTimedQueue queue)
-        {
-            if (queue.Count > 1)
-            {
-                var list = queue.ToArray();
-                // Calculate average speed from list
-                double totalDistance = 0;
-                double totalTime = 0;
-                for (int i = 1; i < list.Length; i++)
-                {
-                    var prev = list[i - 1];
-                    var curr = list[i];
-                    double distance = Math.Abs(Vector3D.Distance(prev.Item.Coords, curr.Item.Coords));
-                    double time = Math.Abs((curr.TimeAdded - prev.TimeAdded).TotalSeconds);
-                    if (time > 0)
-                    {
-                        totalDistance += distance;
-                        totalTime += time;
-                    }
-                }
-                return totalTime > 0 ? totalDistance / totalTime : 0;
-            }
-            return 0;
-        }
-
-        Vector3D AvoidanceVector = Vector3D.Zero;
-        Vector3D AvoidCollision(IMyTerminalBlock autopilot, IMySensorBlock sensor, Vector3D currentPosition, Vector3D destination)
-        {
-            var up = autopilot.WorldMatrix.Up;
-            var right = autopilot.WorldMatrix.Right;
-            var directionRaw = destination - currentPosition;
-            var directionVector = Vector3D.ProjectOnPlane(ref directionRaw, ref up);
-            if (autopilot.GetValueBool("CollisionAvoidance") && sensor != null)
-            {
-                var obstructions = new List<MyDetectedEntityInfo>();
-                sensor.DetectedEntities(obstructions);
-
-                if (obstructions.Count == 0) AvoidanceVector = Vector3D.Zero;
-
-                foreach (var obstruction in obstructions)
-                {
-                    if (!obstruction.IsEmpty())
-                    {
-                        if (!Vector3.IsZero(obstruction.Velocity))
-                        {
-                            var obstructionVelocity = new Vector3D(obstruction.Velocity);
-                            if (Vector3D.Dot(obstructionVelocity, Velocities.LinearVelocity) < 0)
-                            {
-                                var timeToCollision = Vector3D.Distance(obstruction.Position, currentPosition) / (obstruction.Velocity - Velocities.LinearVelocity).Length();
-                                if (timeToCollision < 10) // seconds
-                                {
-                                    var awayFromObstacle = currentPosition - obstruction.Position;
-                                    var rightDot = Vector3D.Dot(awayFromObstacle, right);
-                                    AvoidanceVector += (rightDot > 0 ? right : -right) * awayFromObstacle.LengthSquared();
-                                }
-                            }
-                        }
-                        else
-                        {
-                            var bbox = obstruction.BoundingBox;
-                            var closestPoint = Enumerable.Range(0, 8).Select(v => bbox.GetCorner(v)).OrderBy(v => Vector3D.DistanceSquared(v, currentPosition)).First();
-                            var awayFromObstacle = currentPosition - closestPoint;
-
-                            // Is it leftish or rightish
-                            var rightDot = Vector3D.Dot(Vector3D.Normalize(awayFromObstacle), right);
-                            var isLeftish = rightDot > 0;
-
-                            double distance = awayFromObstacle.Length();
-                            double minDistance = WayPointReachThreshold; // minimum effective distance (meters)
-                            double maxForce = WayPointCloseThreshold;   // maximum avoidance force
-
-                            double avoidanceStrength = maxForce / Math.Max(distance, minDistance);
-
-                            if (Math.Abs(rightDot) < 0.2)
-                            {
-                                AvoidanceVector += (isLeftish ? right : -right) * avoidanceStrength;
-                            }
-                            else if (Math.Abs(rightDot) < 0.4)
-                            {
-                                var forward = Me.CubeGrid.WorldMatrix.Forward;
-                                AvoidanceVector += (forward + (isLeftish ? right : -right)) * avoidanceStrength;
-                            }
-                        }
-                    }
-                }
-
-                if (AvoidanceVector.LengthSquared() > 0)
-                {
-                    return AvoidanceVector * WayPointCloseThreshold; // weight avoidance vector
-                }
-            }
-
-            return directionVector;
-        }
-
-        class Autopilot
-        {
-            public Autopilot(IMyTerminalBlock[] blocks)
-            {
-                Blocks = blocks;
-            }
-
-            public IMyTerminalBlock[] Blocks;
-
-            public IMyTerminalBlock Block => Blocks.FirstOrDefault(b =>
-                b != null &&
-                ((b is IMyRemoteControl && ((IMyRemoteControl)b).IsAutoPilotEnabled) ||
-                 (b is IMyFlightMovementBlock && ((IMyFlightMovementBlock)b).IsAutoPilotEnabled))
-            );
-
-            public bool IsAutoPilotEnabled => Block != null;
-
-            public IEnumerable<MyWaypointInfo> Waypoints
-            {
-                get
-                {
-                    if (Block is IMyRemoteControl)
-                    {
-                        var waypoints = new List<MyWaypointInfo>();
-                        (Block as IMyRemoteControl).GetWaypointInfo(waypoints);
-                        return waypoints;
-                    }
-                    var aiWaypoints = new List<IMyAutopilotWaypoint>();
-                    (Block as IMyFlightMovementBlock).GetWaypoints(aiWaypoints);
-                    return aiWaypoints.Select(w => new MyWaypointInfo(w.Name, w.Matrix.Translation));
-                }
-            }
-            public MyWaypointInfo CurrentWaypoint
-            {
-                get
-                {
-                    if (Block is IMyRemoteControl) return (Block as IMyRemoteControl).CurrentWaypoint;
-                    var autopilot = Block as IMyFlightMovementBlock;
-                    if (autopilot.CurrentWaypoint == null) return MyWaypointInfo.Empty;
-                    return new MyWaypointInfo(autopilot.CurrentWaypoint.Name, autopilot.CurrentWaypoint.Matrix.Translation);
-                }
-            }
-            public FlightMode FlightMode => Block is IMyRemoteControl ? (Block as IMyRemoteControl).FlightMode : (Block as IMyFlightMovementBlock).FlightMode;
-            public float SpeedLimit => Block is IMyRemoteControl ? (Block as IMyRemoteControl).SpeedLimit : (Block as IMyFlightMovementBlock).SpeedLimit;
-            public MatrixD WorldMatrix => Block.WorldMatrix;
-
-            public Vector3D GetPosition() => Block?.GetPosition() ?? Vector3D.Zero;
-            public void SetAutoPilotEnabled(bool enabled) => Block?.SetValueBool(Block is IMyFlightMovementBlock ? "ActivateBehavior" : "AutoPilot", enabled);
-            public static Autopilot FromBlock(IMyTerminalBlock[] blocks) => new Autopilot(blocks);
         }
 
         Random Rand = new Random((int)DateTime.Now.Ticks & 0x0000FFFF);
