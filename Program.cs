@@ -66,7 +66,7 @@ namespace IngameScript
             TaskManager.RunTask(Util.DisplayLogo("DDAS", Me.GetSurface(0))).Every(1.5f);
         }
 
-        readonly TaskManager.Task _AutoLevelTask;
+        readonly TaskManager.ITask _AutoLevelTask;
 
         public void Main(string argument, UpdateType updateSource)
         {

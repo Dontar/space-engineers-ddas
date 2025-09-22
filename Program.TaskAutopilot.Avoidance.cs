@@ -13,15 +13,6 @@ namespace IngameScript
 
         Dictionary<long, int> RecentlyAvoided = new Dictionary<long, int>();
 
-        Vector3D ClosestPointOnBoundingBox(ref BoundingBoxD bbox, ref Vector3D point)
-        {
-            return new Vector3D(
-                MathHelper.Clamp(point.X, bbox.Min.X, bbox.Max.X),
-                MathHelper.Clamp(point.Y, bbox.Min.Y, bbox.Max.Y),
-                MathHelper.Clamp(point.Z, bbox.Min.Z, bbox.Max.Z)
-            );
-        }
-
         Vector3D AvoidCollision(IMyTerminalBlock autopilot, IMySensorBlock sensor, Vector3D currentPosition, Vector3D destination)
         {
             var up = autopilot.WorldMatrix.Up;
@@ -75,7 +66,7 @@ namespace IngameScript
                         continue;
                     }
 
-                    var closestPoint = ClosestPointOnBoundingBox(ref bbox, ref currentPosition);
+                    var closestPoint = Vector3D.Clamp(currentPosition, bbox.Min, bbox.Max);
                     var awayFromObstacle = currentPosition - closestPoint;
 
                     // Is it leftish or rightish

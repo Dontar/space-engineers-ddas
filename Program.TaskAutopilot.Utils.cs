@@ -180,13 +180,13 @@ namespace IngameScript
             }
         }
 
-        TaskManager.Task EmergencySteer;
+        TaskManager.ITask EmergencySteer;
         bool CheckNoEmergencySteer()
         {
             if (LeftRight != 0)
             {
                 AutopilotResult.Steer = 0;
-                TaskManager.ClearTimeout(EmergencySteer);
+                TaskManager.ClearTask(EmergencySteer);
                 EmergencySteer = TaskManager.SetTimeout(() => EmergencySteer = null, 3);
             }
             return EmergencySteer == null;
