@@ -228,7 +228,7 @@ namespace IngameScript
 
             public static void ApplyGyroOverride(double pitchSpeed, double yawSpeed, double rollSpeed, float power, IMyGyro gyro, MatrixD worldMatrix)
             {
-                ApplyGyroOverride(pitchSpeed, yawSpeed, rollSpeed, power, new IMyGyro[] { gyro }, worldMatrix);
+                ApplyGyroOverride(pitchSpeed, yawSpeed, rollSpeed, power, new [] { gyro }, worldMatrix);
 
             }
 

@@ -79,7 +79,7 @@ namespace IngameScript
             var ai = Pilot.IsAutoPilotEnabled;
             foreach (var g in Gyros)
             {
-                g.Roll = g.Yaw = g.Pitch = 0; g.GyroOverride = ai; g.GyroPower = 1;
+                g.Roll = g.Yaw = g.Pitch = 0; g.GyroOverride = false; g.GyroPower = ai ? 0 : 1;
             }
         }
 

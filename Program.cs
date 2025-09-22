@@ -55,13 +55,13 @@ namespace IngameScript
             Util.Init(this);
             InitGridProps();
             TaskManager.RunTask(Util.StatusMonitor(this));
+            TaskManager.RunTask(ScreensTask()).Every(0.5f);
             TaskManager.RunTask(MainTask());
-            TaskManager.RunTask(AutopilotTask()).Every(1 / 3);
             TaskManager.RunTask(StopLightsTask()).Pause(!_stopLights);
+            TaskManager.RunTask(AutopilotTask()).Every(1 / 3);
+            _AutoLevelTask = TaskManager.RunTask(AutoLevelTask()).Pause(!_autoLevel);
             TaskManager.RunTask(PowerTask()).Pause(!_power);
             TaskManager.RunTask(PowerConsumptionTask()).Every(3);
-            _AutoLevelTask = TaskManager.RunTask(AutoLevelTask()).Pause(!_autoLevel);
-            TaskManager.RunTask(ScreensTask()).Every(0.5f);
             TaskManager.RunTask(GridOrientationsTask());
             TaskManager.RunTask(Util.DisplayLogo("DDAS", Me.GetSurface(0))).Every(1.5f);
         }
