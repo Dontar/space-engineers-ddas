@@ -73,10 +73,10 @@ namespace IngameScript
             }
 
             public static R Of<R, T>(string context, T dep, Func<T, R> f) => (R)IntOf(d => f(d != null ? (T)d : default(T)), context, dep);
-            public static R Of<R, T>(string context, T dep, Func<R> f) => (R)IntOf(_ => f(), context, dep);
+            public static R Of<R>(string context, object dep, Func<R> f) => (R)IntOf(_ => f(), context, dep);
 
             public static void Of<T>(string context, T dep, Action<T> f) => IntOf(d => { f(d != null ? (T)d : default(T)); return null; }, context, dep);
-            public static void Of<T>(string context, T dep, Action f) => IntOf(_ => { f(); return null; }, context, dep);
+            public static void Of(string context, object dep, Action f) => IntOf(_ => { f(); return null; }, context, dep);
 
             private static void EvictOldestCacheItem()
             {
