@@ -91,7 +91,7 @@ namespace IngameScript
 
             public IMyTerminalBlock[] Blocks;
 
-            public IMyTerminalBlock Block => Memo.Of("AutopilotInternalBlock", 5, (_) => Blocks.FirstOrDefault(b =>
+            public IMyTerminalBlock Block => Memo.Of("AutopilotInternalBlock", 5, () => Blocks.FirstOrDefault(b =>
                 b != null
                 && ((b is IMyRemoteControl && ((IMyRemoteControl)b).IsAutoPilotEnabled)
                 || (b is IMyFlightMovementBlock && ((IMyFlightMovementBlock)b).IsAutoPilotEnabled))

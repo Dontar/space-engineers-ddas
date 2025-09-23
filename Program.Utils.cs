@@ -73,7 +73,7 @@ namespace IngameScript
                     var match = regex.Match(s.CustomData);
                     if (match.Success && match.Groups[1].Value == screenTag)
                     {
-                        var screenIndex = int.Parse(match.Groups[1].Value) - 1;
+                        var screenIndex = int.Parse(match.Groups[2].Value) - 1;
                         return provider.GetSurface(screenIndex);
                     }
                     return provider.GetSurface(0);
