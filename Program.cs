@@ -56,17 +56,19 @@ namespace IngameScript
             InitGridProps();
             TaskManager.RunTask(Util.StatusMonitor(this));
             TaskManager.RunTask(ScreensTask()).Every(0.5f);
-            TaskManager.RunTask(MainTask());
+            _MainTask = TaskManager.RunTask(MainTask());
             TaskManager.RunTask(StopLightsTask()).Pause(!_stopLights);
             TaskManager.RunTask(AutopilotTask()).Every(1 / 3);
             _AutoLevelTask = TaskManager.RunTask(AutoLevelTask()).Pause(!_autoLevel);
-            TaskManager.RunTask(PowerTask()).Pause(!_power);
+            _PowerTask = TaskManager.RunTask(PowerTask()).Pause(!_power);
             TaskManager.RunTask(PowerConsumptionTask()).Every(3);
             TaskManager.RunTask(GridOrientationsTask());
             TaskManager.RunTask(Util.DisplayLogo("DDAS", Me.GetSurface(0))).Every(1.5f);
         }
 
         readonly TaskManager.ITask _AutoLevelTask;
+        readonly TaskManager.ITask _MainTask;
+        readonly TaskManager.ITask _PowerTask;
 
         public void Main(string argument, UpdateType updateSource)
         {
@@ -90,6 +92,9 @@ namespace IngameScript
                 InitAutoLevel();
                 InitAutopilot();
                 InitScreens();
+
+                _MainTask.Pause(AllWheels.Count() < 1);
+                _PowerTask.Pause(_power && AllWheels.Count() < 1);
             });
 
             Memo.Of("OnPhysicalMassChange", Mass.PhysicalMass, () => InitStrength());
