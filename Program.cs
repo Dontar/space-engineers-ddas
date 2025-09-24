@@ -94,7 +94,7 @@ namespace IngameScript
                 InitScreens();
 
                 _MainTask.Pause(AllWheels.Count() < 1);
-                _PowerTask.Pause(_power && AllWheels.Count() < 1);
+                if (_power) _PowerTask.Pause(AllWheels.Count() < 1);
             });
 
             Memo.Of("OnPhysicalMassChange", Mass.PhysicalMass, () => InitStrength());
