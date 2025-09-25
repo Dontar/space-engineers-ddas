@@ -34,8 +34,6 @@ namespace IngameScript
             Dimensions.Width = (float)size.X;
             Dimensions.Height = (float)size.Y;
             Dimensions.Length = (float)size.Z;
-
-            _AutoLevelTask.Pause(Gyros.Count() < 1);
         }
 
         float CalcRequiredGyroForce(float roll, int magnitude = 10)
@@ -87,10 +85,11 @@ namespace IngameScript
 
         IEnumerable AutoLevelTask()
         {
+            if (Gyros.Count() == 0) yield break;
             var isFastEnough = Speed * 3.6 > 20;
             if (!isFastEnough)
             {
-                if (Speed < 2 && Math.Abs(OrientationResult.Roll) >= 60)
+                if (Speed < 1 && Math.Abs(OrientationResult.Roll) >= 60)
                 {
                     TaskManager.RunTask(FlipGridTask()).Once();
                 }
