@@ -82,14 +82,13 @@ namespace IngameScript
                     if (Math.Abs(rightDot) < 0.2)
                     {
                         AvoidanceVector += (isLeftish ? right : -right) * avoidanceStrength;
-                        RecentlyAvoided[obstruction.EntityId] = 10;
                     }
                     else if (Math.Abs(rightDot) < 0.4)
                     {
                         var forward = Pilot.Matrix.Forward;
                         AvoidanceVector += (forward + (isLeftish ? right : -right)) * avoidanceStrength;
-                        RecentlyAvoided[obstruction.EntityId] = 10;
                     }
+                    RecentlyAvoided[obstruction.EntityId] = 10;
                 }
             }
 
