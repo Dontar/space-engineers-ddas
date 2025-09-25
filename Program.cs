@@ -55,13 +55,13 @@ namespace IngameScript
             Util.Init(this);
             InitGridProps();
             TaskManager.RunTask(Util.StatusMonitor(this));
-            TaskManager.RunTask(ScreensTask()).Every(0.5f);
             _MainTask = TaskManager.RunTask(MainTask());
-            TaskManager.RunTask(StopLightsTask()).Pause(!_stopLights);
+            TaskManager.RunTask(ScreensTask()).Every(.5f);
+            TaskManager.RunTask(StopLightsTask()).Pause(!_stopLights).Every(.5f);
             TaskManager.RunTask(AutopilotTask()).Every(1 / 3);
             _AutoLevelTask = TaskManager.RunTask(AutoLevelTask()).Pause(!_autoLevel);
             _PowerTask = TaskManager.RunTask(PowerTask()).Pause(!_power);
-            TaskManager.RunTask(PowerConsumptionTask()).Every(3);
+            _PowerConsumptionTask = TaskManager.RunTask(PowerConsumptionTask()).Every(3);
             TaskManager.RunTask(GridOrientationsTask());
             TaskManager.RunTask(Util.DisplayLogo("DDAS", Me.GetSurface(0))).Every(1.5f);
         }
@@ -69,6 +69,7 @@ namespace IngameScript
         readonly TaskManager.ITask _AutoLevelTask;
         readonly TaskManager.ITask _MainTask;
         readonly TaskManager.ITask _PowerTask;
+        readonly TaskManager.ITask _PowerConsumptionTask;
 
         public void Main(string argument, UpdateType updateSource)
         {
@@ -94,7 +95,6 @@ namespace IngameScript
                 InitScreens();
 
                 _MainTask.Pause(AllWheels.Count() < 1);
-                if (_power) _PowerTask.Pause(AllWheels.Count() < 1);
             });
 
             Memo.Of("OnPhysicalMassChange", Mass.PhysicalMass, () => InitStrength());

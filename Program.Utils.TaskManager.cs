@@ -14,6 +14,7 @@ namespace IngameScript
                 ITask Every(float seconds);
                 ITask Pause(bool pause = true);
                 ITask Once();
+                void Restart();
             }
             public interface ITask<T> : ITask
             {
@@ -31,29 +32,37 @@ namespace IngameScript
                 public object TaskResult;
                 public bool IsPaused;
                 public bool IsOnce;
-                ITask ITask.Every(float seconds)
+
+                ITask ITask.Every(float seconds) => Every(seconds);
+                ITask ITask.Pause(bool pause) => Pause(pause);
+                ITask ITask.Once() => Once();
+                void ITask.Restart() => Restart();
+
+                public ITask<T> Every(float seconds)
                 {
                     Interval = TimeSpan.FromSeconds(seconds);
                     return this;
                 }
-                ITask ITask.Pause(bool pause)
+                public ITask<T> Pause(bool pause = true)
                 {
                     IsPaused = pause;
                     return this;
                 }
-                ITask ITask.Once()
+                public ITask<T> Once()
                 {
                     IsOnce = true;
                     return this;
                 }
-                public ITask<T> Every(float seconds) => (ITask<T>)((ITask)this).Every(seconds);
-                public ITask<T> Pause(bool pause = true) => (ITask<T>)((ITask)this).Pause(pause);
-                public ITask<T> Once() => (ITask<T>)((ITask)this).Once();
+                public void Restart()
+                {
+                    Enumerator = Ref.GetEnumerator();
+                    TimeSinceLastRun = TimeSpan.Zero;
+                }
                 public T Result() => (T)TaskResult;
             }
             static readonly List<Task<object>> tasks = new List<Task<object>>();
 
-            public static ITask<object> RunTask(IEnumerable task)
+            public static ITask<T> RunTask<T>(IEnumerable<T> task)
             {
                 var newTask = new Task<object>
                 {
@@ -66,9 +75,9 @@ namespace IngameScript
                     IsOnce = false
                 };
                 tasks.Add(newTask);
-                return newTask;
+                return (ITask<T>)newTask;
             }
-            public static ITask<T> RunTask<T>(IEnumerable<T> task) => (ITask<T>)RunTask((IEnumerable)task);
+            public static ITask RunTask(IEnumerable task) => RunTask(task);
 
             static IEnumerable InternalTask(Action<object> cb, bool timeout = false)
             {
@@ -86,6 +95,8 @@ namespace IngameScript
             }
             public static ITask SetInterval(Action<Dictionary<string, object>> cb, float intervalSeconds) =>
                 RunTask(InternalTask(ctx => cb((Dictionary<string, object>)ctx))).Every(intervalSeconds);
+            public static ITask SetInterval(Action cb, float intervalSeconds) =>
+                RunTask(InternalTask(_ => cb())).Every(intervalSeconds);
 
             public static ITask SetTimeout(Action cb, float delaySeconds) =>
                 RunTask(InternalTask(_ => cb())).Once().Every(delaySeconds);
