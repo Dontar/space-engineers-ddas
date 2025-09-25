@@ -91,26 +91,40 @@ namespace IngameScript
 
             public IMyTerminalBlock[] Blocks;
 
-            public IMyTerminalBlock Block => Memo.Of("AutopilotInternalBlock", 5, () => Blocks.FirstOrDefault(b =>
-                b != null
-                && ((b is IMyRemoteControl && ((IMyRemoteControl)b).IsAutoPilotEnabled)
-                || (b is IMyFlightMovementBlock && ((IMyFlightMovementBlock)b).IsAutoPilotEnabled))
-            ));
+            IMyTerminalBlock _block;
 
-            public bool IsAutoPilotEnabled => Block != null;
+            public bool IsAutoPilotEnabled
+            {
+                get
+                {
+                    if (_block != null)
+                    {
+                        var enabled = _block.GetValueBool(_block is IMyFlightMovementBlock ? "ActivateBehavior" : "AutoPilot");
+                        if (!enabled) _block = null;
+                        return enabled;
+                    }
+                    _block = Blocks.FirstOrDefault(b => b != null && b.GetValueBool(b is IMyFlightMovementBlock ? "ActivateBehavior" : "AutoPilot"));
+                    return _block != null;
+                }
+            }
+            public void SetAutoPilotEnabled(bool enabled)
+            {
+                _block?.SetValueBool(_block is IMyFlightMovementBlock ? "ActivateBehavior" : "AutoPilot", enabled);
+                if (!enabled) _block = null;
+            }
 
             public IEnumerable<MyWaypointInfo> Waypoints
             {
                 get
                 {
-                    if (Block is IMyRemoteControl)
+                    if (_block is IMyRemoteControl)
                     {
                         var waypoints = new List<MyWaypointInfo>();
-                        (Block as IMyRemoteControl).GetWaypointInfo(waypoints);
+                        (_block as IMyRemoteControl).GetWaypointInfo(waypoints);
                         return waypoints;
                     }
                     var aiWaypoints = new List<IMyAutopilotWaypoint>();
-                    (Block as IMyFlightMovementBlock).GetWaypoints(aiWaypoints);
+                    (_block as IMyFlightMovementBlock).GetWaypoints(aiWaypoints);
                     return aiWaypoints.Select(w => new MyWaypointInfo(w.Name, w.Matrix.Translation));
                 }
             }
@@ -118,18 +132,18 @@ namespace IngameScript
             {
                 get
                 {
-                    if (Block is IMyRemoteControl) return (Block as IMyRemoteControl).CurrentWaypoint;
-                    var autopilot = Block as IMyFlightMovementBlock;
+                    if (_block is IMyRemoteControl) return (_block as IMyRemoteControl).CurrentWaypoint;
+                    var autopilot = _block as IMyFlightMovementBlock;
                     if (autopilot.CurrentWaypoint == null) return MyWaypointInfo.Empty;
                     return new MyWaypointInfo(autopilot.CurrentWaypoint.Name, autopilot.CurrentWaypoint.Matrix.Translation);
                 }
             }
-            public FlightMode FlightMode => Block is IMyRemoteControl ? (Block as IMyRemoteControl).FlightMode : (Block as IMyFlightMovementBlock).FlightMode;
-            public float SpeedLimit => Block is IMyRemoteControl ? (Block as IMyRemoteControl).SpeedLimit : (Block as IMyFlightMovementBlock).SpeedLimit;
-            public MatrixD WorldMatrix => Block.WorldMatrix;
+            public FlightMode FlightMode => _block is IMyRemoteControl ? (_block as IMyRemoteControl).FlightMode : (_block as IMyFlightMovementBlock).FlightMode;
+            public float SpeedLimit => _block is IMyRemoteControl ? (_block as IMyRemoteControl).SpeedLimit : (_block as IMyFlightMovementBlock).SpeedLimit;
+            public bool CollisionAvoidance => _block?.GetValueBool("CollisionAvoidance") ?? false;
+            public MatrixD Matrix => _block.WorldMatrix;
 
-            public Vector3D GetPosition() => Block?.GetPosition() ?? Vector3D.Zero;
-            public void SetAutoPilotEnabled(bool enabled) => Block?.SetValueBool(Block is IMyFlightMovementBlock ? "ActivateBehavior" : "AutoPilot", enabled);
+            public Vector3D GetPosition() => _block?.GetPosition() ?? Vector3D.Zero;
             public static Autopilot FromBlock(IMyTerminalBlock[] blocks) => new Autopilot(blocks);
         }
 
@@ -185,9 +199,12 @@ namespace IngameScript
         {
             if (LeftRight != 0)
             {
-                AutopilotResult.Steer = 0;
                 TaskManager.ClearTask(EmergencySteer);
                 EmergencySteer = TaskManager.SetTimeout(() => EmergencySteer = null, 3);
+            }
+            if (EmergencySteer != null)
+            {
+                AutopilotResult.Steer = -LeftRight;
             }
             return EmergencySteer == null;
         }

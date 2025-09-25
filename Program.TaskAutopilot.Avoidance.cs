@@ -13,14 +13,14 @@ namespace IngameScript
 
         Dictionary<long, int> RecentlyAvoided = new Dictionary<long, int>();
 
-        Vector3D AvoidCollision(IMyTerminalBlock autopilot, IMySensorBlock sensor, Vector3D currentPosition, Vector3D destination)
+        Vector3D AvoidCollision(IMySensorBlock sensor, Vector3D currentPosition, Vector3D destination)
         {
-            var up = autopilot.WorldMatrix.Up;
-            var right = autopilot.WorldMatrix.Right;
-            var backward = autopilot.WorldMatrix.Backward;
+            var up = Pilot.Matrix.Up;
+            var right = Pilot.Matrix.Right;
+            var backward = Pilot.Matrix.Backward;
             var destinationVector = destination - currentPosition;
             var directionVector = Vector3D.ProjectOnPlane(ref destinationVector, ref up);
-            if (!autopilot.GetValueBool("CollisionAvoidance") || sensor == null) return directionVector;
+            if (!Pilot.CollisionAvoidance || sensor == null) return directionVector;
 
             var obstructions = new List<MyDetectedEntityInfo>();
             sensor.DetectedEntities(obstructions);
@@ -86,7 +86,7 @@ namespace IngameScript
                     }
                     else if (Math.Abs(rightDot) < 0.4)
                     {
-                        var forward = Me.CubeGrid.WorldMatrix.Forward;
+                        var forward = Pilot.Matrix.Forward;
                         AvoidanceVector += (forward + (isLeftish ? right : -right)) * avoidanceStrength;
                         RecentlyAvoided[obstruction.EntityId] = 10;
                     }

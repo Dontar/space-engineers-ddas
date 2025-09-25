@@ -219,9 +219,9 @@ namespace IngameScript
 
         void CalcSteer(MyWaypointInfo currentWaypoint, out Vector3D currentPosition, out Vector3D direction, out double directionAngle, out double distance)
         {
-            var matrix = Pilot.WorldMatrix;
+            var matrix = Pilot.Matrix;
             currentPosition = Pilot.GetPosition();
-            direction = AvoidCollision(Pilot.Block, Sensor, currentPosition, currentWaypoint.Coords);
+            direction = AvoidCollision(Sensor, currentPosition, currentWaypoint.Coords);
             distance = direction.Length();
             var directionNormal = Vector3D.Normalize(direction);
             directionAngle = Math.Atan2(directionNormal.Dot(matrix.Left), directionNormal.Dot(matrix.Forward));
@@ -257,13 +257,15 @@ namespace IngameScript
             var counter = 0;
             Recording = true;
 
+            var previous = Vector3D.Zero;
             while (Recording)
             {
                 var current = Remote.GetPosition();
-                if (Vector3D.Distance(current, wayPoints.LastOrDefault().Coords) > minDistance)
+                if (Vector3D.IsZero(previous) || Vector3D.Distance(current, previous) > minDistance)
                 {
                     wayPoints.Add(new MyWaypointInfo($"Waypoint-#{counter++}", current));
                 }
+                previous = current;
                 yield return null;
             }
 
