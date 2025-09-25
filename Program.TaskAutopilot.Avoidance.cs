@@ -73,11 +73,11 @@ namespace IngameScript
                     var rightDot = Vector3D.Dot(Vector3D.Normalize(awayFromObstacle), right);
                     var isLeftish = rightDot > 0;
 
-                    double distance = awayFromObstacle.Length();
-                    double minDistance = WayPointReachThreshold; // minimum effective distance (meters)
-                    double maxForce = WayPointCloseThreshold;   // maximum avoidance force
+                    var distance = awayFromObstacle.Length();
+                    var minDistance = WayPointReachThreshold; // minimum effective distance (meters)
+                    var maxForce = WayPointCloseThreshold;   // maximum avoidance force
 
-                    double avoidanceStrength = maxForce / Math.Max(distance, minDistance);
+                    var avoidanceStrength = maxForce / Math.Max(distance, minDistance);
 
                     if (Math.Abs(rightDot) < 0.2)
                     {
