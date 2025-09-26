@@ -180,7 +180,7 @@ namespace IngameScript
                 StatusText.Clear();
                 StatusText.AppendLine(text);
             }
-            public static IEnumerable StatusMonitor(Program p)
+            public static IEnumerable StatusMonitorTask(Program p)
             {
                 var runtimeText = new StringBuilder();
                 var runtime = p.Runtime;

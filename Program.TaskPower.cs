@@ -26,6 +26,11 @@ namespace IngameScript
                 CurrentOutput = () => blocks.Sum(b => b.CurrentOutput)
             };
             PowerResult.MaxPowerPercent = 100;
+
+            _PowerConsumptionTask.Restart();
+
+            if (_power) _PowerTask.Pause(AllWheels.Count() < 1);
+            _PowerConsumptionTask.Pause(AllWheels.Count() < 1);
         }
 
         struct PowerTaskResult
