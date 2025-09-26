@@ -1,69 +1,81 @@
-using Sandbox.Game.Entities;
-using Sandbox.Game.EntityComponents;
 using Sandbox.ModAPI.Ingame;
-using Sandbox.ModAPI.Interfaces;
-using SpaceEngineers.Game.ModAPI.Ingame;
 using System;
 using System.Collections;
-using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.Linq;
-using System.Numerics;
 using System.Text;
-using System.Threading.Tasks;
-using VRage;
-using VRage.Collections;
-using VRage.Game;
-using VRage.Game.Components;
-using VRage.Game.GUI.TextPanel;
-using VRage.Game.ModAPI.Ingame;
-using VRage.Game.ModAPI.Ingame.Utilities;
-using VRage.Game.ObjectBuilders.Definitions;
 using VRageMath;
-using VRageRender;
-using VRageRender.Animations;
 
 namespace IngameScript
 {
     partial class Program : MyGridProgram
     {
+
+        struct GridPower
+        {
+            public Func<float> MaxOutput;
+            public Func<float> CurrentOutput;
+        }
+        GridPower PowerProducersPower;
+
+        void InitPower()
+        {
+            var blocks = Util.GetBlocks<IMyPowerProducer>(b => b.IsSameConstructAs(Me));
+            PowerProducersPower = new GridPower
+            {
+                MaxOutput = () => blocks.Sum(b => b.Enabled ? b.MaxOutput : 0),
+                CurrentOutput = () => blocks.Sum(b => b.CurrentOutput)
+            };
+            PowerResult.MaxPowerPercent = 100;
+
+            _PowerConsumptionTask.Restart();
+
+            if (_power) _PowerTask.Pause(AllWheels.Count() < 1);
+            _PowerConsumptionTask.Pause(AllWheels.Count() < 1);
+        }
+
         struct PowerTaskResult
         {
             public float Power;
             public float WheelMaxPower;
             public float GridMaxPower;
             public float MaxPowerPercent;
-
         }
-        IEnumerable<PowerTaskResult> PowerTask()
+        PowerTaskResult PowerResult;
+
+        IEnumerable PowerConsumptionTask()
         {
-            // var gridProps = this.gridProps;
-            var ini = Config;
-            var PID = new PID(ini["PIDPower"].ToString("10/0/0/0"));
-            var wheelPower = MyWheels.Concat(SubWheels).Sum(w => w.MaxPower);
+            var myWheels = MyWheels;
+            var wheelPower = myWheels.Concat(SubWheels).Sum(w => w.MaxPower);
             float passivePower = 0;
-            while (ini.Equals(Config))
+
+            while (true)
             {
-                var powerProducersPower = PowerProducersPower;
-                double speed = Speed;
-                if (speed < 0.1)
-                {
-                    passivePower = powerProducersPower.CurrentOutput;
-                }
-                var vehicleMaxPower = powerProducersPower.MaxOutput;
-                var powerMaxPercent = MathHelper.Clamp((vehicleMaxPower - passivePower) / wheelPower, 0, 1);
+                if (Speed < 0.1) passivePower = PowerProducersPower.CurrentOutput();
+                var vehicleMaxPower = PowerProducersPower.MaxOutput();
+                var powerMaxPercent = MathHelper.Clamp((vehicleMaxPower - passivePower) * 100 / wheelPower, 0, 100);
+
+                PowerResult.WheelMaxPower = (float)wheelPower;
+                PowerResult.GridMaxPower = vehicleMaxPower;
+                PowerResult.MaxPowerPercent = (float)powerMaxPercent;
+
+                yield return null;
+            }
+        }
+
+        IEnumerable PowerTask()
+        {
+            var PID = new PID(_pidPower);
+
+            while (true)
+            {
+                var maxSpeed = MyWheels.First().SpeedLimit * 0.9f;
                 var dt = TaskManager.CurrentTaskLastRun.TotalSeconds;
-                var currentSpeedKmh = speed * 3.6;
-                var targetSpeed = Cruise ? CruiseSpeed : (ForwardBackward != 0 ? MyWheels.First().SpeedLimit : 0);
-                var error = targetSpeed - currentSpeedKmh;
-                var power = MathHelper.Clamp(PID.Signal(error, dt), 5, 100 * powerMaxPercent);
-                yield return new PowerTaskResult
-                {
-                    Power = (float)power,
-                    WheelMaxPower = (float)wheelPower,
-                    GridMaxPower = vehicleMaxPower,
-                    MaxPowerPercent = (float)powerMaxPercent
-                };
+                var targetSpeed = Cruise ? CruiseSpeed : maxSpeed * Math.Abs(ForwardBackward);
+                var error = (targetSpeed - Speed * 3.6) * 100 / maxSpeed;
+                var power = MathHelper.Clamp(PID.Signal(error, dt), 5, PowerResult.MaxPowerPercent);
+
+                PowerResult.Power = (float)power;
+                yield return null;
             }
         }
     }
