@@ -18,7 +18,7 @@ namespace IngameScript
         void InitWheels()
         {
             AllWheels = Util.GetBlocks<IMyMotorSuspension>(b => Util.IsNotIgnored(b, _ignoreTag) && b.Enabled && b.IsSameConstructAs(Me));
-            if (AllWheels.Count() < 1)
+            if (AllWheels.Count() == 0)
             {
                 MyWheels = new WheelWrapper[] { };
                 SubWheels = new WheelWrapper[] { };

@@ -29,8 +29,8 @@ namespace IngameScript
 
             _PowerConsumptionTask.Restart();
 
-            if (_power) _PowerTask.Pause(AllWheels.Count() < 1);
-            _PowerConsumptionTask.Pause(AllWheels.Count() < 1);
+            if (_power) _PowerTask.Pause(AllWheels.Count() == 0);
+            _PowerConsumptionTask.Pause(AllWheels.Count() == 0);
         }
 
         struct PowerTaskResult

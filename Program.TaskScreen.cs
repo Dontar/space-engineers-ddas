@@ -121,7 +121,7 @@ namespace IngameScript
             PrintAxel(ZipPairs(frontWheels));
             s.Label("Rear", '-');
             PrintAxel(ZipPairs(backWheels));
-            if (subWheels.Count() < 1) return;
+            if (subWheels.Count() == 0) return;
             s.Label("Trailer", '-');
             PrintAxel(ZipPairs(subWheels));
         }
@@ -150,7 +150,7 @@ namespace IngameScript
             PrintAxel(ZipPairs(frontWheels));
             s.Label("Rear", '-');
             PrintAxel(ZipPairs(backWheels));
-            if (subWheels.Count() < 1) return;
+            if (subWheels.Count() == 0) return;
             s.Label("Trailer", '-');
             PrintAxel(ZipPairs(subWheels));
         }

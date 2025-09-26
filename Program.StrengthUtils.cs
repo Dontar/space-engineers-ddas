@@ -10,7 +10,7 @@ namespace IngameScript
     {
         double CalcStrength(IEnumerable<WheelWrapper> wheels)
         {
-            if (wheels.Count() < 1) return 0;
+            if (wheels.Count() == 0) return 0;
             var frontMostAxel = wheels.Min(w => w.ToCoM.Z);
             var rearMostAxel = wheels.Max(w => w.ToCoM.Z);
             var chassisLength = rearMostAxel + Math.Abs(frontMostAxel);

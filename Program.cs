@@ -57,7 +57,7 @@ namespace IngameScript
             TaskManager.RunTask(Util.StatusMonitorTask(this));
             _MainTask = TaskManager.RunTask(MainTask());
             TaskManager.RunTask(ScreensTask()).Every(0.5f);
-            TaskManager.RunTask(StopLightsTask()).Pause(!_stopLights);
+            _StopLightsTask = TaskManager.RunTask(StopLightsTask()).Pause(!_stopLights);
             TaskManager.RunTask(AutopilotTask()).Every(1 / 3);
             _AutoLevelTask = TaskManager.RunTask(AutoLevelTask()).Pause(!_autoLevel);
             _PowerTask = TaskManager.RunTask(PowerTask()).Pause(!_power);
@@ -70,6 +70,7 @@ namespace IngameScript
         readonly TaskManager.ITask _MainTask;
         readonly TaskManager.ITask _PowerTask;
         readonly TaskManager.ITask _PowerConsumptionTask;
+        readonly TaskManager.ITask _StopLightsTask;
 
         public void Main(string argument, UpdateType updateSource)
         {
@@ -94,7 +95,7 @@ namespace IngameScript
                 InitAutopilot();
                 InitScreens();
 
-                _MainTask.Pause(AllWheels.Count() < 1);
+                _MainTask.Pause(AllWheels.Count() == 0);
             });
 
             Memo.Of("OnPhysicalMassChange", Mass.PhysicalMass, () => InitStrength());
@@ -229,7 +230,7 @@ namespace IngameScript
                         high = SubWheels.FirstOrDefault().HeightOffsetMin;
                     }
                 }
-                var subWheelPropulsion = Cruise ? propulsion : forwardBackward;
+                var subWheelPropulsion = Cruise ? propulsion : -forwardBackward;
                 foreach (var w in SubWheels)
                 {
                     IMyMotorSuspension wheel = w.Wheel;
@@ -285,6 +286,7 @@ namespace IngameScript
                     )
                 )
             );
+            _StopLightsTask.Pause(Lights.Count() == 0);
         }
 
         IEnumerable StopLightsTask()

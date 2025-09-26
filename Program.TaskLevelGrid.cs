@@ -38,7 +38,7 @@ namespace IngameScript
 
         float CalcRequiredGyroForce(float roll, int magnitude = 10)
         {
-            if (Gyros.Count() < 1) return 0;
+            if (Gyros.Count() == 0) return 0;
 
             var width = Dimensions.Width;
             var height = Dimensions.Height;
