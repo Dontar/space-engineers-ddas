@@ -13,6 +13,7 @@ namespace IngameScript
             {
                 ITask Every(float seconds);
                 ITask Pause(bool pause = true);
+                bool Paused { get; }
                 ITask Once();
                 void Restart();
                 T Result<T>();
@@ -26,6 +27,9 @@ namespace IngameScript
                 public object TaskResult;
                 public bool IsPaused;
                 public bool IsOnce;
+
+                public bool Paused => IsPaused;
+
                 public ITask Every(float seconds)
                 {
                     Interval = TimeSpan.FromSeconds(seconds);
@@ -36,6 +40,7 @@ namespace IngameScript
                     IsPaused = pause;
                     return this;
                 }
+
                 public ITask Once()
                 {
                     IsOnce = true;

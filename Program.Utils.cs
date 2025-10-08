@@ -175,9 +175,9 @@ namespace IngameScript
                 }
             }
             static readonly StringBuilder StatusText = new StringBuilder();
-            public static void Echo(string text)
+            public static void Echo(string text, bool keep = false)
             {
-                StatusText.Clear();
+                if (!keep) StatusText.Clear();
                 StatusText.AppendLine(text);
             }
             public static IEnumerable StatusMonitorTask(Program p)
