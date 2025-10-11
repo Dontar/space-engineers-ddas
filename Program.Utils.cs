@@ -24,7 +24,7 @@ namespace IngameScript
             public static IEnumerable<T> GetBlocks<T>(Func<T, bool> collect = null) where T : class, IMyTerminalBlock
             {
                 List<T> blocks = new List<T>();
-                p.GridTerminalSystem.GetBlocksOfType(blocks, b => b.IsSameConstructAs(p.Me) && collect(b));
+                p.GridTerminalSystem.GetBlocksOfType(blocks, b => b.IsSameConstructAs(p.Me) && (collect?.Invoke(b) ?? true));
                 return blocks;
             }
 
@@ -37,21 +37,16 @@ namespace IngameScript
             {
                 var groupBlocks = new List<T>();
                 var group = p.GridTerminalSystem.GetBlockGroupWithName(name);
-                group?.GetBlocksOfType(groupBlocks, collect);
+                group?.GetBlocksOfType(groupBlocks, b => b.IsSameConstructAs(p.Me) && (collect?.Invoke(b) ?? true));
                 return groupBlocks;
             }
 
             public static IEnumerable<T> GetGroupOrBlocks<T>(string name, Func<T, bool> collect = null) where T : class, IMyTerminalBlock
             {
-                var groupBlocks = new List<T>();
-                var group = p.GridTerminalSystem.GetBlockGroupWithName(name);
-                if (group != null)
+                IEnumerable<T> groupBlocks = GetGroup(name, collect);
+                if (groupBlocks.Count() == 0)
                 {
-                    group.GetBlocksOfType(groupBlocks, v => v is T && (collect == null || collect(v as T)));
-                }
-                else
-                {
-                    p.GridTerminalSystem.GetBlocksOfType(groupBlocks, b => b.CustomName == name && b is T && (collect == null || collect(b as T)));
+                    return GetBlocks<T>(b => b.CustomName == name && (collect?.Invoke(b) ?? true));
                 }
                 return groupBlocks;
             }
