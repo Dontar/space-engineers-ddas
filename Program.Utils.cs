@@ -56,7 +56,7 @@ namespace IngameScript
                 return GetScreens(b => IsTagged(b, screenTag), screenTag);
             }
 
-            public static IEnumerable<IMyTextSurface> GetScreens(Func<IMyTerminalBlock, bool> collect, string screenTag = "")
+            public static IEnumerable<IMyTextSurface> GetScreens(Func<IMyTerminalBlock, bool> collect = null, string screenTag = "")
             {
                 var screens = GetBlocks<IMyTerminalBlock>(b => (b is IMyTextSurface || HasScreens(b)) && collect(b));
                 return screens.Select(s =>
