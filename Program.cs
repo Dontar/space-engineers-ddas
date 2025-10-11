@@ -279,11 +279,9 @@ namespace IngameScript
             var orientation = Controllers.MainController.Orientation;
 
             Lights = Util.GetBlocks<IMyLightingBlock>(b =>
-                b.IsSameConstructAs(Me) && (
-                    Util.IsTagged(b, _tag) || (
-                        Util.IsNotIgnored(b, _ignoreTag) &&
-                        orientation.TransformDirectionInverse(b.Orientation.Forward) == Base6Directions.Direction.Backward
-                    )
+                Util.IsTagged(b, _tag) || (
+                    Util.IsNotIgnored(b, _ignoreTag) &&
+                    orientation.TransformDirectionInverse(b.Orientation.Forward) == Base6Directions.Direction.Backward
                 )
             );
             _StopLightsTask.Pause(Lights.Count() == 0);

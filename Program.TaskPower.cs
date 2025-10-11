@@ -19,7 +19,7 @@ namespace IngameScript
 
         void InitPower()
         {
-            var blocks = Util.GetBlocks<IMyPowerProducer>(b => b.IsSameConstructAs(Me));
+            var blocks = Util.GetBlocks<IMyPowerProducer>();
             PowerProducersPower = new GridPower
             {
                 MaxOutput = () => blocks.Sum(b => b.Enabled ? b.MaxOutput : 0),

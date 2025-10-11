@@ -21,19 +21,19 @@ namespace IngameScript
                 Util.p = p;
             }
 
-            public static IEnumerable<T> GetBlocks<T>(Func<T, bool> collect = null) where T : class
+            public static IEnumerable<T> GetBlocks<T>(Func<T, bool> collect = null) where T : class, IMyTerminalBlock
             {
                 List<T> blocks = new List<T>();
-                p.GridTerminalSystem.GetBlocksOfType(blocks, collect);
+                p.GridTerminalSystem.GetBlocksOfType(blocks, b => b.IsSameConstructAs(p.Me) && collect(b));
                 return blocks;
             }
 
-            public static IEnumerable<T> GetBlocks<T>(string blockTag) where T : class
+            public static IEnumerable<T> GetBlocks<T>(string blockTag) where T : class, IMyTerminalBlock
             {
-                return GetBlocks<IMyTerminalBlock>(b => IsTagged(b, blockTag)).Cast<T>();
+                return GetBlocks<T>(b => IsTagged(b, blockTag));
             }
 
-            public static IEnumerable<T> GetGroup<T>(string name, Func<T, bool> collect = null) where T : class
+            public static IEnumerable<T> GetGroup<T>(string name, Func<T, bool> collect = null) where T : class, IMyTerminalBlock
             {
                 var groupBlocks = new List<T>();
                 var group = p.GridTerminalSystem.GetBlockGroupWithName(name);
@@ -41,9 +41,9 @@ namespace IngameScript
                 return groupBlocks;
             }
 
-            public static IEnumerable<T> GetGroupOrBlocks<T>(string name, Func<T, bool> collect = null) where T : class
+            public static IEnumerable<T> GetGroupOrBlocks<T>(string name, Func<T, bool> collect = null) where T : class, IMyTerminalBlock
             {
-                var groupBlocks = new List<IMyTerminalBlock>();
+                var groupBlocks = new List<T>();
                 var group = p.GridTerminalSystem.GetBlockGroupWithName(name);
                 if (group != null)
                 {
@@ -53,7 +53,7 @@ namespace IngameScript
                 {
                     p.GridTerminalSystem.GetBlocksOfType(groupBlocks, b => b.CustomName == name && b is T && (collect == null || collect(b as T)));
                 }
-                return groupBlocks.Cast<T>();
+                return groupBlocks;
             }
 
             public static IEnumerable<IMyTextSurface> GetScreens(string screenTag = "")

@@ -63,7 +63,7 @@ namespace IngameScript
 
         void InitGridProps()
         {
-            var controllers = Util.GetBlocks<IMyShipController>(b => Util.IsNotIgnored(b, _ignoreTag) && b.IsSameConstructAs(Me));
+            var controllers = Util.GetBlocks<IMyShipController>(b => Util.IsNotIgnored(b, _ignoreTag));
             var myControllers = controllers.Where(c => c.CubeGrid == Me.CubeGrid && c.CanControlShip);
             var subControllers = controllers.Where(c => c.CubeGrid != Me.CubeGrid);
 

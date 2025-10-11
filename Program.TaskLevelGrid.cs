@@ -24,7 +24,7 @@ namespace IngameScript
 
         void InitAutoLevel()
         {
-            Gyros = Util.GetBlocks<IMyGyro>(b => Util.IsNotIgnored(b, _ignoreTag) && b.IsSameConstructAs(Me));
+            Gyros = Util.GetBlocks<IMyGyro>(b => Util.IsNotIgnored(b, _ignoreTag));
 
             double blockSize = (Me.CubeGrid.GridSizeEnum == MyCubeSize.Large) ? 2.5 : 0.5; // meters
             var min = Me.CubeGrid.Min;
