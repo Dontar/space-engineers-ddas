@@ -127,7 +127,6 @@ namespace IngameScript
             public static void ApplyGyroOverride(double pitchSpeed, double yawSpeed, double rollSpeed, float power, IMyGyro gyro, MatrixD worldMatrix)
             {
                 ApplyGyroOverride(pitchSpeed, yawSpeed, rollSpeed, power, new[] { gyro }, worldMatrix);
-
             }
 
             public static void ApplyGyroOverride(double pitchSpeed, double yawSpeed, double rollSpeed, float power, IEnumerable<IMyGyro> gyros, MatrixD worldMatrix)
@@ -200,6 +199,36 @@ namespace IngameScript
                     runtimeText.AppendStringBuilder(StatusText);
                     p.Echo(runtimeText.ToString());
                     yield return null;
+                }
+            }
+
+            public static void SetSensorDimensions(IMySensorBlock sensor, float[] values)
+            {
+                for (int i = 0; i < values.Length && i < Base6Directions.EnumDirections.Length; i++)
+                {
+                    var value = MathHelper.Clamp(values[i], 0.1f, 50);
+                    var dir = sensor.Orientation.TransformDirectionInverse(Base6Directions.EnumDirections[i]);
+                    switch (dir)
+                    {
+                        case Base6Directions.Direction.Forward:
+                            sensor.FrontExtend = value;
+                            break;
+                        case Base6Directions.Direction.Backward:
+                            sensor.BackExtend = value;
+                            break;
+                        case Base6Directions.Direction.Left:
+                            sensor.LeftExtend = value;
+                            break;
+                        case Base6Directions.Direction.Right:
+                            sensor.RightExtend = value;
+                            break;
+                        case Base6Directions.Direction.Up:
+                            sensor.TopExtend = value;
+                            break;
+                        case Base6Directions.Direction.Down:
+                            sensor.BottomExtend = value;
+                            break;
+                    }
                 }
             }
         }

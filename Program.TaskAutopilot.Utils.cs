@@ -147,33 +147,6 @@ namespace IngameScript
             public static Autopilot FromBlock(IMyTerminalBlock[] blocks) => new Autopilot(blocks);
         }
 
-        void SetSensorDimension(float value, Base6Directions.Direction direction)
-        {
-            value = MathHelper.Clamp(value, 0.1f, 50);
-            var dir = Sensor.Orientation.TransformDirectionInverse(direction);
-            switch (dir)
-            {
-                case Base6Directions.Direction.Forward:
-                    Sensor.FrontExtend = value;
-                    break;
-                case Base6Directions.Direction.Backward:
-                    Sensor.BackExtend = value;
-                    break;
-                case Base6Directions.Direction.Left:
-                    Sensor.LeftExtend = value;
-                    break;
-                case Base6Directions.Direction.Right:
-                    Sensor.RightExtend = value;
-                    break;
-                case Base6Directions.Direction.Up:
-                    Sensor.TopExtend = value;
-                    break;
-                case Base6Directions.Direction.Down:
-                    Sensor.BottomExtend = value;
-                    break;
-            }
-        }
-
         void SetupSensor()
         {
             var halfHeight = Dimensions.Height / 2;
@@ -188,10 +161,7 @@ namespace IngameScript
                 /* Down */ (float)vertPos,
             };
 
-            for (int i = 0; i < values.Length && i < Base6Directions.EnumDirections.Length; i++)
-            {
-                SetSensorDimension(values[i], Base6Directions.EnumDirections[i]);
-            }
+            Util.SetSensorDimensions(Sensor, values);
         }
 
         TaskManager.ITask EmergencySteer;

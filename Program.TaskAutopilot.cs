@@ -332,7 +332,7 @@ namespace IngameScript
 
         bool ProcessAICommands(string args)
         {
-            var commandLine = args.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+            var commandLine = args.Split(new [] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
             if (commandLine.Length < 1) return false;
 
             var command = commandLine[0].ToLower();
