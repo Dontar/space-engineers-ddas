@@ -18,8 +18,7 @@ namespace IngameScript
 
         CruiseTaskResult CruiseResult = new CruiseTaskResult();
 
-        IEnumerable CruiseTask(float cruiseSpeed = -1, Func<bool> cruiseWhile = null)
-        {
+        IEnumerable CruiseTask(float cruiseSpeed = -1, Func<bool> cruiseWhile = null) {
             if (Cruise) yield break;
 
             var pid = new PID(_pidCruise);
@@ -28,11 +27,9 @@ namespace IngameScript
             CruiseSpeed = cruiseSpeed > -1 ? cruiseSpeed : (float)(Speed * 3.6);
             cruiseWhile = cruiseWhile ?? (() => UpDown == 0 && !Controllers.MainController.HandBrake);
 
-            while (cruiseWhile())
-            {
+            while (cruiseWhile()) {
                 var maxSpeed = MyWheels.First().SpeedLimit * 0.9f;
-                if (cruiseSpeed == -1)
-                {
+                if (cruiseSpeed == -1) {
                     CruiseSpeed = MathHelper.Clamp(CruiseSpeed + (float)ForwardBackward * -5f, 5, maxSpeed);
                 }
                 var dt = TaskManager.CurrentTaskLastRun.TotalSeconds;

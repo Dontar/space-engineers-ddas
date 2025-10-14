@@ -17,11 +17,9 @@ namespace IngameScript
         }
         GridPower PowerProducersPower;
 
-        void InitPower()
-        {
+        void InitPower() {
             var blocks = Util.GetBlocks<IMyPowerProducer>();
-            PowerProducersPower = new GridPower
-            {
+            PowerProducersPower = new GridPower {
                 MaxOutput = () => blocks.Sum(b => b.Enabled ? b.MaxOutput : 0),
                 CurrentOutput = () => blocks.Sum(b => b.CurrentOutput)
             };
@@ -42,14 +40,12 @@ namespace IngameScript
         }
         PowerTaskResult PowerResult;
 
-        IEnumerable PowerConsumptionTask()
-        {
+        IEnumerable PowerConsumptionTask() {
             var myWheels = MyWheels;
             var wheelPower = myWheels.Concat(SubWheels).Sum(w => w.MaxPower);
             float passivePower = 0;
 
-            while (true)
-            {
+            while (true) {
                 if (Speed < 0.1) passivePower = PowerProducersPower.CurrentOutput();
                 var vehicleMaxPower = PowerProducersPower.MaxOutput();
                 var powerMaxPercent = MathHelper.Clamp((vehicleMaxPower - passivePower) * 100 / wheelPower, 0, 100);
@@ -62,12 +58,10 @@ namespace IngameScript
             }
         }
 
-        IEnumerable PowerTask()
-        {
+        IEnumerable PowerTask() {
             var PID = new PID(_pidPower);
 
-            while (true)
-            {
+            while (true) {
                 var maxSpeed = MyWheels.First().SpeedLimit * 0.9f;
                 var dt = TaskManager.CurrentTaskLastRun.TotalSeconds;
                 var targetSpeed = Cruise ? CruiseSpeed : maxSpeed * Math.Abs(ForwardBackward);

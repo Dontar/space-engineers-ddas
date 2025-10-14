@@ -49,8 +49,7 @@ namespace IngameScript
             RC
         }
         #endregion
-        public Program()
-        {
+        public Program() {
             Runtime.UpdateFrequency = UpdateFrequency.Update10;
             Util.Init(this);
             InitGridProps();
@@ -66,16 +65,14 @@ namespace IngameScript
             TaskManager.RunTask(Util.DisplayLogo("DDAS", Me.GetSurface(0))).Every(1.5f);
         }
 
-        readonly TaskManager.ITask _AutoLevelTask;
-        readonly TaskManager.ITask _MainTask;
-        readonly TaskManager.ITask _PowerTask;
-        readonly TaskManager.ITask _PowerConsumptionTask;
-        readonly TaskManager.ITask _StopLightsTask;
+        TaskManager.ITask _AutoLevelTask;
+        TaskManager.ITask _MainTask;
+        TaskManager.ITask _PowerTask;
+        TaskManager.ITask _PowerConsumptionTask;
+        TaskManager.ITask _StopLightsTask;
 
-        public void Main(string argument, UpdateType updateSource)
-        {
-            if (Controllers.MainController == null)
-            {
+        public void Main(string argument, UpdateType updateSource) {
+            if (Controllers.MainController == null) {
                 Util.Echo("No controller found");
                 return;
             }
@@ -85,8 +82,7 @@ namespace IngameScript
 
             if (!updateSource.HasFlag(UpdateType.Update10)) return;
 
-            Memo.Of("OnBaseMassChange", Mass.BaseMass, (OldBaseMass) =>
-            {
+            Memo.Of("OnBaseMassChange", Mass.BaseMass, (OldBaseMass) => {
                 if (OldBaseMass != 0) InitGridProps();
                 InitWheels();
                 InitPower();
@@ -103,10 +99,8 @@ namespace IngameScript
             TaskManager.Tick(Runtime.TimeSinceLastRun);
         }
 
-        private void ProcessCommands(string argument)
-        {
-            switch (argument.ToLower())
-            {
+        void ProcessCommands(string argument) {
+            switch (argument.ToLower()) {
                 case "low":
                 case "high":
                 case "toggle_hight":
@@ -134,19 +128,16 @@ namespace IngameScript
             }
         }
 
-        IEnumerable MainTask()
-        {
+        IEnumerable MainTask() {
             double high;
-            if (!double.TryParse(_highModeHight, out high))
-            {
+            if (!double.TryParse(_highModeHight, out high)) {
                 high = MyWheels.FirstOrDefault().HeightOffsetMin;
             }
             var low = _lowModeHight;
 
             var rollCompensating = false;
 
-            while (true)
-            {
+            while (true) {
                 var speed = Speed;
                 var leftRight = LeftRight;
                 var upDown = UpDown;
@@ -166,21 +157,18 @@ namespace IngameScript
                 if (Controllers.SubController != null)
                     Controllers.SubController.HandBrake = Controller.HandBrake || upDown > 0;
 
-                foreach (var w in MyWheels)
-                {
+                foreach (var w in MyWheels) {
                     IMyMotorSuspension wheel = w.Wheel;
                     wheel.SteeringOverride = MathHelper.Clamp(w.IsFrontFocal ? -autopilot.Steer : autopilot.Steer, -1, 1);
                     wheel.PropulsionOverride = w.IsLeft ? propulsion : -propulsion;
 
                     // update strength
-                    if (_suspensionStrength)
-                    {
+                    if (_suspensionStrength) {
                         wheel.Strength += (float)((w.TargetStrength - wheel.Strength) * 0.5);
                     }
 
                     if (_friction)
-                        if (speed > _frictionMinSpeed && isTurning)
-                        {
+                        if (speed > _frictionMinSpeed && isTurning) {
                             w.Friction = isTurningLeft ? (w.IsLeft ? _frictionInner : _frictionOuter) : (w.IsLeft ? _frictionOuter : _frictionInner);
                         }
                         else w.Friction = 100;
@@ -191,16 +179,13 @@ namespace IngameScript
                         wheel.Power = power.MaxPowerPercent;
 
                     // update height
-                    if (_suspensionHight)
-                    {
-                        if ((roll > _suspensionHightRoll && w.IsLeft) || (roll < -_suspensionHightRoll && !w.IsLeft))
-                        {
+                    if (_suspensionHight) {
+                        if ((roll > _suspensionHightRoll && w.IsLeft) || (roll < -_suspensionHightRoll && !w.IsLeft)) {
                             var value = (float)Util.NormalizeClamp(Math.Abs(orientation.Roll), 0, 25, high, low);
                             wheel.Height += (value - wheel.Height) * 0.2f;
                             rollCompensating = true;
                         }
-                        else
-                        {
+                        else {
                             wheel.Height += (w.TargetHeight - wheel.Height) * 0.3f;
                             rollCompensating = false;
                         }
@@ -212,8 +197,7 @@ namespace IngameScript
 
                     // half breaking
                     wheel.Brake = true;
-                    if (isHalfBreaking && w.IsFront)
-                    {
+                    if (isHalfBreaking && w.IsFront) {
                         wheel.Brake = false;
                         wheel.Power = 0;
                     }
@@ -222,17 +206,14 @@ namespace IngameScript
                         wheel.ApplyAction("Add Top Part");
 
                 }
-                if (SubWheels.Count() > 0)
-                {
+                if (SubWheels.Count() > 0) {
                     yield return null;
-                    if (!double.TryParse(_highModeHight, out high))
-                    {
+                    if (!double.TryParse(_highModeHight, out high)) {
                         high = SubWheels.FirstOrDefault().HeightOffsetMin;
                     }
                 }
                 var subWheelPropulsion = Cruise ? propulsion : -forwardBackward;
-                foreach (var w in SubWheels)
-                {
+                foreach (var w in SubWheels) {
                     IMyMotorSuspension wheel = w.Wheel;
                     w.SpeedLimit = MyWheels.First().SpeedLimit;
                     wheel.PropulsionOverride = w.IsLeft ? subWheelPropulsion : -subWheelPropulsion;
@@ -242,22 +223,18 @@ namespace IngameScript
                     else if (wheel.Power > power.MaxPowerPercent)
                         wheel.Power = power.MaxPowerPercent;
 
-                    if (_subWheelsStrength)
-                    {
+                    if (_subWheelsStrength) {
                         wheel.Strength += (float)((w.TargetStrength - wheel.Strength) * 0.5);
                     }
 
                     if (_friction)
-                        if (speed > _frictionMinSpeed && isTurning)
-                        {
+                        if (speed > _frictionMinSpeed && isTurning) {
                             w.Friction = isTurningLeft ? (w.IsLeft ? _frictionInner : _frictionOuter) : (w.IsLeft ? _frictionOuter : _frictionInner);
                         }
                         else w.Friction = 100;
 
-                    if (_suspensionHight)
-                    {
-                        if ((roll > _suspensionHightRoll && w.IsLeft) || (roll < -_suspensionHightRoll && !w.IsLeft))
-                        {
+                    if (_suspensionHight) {
+                        if ((roll > _suspensionHightRoll && w.IsLeft) || (roll < -_suspensionHightRoll && !w.IsLeft)) {
                             var value = (float)Util.NormalizeClamp(Math.Abs(orientation.Roll), 0, 25, high, low);
                             wheel.Height += (value - wheel.Height) * 0.5f;
                         }
@@ -274,8 +251,7 @@ namespace IngameScript
         }
 
         IEnumerable<IMyLightingBlock> Lights;
-        void InitStopLights()
-        {
+        void InitStopLights() {
             var orientation = Controllers.MainController.Orientation;
 
             Lights = Util.GetBlocks<IMyLightingBlock>(b =>
@@ -287,27 +263,22 @@ namespace IngameScript
             _StopLightsTask.Pause(Lights.Count() == 0);
         }
 
-        IEnumerable StopLightsTask()
-        {
-            while (true)
-            {
-                foreach (var l in Lights)
-                {
+        IEnumerable StopLightsTask() {
+            while (true) {
+                foreach (var l in Lights) {
                     l.Radius = 1f;
                     l.Intensity = 1f;
                     l.Falloff = 0;
                     l.Color = Color.DarkRed;
 
-                    if (UpDown > 0)
-                    {
+                    if (UpDown > 0) {
                         l.Intensity = 5f;
                         l.Falloff = 1.3f;
                         l.Radius = 5f;
                         l.Color = Color.Red;
                     }
 
-                    if (ForwardBackward > 0)
-                    {
+                    if (ForwardBackward > 0) {
                         l.Intensity = 5f;
                         l.Falloff = 1.3f;
                         l.Radius = 5f;
@@ -318,8 +289,7 @@ namespace IngameScript
             }
         }
 
-        void ToggleHightMode()
-        {
+        void ToggleHightMode() {
             var controlWheel = MyWheels.FirstOrDefault();
             var currentHeight = controlWheel.TargetHeight;// -31.9
 
@@ -344,11 +314,9 @@ namespace IngameScript
             foreach (var w in SubWheels) w.TargetHeight = targetHeight;
         }
 
-        void RestTurrets()
-        {
+        void RestTurrets() {
             var turr = Util.GetBlocks<IMySearchlight>();
-            foreach (var item in turr)
-            {
+            foreach (var item in turr) {
                 item.SetManualAzimuthAndElevation(0, 0);
             }
         }

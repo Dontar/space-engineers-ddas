@@ -30,25 +30,21 @@ namespace IngameScript
 
                 public bool Paused => IsPaused;
 
-                public ITask Every(float seconds)
-                {
+                public ITask Every(float seconds) {
                     Interval = TimeSpan.FromSeconds(seconds);
                     return this;
                 }
-                public ITask Pause(bool pause)
-                {
+                public ITask Pause(bool pause) {
                     IsPaused = pause;
                     return this;
                 }
 
-                public ITask Once()
-                {
+                public ITask Once() {
                     IsOnce = true;
                     return this;
                 }
 
-                public void Restart()
-                {
+                public void Restart() {
                     Enumerator = Ref.GetEnumerator();
                     TimeSinceLastRun = TimeSpan.Zero;
                     TaskResult = null;
@@ -57,10 +53,8 @@ namespace IngameScript
             }
             static readonly List<Task> tasks = new List<Task>();
 
-            public static ITask RunTask(IEnumerable task)
-            {
-                var newTask = new Task
-                {
+            public static ITask RunTask(IEnumerable task) {
+                var newTask = new Task {
                     Ref = task,
                     Enumerator = task.GetEnumerator(),
                     Interval = TimeSpan.FromSeconds(0),
@@ -73,16 +67,13 @@ namespace IngameScript
                 return newTask;
             }
 
-            static IEnumerable InternalTask(Action<object> cb, bool timeout = false)
-            {
-                if (timeout)
-                {
+            static IEnumerable InternalTask(Action<object> cb, bool timeout = false) {
+                if (timeout) {
                     cb(null);
                     yield break;
                 }
                 var context = new Dictionary<string, object>();
-                while (true)
-                {
+                while (true) {
                     cb(context);
                     yield return null;
                 }
@@ -96,10 +87,8 @@ namespace IngameScript
 
             public static T GetTaskResult<T>() => tasks.Select(t => t.TaskResult).OfType<T>().FirstOrDefault();
             public static TimeSpan CurrentTaskLastRun;
-            public static void Tick(TimeSpan TimeSinceLastRun)
-            {
-                for (int i = tasks.Count - 1; i >= 0; i--)
-                {
+            public static void Tick(TimeSpan TimeSinceLastRun) {
+                for (int i = tasks.Count - 1; i >= 0; i--) {
                     var task = tasks[i];
                     if (task.IsPaused) continue;
 
@@ -109,20 +98,16 @@ namespace IngameScript
                     if (task.TimeSinceLastRun < task.Interval) continue;
 
                     CurrentTaskLastRun = task.TimeSinceLastRun;
-                    try
-                    {
-                        if (!task.Enumerator.MoveNext())
-                        {
-                            if (task.IsOnce)
-                            {
+                    try {
+                        if (!task.Enumerator.MoveNext()) {
+                            if (task.IsOnce) {
                                 tasks.RemoveAt(i);
                                 continue;
                             }
                             task.Enumerator = task.Ref.GetEnumerator();
                         }
                     }
-                    catch (Exception e)
-                    {
+                    catch (Exception e) {
                         Util.Echo(e.ToString());
                     }
                     task.TimeSinceLastRun = TimeSpan.Zero;

@@ -22,8 +22,7 @@ namespace IngameScript
 
         GridDimensions Dimensions;
 
-        void InitAutoLevel()
-        {
+        void InitAutoLevel() {
             Gyros = Util.GetBlocks<IMyGyro>(b => Util.IsNotIgnored(b, _ignoreTag));
 
             double blockSize = (Me.CubeGrid.GridSizeEnum == MyCubeSize.Large) ? 2.5 : 0.5; // meters
@@ -36,8 +35,7 @@ namespace IngameScript
             Dimensions.Length = (float)size.Z;
         }
 
-        float CalcRequiredGyroForce(float roll, int magnitude = 10)
-        {
+        float CalcRequiredGyroForce(float roll, int magnitude = 10) {
             if (Gyros.Count() == 0) return 0;
 
             var width = Dimensions.Width;
@@ -54,8 +52,7 @@ namespace IngameScript
             return (float)(Math.Min(force + torqueAccel, maxForce) / maxForce);
         }
 
-        IEnumerable FlipGridTask()
-        {
+        IEnumerable FlipGridTask() {
             if (Flipping || Gyros.Count() == 0) yield break;
 
             Flipping = true;
@@ -65,8 +62,7 @@ namespace IngameScript
             var force = CalcRequiredGyroForce(roll);
 
             Util.ApplyGyroOverride(0, 0, roll, force, Gyros, Controllers.MainController.WorldMatrix);
-            while (Math.Abs(OrientationResult.Roll) > 25 && UpDown == 0)
-            {
+            while (Math.Abs(OrientationResult.Roll) > 25 && UpDown == 0) {
                 yield return null;
             }
             ResetGyros();
@@ -74,23 +70,18 @@ namespace IngameScript
             _AutoLevelTask.Pause(!_autoLevel);
         }
 
-        private void ResetGyros()
-        {
+        private void ResetGyros() {
             var ai = Pilot.IsAutoPilotEnabled;
-            foreach (var g in Gyros)
-            {
+            foreach (var g in Gyros) {
                 g.Roll = g.Yaw = g.Pitch = 0; g.GyroOverride = false; g.GyroPower = ai ? 0 : 1;
             }
         }
 
-        IEnumerable AutoLevelTask()
-        {
+        IEnumerable AutoLevelTask() {
             if (Gyros.Count() == 0) yield break;
             var isFastEnough = Speed * 3.6 > 20;
-            if (!isFastEnough)
-            {
-                if (Speed < 1 && Math.Abs(OrientationResult.Roll) >= 60)
-                {
+            if (!isFastEnough) {
+                if (Speed < 1 && Math.Abs(OrientationResult.Roll) >= 60) {
                     TaskManager.RunTask(FlipGridTask()).Once();
                 }
                 yield break;
@@ -101,12 +92,10 @@ namespace IngameScript
             var pidPitch = new PID(_pidPitch);
 
             var power = CalcRequiredGyroForce(30 * MathHelper.RPMToRadiansPerSecond, 5);
-            while (isFastEnough)
-            {
+            while (isFastEnough) {
                 var orientation = OrientationResult;
                 var currentElevation = orientation.Elevation;
-                if (currentElevation > 4)
-                {
+                if (currentElevation > 4) {
                     isFastEnough = Speed * 3.6 > 20;
                     var dt = TaskManager.CurrentTaskLastRun.TotalSeconds;
                     var rollSpeed = pidRoll.Signal(orientation.RadRoll, dt);
@@ -114,8 +103,7 @@ namespace IngameScript
 
                     Util.ApplyGyroOverride(pitchSpeed, /* yawSpeed */0, -rollSpeed, (float)power, Gyros, mainController.WorldMatrix);
                 }
-                else
-                {
+                else {
                     pidRoll.Clear();
                     pidPitch.Clear();
                     ResetGyros();

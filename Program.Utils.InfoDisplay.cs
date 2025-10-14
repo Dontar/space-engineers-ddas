@@ -10,22 +10,19 @@ namespace IngameScript
             public StringBuilder Sb;
             int _lineLength;
 
-            public InfoDisplay(StringBuilder stringBuilder, int lineLength)
-            {
+            public InfoDisplay(StringBuilder stringBuilder, int lineLength) {
                 _lineLength = lineLength;
                 Sb = stringBuilder;
             }
 
             public void Sep() => Label("");
 
-            public void Label(string label, char filler = '=')
-            {
+            public void Label(string label, char filler = '=') {
                 var prefix = string.Join("", Enumerable.Repeat(filler.ToString(), 2));
                 var suffix = string.Join("", Enumerable.Repeat(filler.ToString(), _lineLength - label.Length - 2));
                 Sb.AppendLine(prefix + label + suffix);
             }
-            public void Row(string label, object value, string format = "", string unitType = "")
-            {
+            public void Row(string label, object value, string format = "", string unitType = "") {
                 int width = _lineLength / 2;
                 var labelWidth = width - 1;
                 var valueWidth = label.Length > labelWidth ? width - unitType.Length - (label.Length - labelWidth) : width - unitType.Length;

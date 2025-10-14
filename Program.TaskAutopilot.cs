@@ -21,8 +21,7 @@ namespace IngameScript
         float WayPointReachThreshold;
         float WayPointCloseThreshold;
 
-        void InitAutopilot()
-        {
+        void InitAutopilot() {
             AutopilotBlock = Util.GetBlocks<IMyFlightMovementBlock>().FirstOrDefault();
             Remote = Controllers.MainController is IMyRemoteControl ? (IMyRemoteControl)Controllers.MainController : null;
             Pilot = Autopilot.FromBlock(new IMyTerminalBlock[] { AutopilotBlock, Remote });
@@ -32,8 +31,7 @@ namespace IngameScript
             WayPointReachThreshold = (float)Me.CubeGrid.WorldVolume.Radius + 2;
             WayPointCloseThreshold = WayPointReachThreshold + 40;
 
-            if (Sensor != null)
-            {
+            if (Sensor != null) {
                 SetupSensor();
             }
         }
@@ -45,8 +43,7 @@ namespace IngameScript
             public int WaypointCount;
             public string Mode;
             public double Distance;
-            public void Reset()
-            {
+            public void Reset() {
                 Waypoint = "None";
                 Steer = 0;
                 Mode = "Idle";
@@ -57,8 +54,7 @@ namespace IngameScript
 
         AutopilotTaskResult AutopilotResult = new AutopilotTaskResult();
 
-        IEnumerable AutopilotTask()
-        {
+        IEnumerable AutopilotTask() {
             AutopilotResult.Reset();
 
             if (!Pilot.IsAutoPilotEnabled) yield break;
@@ -73,19 +69,16 @@ namespace IngameScript
                     ? FollowTarget()
                     : TrackTarget();
 
-            foreach (var _ in routine)
-            {
+            foreach (var _ in routine) {
                 yield return null;
             }
         }
 
-        IEnumerable FollowTarget()
-        {
+        IEnumerable FollowTarget() {
             var controller = Controllers.MainController;
             var queue = new UniqueTimedQueue(5);
             AutopilotResult.Mode = "Follow";
-            while (Pilot.IsAutoPilotEnabled)
-            {
+            while (Pilot.IsAutoPilotEnabled) {
                 queue.Enqueue(Pilot.CurrentWaypoint, i => queue.Count == 0 || !queue.LastOrDefault().Item.Equals(i, 20));
                 var currentWaypoint = queue.TryPeek();
 
@@ -93,8 +86,7 @@ namespace IngameScript
 
                 if (CheckEmergencyStop()) yield break;
 
-                if (CheckNoEmergencySteer())
-                {
+                if (CheckNoEmergencySteer()) {
                     Vector3D currentPosition, direction;
                     double directionAngle, distance;
                     CalcSteer(currentWaypoint, out currentPosition, out direction, out directionAngle, out distance);
@@ -105,8 +97,7 @@ namespace IngameScript
                     AutopilotResult.Distance = distance;
 
                     var distanceToTarget = Math.Abs(Vector3D.Distance(currentPosition, queue.Last().Item.Coords));
-                    if (distanceToTarget < WayPointCloseThreshold)
-                    {
+                    if (distanceToTarget < WayPointCloseThreshold) {
                         var matchedSpeed = queue.CalcSpeed();
                         CruiseSpeed = (float)MathHelper.Clamp(matchedSpeed * 3.6, 10, Pilot.SpeedLimit * 3.6);
                     }
@@ -121,12 +112,10 @@ namespace IngameScript
             }
         }
 
-        IEnumerable TrackTarget()
-        {
+        IEnumerable TrackTarget() {
             var controller = Controllers.MainController;
             AutopilotResult.Mode = "Track";
-            while (Pilot.IsAutoPilotEnabled)
-            {
+            while (Pilot.IsAutoPilotEnabled) {
                 var currentWaypoint = Pilot.CurrentWaypoint;
 
                 controller.HandBrake = currentWaypoint.Equals(MyWaypointInfo.Empty);
@@ -135,8 +124,7 @@ namespace IngameScript
 
                 if (CheckEmergencyStop()) yield break;
 
-                if (CheckNoEmergencySteer())
-                {
+                if (CheckNoEmergencySteer()) {
                     Vector3D currentPosition, direction;
                     double directionAngle, distance;
                     CalcSteer(currentWaypoint, out currentPosition, out direction, out directionAngle, out distance);
@@ -154,8 +142,7 @@ namespace IngameScript
             }
         }
 
-        IEnumerable FollowRoute()
-        {
+        IEnumerable FollowRoute() {
             var controller = Controllers.MainController;
             var wayPoints = Pilot.Waypoints;
             var wayPointsIter = wayPoints.GetEnumerator();
@@ -171,16 +158,14 @@ namespace IngameScript
             AutopilotResult.Mode = "Route";
             AutopilotResult.WaypointCount = wayPoints.Count();
 
-            while (Pilot.IsAutoPilotEnabled)
-            {
+            while (Pilot.IsAutoPilotEnabled) {
                 var currentWaypoint = wayPointsIter.Current;
 
                 SetCruiseControl();
 
                 if (CheckEmergencyStop()) yield break;
 
-                if (CheckNoEmergencySteer())
-                {
+                if (CheckNoEmergencySteer()) {
                     Vector3D currentPosition, direction;
                     double directionAngle, distance;
                     CalcSteer(currentWaypoint, out currentPosition, out direction, out directionAngle, out distance);
@@ -189,12 +174,9 @@ namespace IngameScript
                     AutopilotResult.Steer = (float)MathHelper.Clamp(directionAngle, -1, 1);
                     AutopilotResult.Distance = distance;
 
-                    if (distance < WayPointReachThreshold + Speed * 3.6 * 50 / 180)
-                    {
-                        if (!wayPointsIter.MoveNext())
-                        {
-                            switch (Pilot.FlightMode)
-                            {
+                    if (distance < WayPointReachThreshold + Speed * 3.6 * 50 / 180) {
+                        if (!wayPointsIter.MoveNext()) {
+                            switch (Pilot.FlightMode) {
                                 case FlightMode.Circle:
                                     wayPointsIter = wayPoints.GetEnumerator();
                                     wayPointsIter.MoveNext();
@@ -217,8 +199,7 @@ namespace IngameScript
             }
         }
 
-        void CalcSteer(MyWaypointInfo currentWaypoint, out Vector3D currentPosition, out Vector3D direction, out double directionAngle, out double distance)
-        {
+        void CalcSteer(MyWaypointInfo currentWaypoint, out Vector3D currentPosition, out Vector3D direction, out double directionAngle, out double distance) {
             var matrix = Pilot.Matrix;
             currentPosition = Pilot.GetPosition();
             direction = AvoidCollision(Sensor, currentPosition, currentWaypoint.Coords);
@@ -227,11 +208,9 @@ namespace IngameScript
             directionAngle = Math.Atan2(directionNormal.Dot(matrix.Left), directionNormal.Dot(matrix.Forward));
         }
 
-        void SetCruiseControl()
-        {
+        void SetCruiseControl() {
             var controller = Controllers.MainController;
-            if (!Cruise && !controller.HandBrake)
-            {
+            if (!Cruise && !controller.HandBrake) {
                 TaskManager.RunTask(CruiseTask(Pilot.SpeedLimit * 3.6f, () => Pilot.IsAutoPilotEnabled && !controller.HandBrake)).Once();
             }
             else
@@ -239,18 +218,15 @@ namespace IngameScript
         }
 
         Random Rand = new Random((int)DateTime.Now.Ticks & 0x0000FFFF);
-        string GenerateRandomStr()
-        {
+        string GenerateRandomStr() {
             var suffix = "";
-            for (int i = 0; i < 3; i++)
-            {
+            for (int i = 0; i < 3; i++) {
                 suffix += (char)('A' + Rand.Next(0, 26));
             }
             return suffix;
         }
 
-        IEnumerable RecordRouteTask()
-        {
+        IEnumerable RecordRouteTask() {
             if (Remote == null || Recording) yield break;
             var minDistance = Remote.CubeGrid.WorldVolume.Radius * 2;
             var wayPoints = new List<MyWaypointInfo>();
@@ -258,11 +234,9 @@ namespace IngameScript
             Recording = true;
 
             var previous = Vector3D.Zero;
-            while (Recording)
-            {
+            while (Recording) {
                 var current = Remote.GetPosition();
-                if (Vector3D.IsZero(previous) || Vector3D.Distance(current, previous) > minDistance)
-                {
+                if (Vector3D.IsZero(previous) || Vector3D.Distance(current, previous) > minDistance) {
                     wayPoints.Add(new MyWaypointInfo($"Waypoint-#{counter++}", current));
                 }
                 previous = current;
@@ -273,21 +247,18 @@ namespace IngameScript
             routeList.TryParse(Remote.CustomData);
 
             var newRouteName = $"Route-#{GenerateRandomStr()}";
-            while (routeList.ContainsSection(newRouteName))
-            {
+            while (routeList.ContainsSection(newRouteName)) {
                 newRouteName = $"Route-#{GenerateRandomStr()}";
             }
 
-            for (int i = 0; i < wayPoints.Count; i++)
-            {
+            for (int i = 0; i < wayPoints.Count; i++) {
                 routeList.Set(newRouteName, $"#{i}", wayPoints[i].ToString());
             }
 
             Remote.CustomData = routeList.ToString();
         }
 
-        void PlayRoute(string route, bool reverse, bool play = false)
-        {
+        void PlayRoute(string route, bool reverse, bool play = false) {
             if (Remote == null) return;
             var routeList = new MyIni();
             routeList.TryParse(Remote.CustomData);
@@ -296,19 +267,16 @@ namespace IngameScript
             routeList.GetKeys(route, wayPoints);
             Remote.ClearWaypoints();
             IEnumerable<MyIniKey> list = reverse ? wayPoints.AsEnumerable().Reverse() : wayPoints;
-            foreach (var w in list)
-            {
+            foreach (var w in list) {
                 MyWaypointInfo wayPoint;
-                if (MyWaypointInfo.TryParse(routeList.Get(w).ToString(), out wayPoint))
-                {
+                if (MyWaypointInfo.TryParse(routeList.Get(w).ToString(), out wayPoint)) {
                     Remote.AddWaypoint(wayPoint);
                 }
             }
             Remote.SetAutoPilotEnabled(play);
         }
 
-        void SaveRoute()
-        {
+        void SaveRoute() {
             if (Remote == null) return;
             var wayPoints = new List<MyWaypointInfo>();
             Remote.GetWaypointInfo(wayPoints);
@@ -317,28 +285,24 @@ namespace IngameScript
             routeList.TryParse(Remote.CustomData);
 
             var newRouteName = $"Route-#{GenerateRandomStr()}";
-            while (routeList.ContainsSection(newRouteName))
-            {
+            while (routeList.ContainsSection(newRouteName)) {
                 newRouteName = $"Route-#{GenerateRandomStr()}";
             }
 
-            for (int i = 0; i < wayPoints.Count; i++)
-            {
+            for (int i = 0; i < wayPoints.Count; i++) {
                 routeList.Set(newRouteName, $"#{i}", wayPoints[i].ToString());
             }
 
             Remote.CustomData = routeList.ToString();
         }
 
-        bool ProcessAICommands(string args)
-        {
-            var commandLine = args.Split(new [] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+        bool ProcessAICommands(string args) {
+            var commandLine = args.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
             if (commandLine.Length < 1) return false;
 
             var command = commandLine[0].ToLower();
 
-            switch (command)
-            {
+            switch (command) {
                 case "record":
                     if (!Recording)
                         TaskManager.RunTask(RecordRouteTask()).Every(1.7f).Once();

@@ -21,10 +21,8 @@ namespace IngameScript
 
         GridOrientation OrientationResult = new GridOrientation();
 
-        IEnumerable GridOrientationsTask()
-        {
-            while (true)
-            {
+        IEnumerable GridOrientationsTask() {
+            while (true) {
                 var controller = Controllers.MainController;
                 var grav = Gravity.Normalized();
                 var matrix = controller.WorldMatrix;
@@ -52,17 +50,16 @@ namespace IngameScript
         TControllers Controllers;
 
         IMyShipController Controller => Controllers.Controllers.FirstOrDefault(c => c.IsUnderControl) ?? Controllers.MainController;
-        public float ForwardBackward => Controller?.MoveIndicator.Z ?? 0;
-        public float LeftRight => Controller?.MoveIndicator.X ?? 0;
-        public float UpDown => Controller?.MoveIndicator.Y ?? 0;
-        public MyShipMass Mass => Controllers.MainController.CalculateShipMass();
-        public Vector3D Gravity => Controllers.MainController.GetTotalGravity();
-        public double GravityMagnitude => Gravity.Length();
-        public MyShipVelocities Velocities => Controllers.MainController.GetShipVelocities();
-        public double Speed => Velocities.LinearVelocity.Length();
+        float ForwardBackward => Controller?.MoveIndicator.Z ?? 0;
+        float LeftRight => Controller?.MoveIndicator.X ?? 0;
+        float UpDown => Controller?.MoveIndicator.Y ?? 0;
+        MyShipMass Mass => Controllers.MainController.CalculateShipMass();
+        Vector3D Gravity => Controllers.MainController.GetTotalGravity();
+        double GravityMagnitude => Gravity.Length();
+        MyShipVelocities Velocities => Controllers.MainController.GetShipVelocities();
+        double Speed => Velocities.LinearVelocity.Length();
 
-        void InitGridProps()
-        {
+        void InitGridProps() {
             var controllers = Util.GetBlocks<IMyShipController>(b => Util.IsNotIgnored(b, _ignoreTag));
             var myControllers = controllers.Where(c => c.CubeGrid == Me.CubeGrid && c.CanControlShip);
             var subControllers = controllers.Where(c => c.CubeGrid != Me.CubeGrid);

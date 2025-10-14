@@ -14,23 +14,19 @@ namespace IngameScript
     {
         IEnumerable<IMyTextSurface> ScreensStat;
         int CurrentScreenType = 0;
-        void InitScreens()
-        {
+        void InitScreens() {
             ScreensStat = Util.GetScreens("ddas-status").ToArray();
         }
 
-        string F(string flag, bool state)
-        {
+        string F(string flag, bool state) {
             return state ? $"[{flag}]" : flag;
         }
 
-        void ChangeScreenType()
-        {
+        void ChangeScreenType() {
             CurrentScreenType = (CurrentScreenType + 1) % 5;
         }
 
-        void DisplayStatus(InfoDisplay s)
-        {
+        void DisplayStatus(InfoDisplay s) {
             var propulsionSystemStatus = CruiseResult;
             var power = PowerResult;
             var orientation = OrientationResult;
@@ -52,8 +48,7 @@ namespace IngameScript
             s.Row(F("Flip", Flipping), F("Level", _autoLevel));
         }
 
-        void DisplayRollPitchStatus(InfoDisplay s)
-        {
+        void DisplayRollPitchStatus(InfoDisplay s) {
             var orientation = OrientationResult;
             var gyro = Gyros.FirstOrDefault();
 
@@ -62,22 +57,19 @@ namespace IngameScript
             s.Row("Roll", orientation.Roll, "N1", " °");
             s.Row("Pitch", orientation.Pitch, "N1", " °");
             s.Label("Gyros");
-            if (gyro != null)
-            {
+            if (gyro != null) {
                 s.Row("Yaw", gyro.Yaw * MathHelper.RadiansPerSecondToRPM, "N1", " RPM");
                 s.Row("Pitch", gyro.Pitch * MathHelper.RadiansPerSecondToRPM, "N1", " RPM");
                 s.Row("Roll", gyro.Roll * MathHelper.RadiansPerSecondToRPM, "N1", " RPM");
                 s.Row("Power", gyro.GyroPower * 100, "N1", " %");
                 s.Row("Override", gyro.GyroOverride);
             }
-            else
-            {
+            else {
                 s.Row("No Gyros Found", "");
             }
         }
 
-        void DisplayAutopilot(InfoDisplay s)
-        {
+        void DisplayAutopilot(InfoDisplay s) {
             var autopilot = AutopilotResult;
             s.Sb.Clear();
             s.Label("Autopilot");
@@ -89,26 +81,21 @@ namespace IngameScript
             s.Row("Waypoint #", autopilot.WaypointCount);
         }
 
-        IEnumerable<IEnumerable<T>> ZipPairs<T>(IEnumerable<T> list)
-        {
+        IEnumerable<IEnumerable<T>> ZipPairs<T>(IEnumerable<T> list) {
             var length = list.Count();
-            for (int i = 0; i < length / 2; i++)
-            {
+            for (int i = 0; i < length / 2; i++) {
                 yield return list.Take(2);
                 list = list.Skip(2);
             }
         }
 
-        void DisplayWheelStrength(InfoDisplay s)
-        {
+        void DisplayWheelStrength(InfoDisplay s) {
             var frontWheels = MyWheels.Where(w => w.IsFront).OrderBy(w => w.ToCoM.Z);
             var backWheels = MyWheels.Where(w => !w.IsFront).OrderBy(w => w.ToCoM.Z);
             var subWheels = SubWheels.OrderBy(w => w.ToCoM.Z);
 
-            Action<IEnumerable<IEnumerable<WheelWrapper>>> PrintAxel = wheels =>
-            {
-                foreach (var g in wheels)
-                {
+            Action<IEnumerable<IEnumerable<WheelWrapper>>> PrintAxel = wheels => {
+                foreach (var g in wheels) {
                     var axel = g.OrderBy(w => !w.IsLeft).ToArray();
                     s.Row($"|{axel[0].Wheel.Strength,3:N0}%|", $"|{axel[1].Wheel.Strength,3:N0}%|", "");
                     s.Label("", '-');
@@ -126,16 +113,13 @@ namespace IngameScript
             PrintAxel(ZipPairs(subWheels));
         }
 
-        void DisplayWheelHeight(InfoDisplay s)
-        {
+        void DisplayWheelHeight(InfoDisplay s) {
             var frontWheels = MyWheels.Where(w => w.IsFront).OrderBy(w => w.ToCoM.Z);
             var backWheels = MyWheels.Where(w => !w.IsFront).OrderBy(w => w.ToCoM.Z);
             var subWheels = SubWheels.OrderBy(w => w.ToCoM.Z);
 
-            Action<IEnumerable<IEnumerable<WheelWrapper>>> PrintAxel = wheels =>
-            {
-                foreach (var g in wheels)
-                {
+            Action<IEnumerable<IEnumerable<WheelWrapper>>> PrintAxel = wheels => {
+                foreach (var g in wheels) {
                     var axel = g.OrderBy(w => !w.IsLeft).ToArray();
                     var right = -axel[0].Wheel.Height * 100;
                     var left = -axel[1].Wheel.Height * 100;
@@ -155,14 +139,11 @@ namespace IngameScript
             PrintAxel(ZipPairs(subWheels));
         }
 
-        IEnumerable ScreensTask()
-        {
+        IEnumerable ScreensTask() {
             var screenText = new InfoDisplay(new StringBuilder(), 22);
 
-            while (true)
-            {
-                switch (CurrentScreenType)
-                {
+            while (true) {
+                switch (CurrentScreenType) {
                     case 4:
                         DisplayRollPitchStatus(screenText);
                         break;
@@ -179,8 +160,7 @@ namespace IngameScript
                         DisplayStatus(screenText);
                         break;
                 }
-                foreach (var s in ScreensStat)
-                {
+                foreach (var s in ScreensStat) {
                     s.ContentType = ContentType.TEXT_AND_IMAGE;
                     s.Font = "Monospace";
                     s.WriteText(screenText.Sb);

@@ -14,8 +14,7 @@ namespace IngameScript
         {
             public T Item;
             public TimeSpan TimeAdded;
-            public TimedItem(T item)
-            {
+            public TimedItem(T item) {
                 Item = item;
                 TimeAdded = DateTime.Now.TimeOfDay;
             }
@@ -27,52 +26,43 @@ namespace IngameScript
 
             public UniqueTimedQueue() : base() { }
 
-            public UniqueTimedQueue(int capacity) : base(capacity)
-            {
+            public UniqueTimedQueue(int capacity) : base(capacity) {
                 _capacity = capacity;
             }
 
-            public void Enqueue(MyWaypointInfo item, Func<MyWaypointInfo, bool> compare)
-            {
-                if (compare(item))
-                {
+            public void Enqueue(MyWaypointInfo item, Func<MyWaypointInfo, bool> compare) {
+                if (compare(item)) {
                     Enqueue(new TimedItem<MyWaypointInfo>(item));
                 }
-                if (Count > _capacity)
-                {
+                if (Count > _capacity) {
                     Dequeue();
                 }
             }
 
-            public MyWaypointInfo TryDequeue()
-            {
+            public MyWaypointInfo TryDequeue() {
                 if (Count > 0) return default(MyWaypointInfo);
                 return Dequeue().Item;
             }
 
 
-            public MyWaypointInfo TryPeek()
-            {
+            public MyWaypointInfo TryPeek() {
                 if (Count < 0) return default(MyWaypointInfo);
                 return Peek().Item;
             }
 
-            public double CalcSpeed()
-            {
+            public double CalcSpeed() {
                 if (Count < 2) return 0;
 
                 var list = ToArray();
                 // Calculate average speed from list
                 double totalDistance = 0;
                 double totalTime = 0;
-                for (int i = 1; i < list.Length; i++)
-                {
+                for (int i = 1; i < list.Length; i++) {
                     var prev = list[i - 1];
                     var curr = list[i];
                     double distance = Math.Abs(Vector3D.Distance(prev.Item.Coords, curr.Item.Coords));
                     double time = Math.Abs((curr.TimeAdded - prev.TimeAdded).TotalSeconds);
-                    if (time > 0)
-                    {
+                    if (time > 0) {
                         totalDistance += distance;
                         totalTime += time;
                     }
@@ -84,8 +74,7 @@ namespace IngameScript
 
         class Autopilot
         {
-            public Autopilot(IMyTerminalBlock[] blocks)
-            {
+            public Autopilot(IMyTerminalBlock[] blocks) {
                 Blocks = blocks;
             }
 
@@ -93,12 +82,9 @@ namespace IngameScript
 
             IMyTerminalBlock _block;
 
-            public bool IsAutoPilotEnabled
-            {
-                get
-                {
-                    if (_block != null)
-                    {
+            public bool IsAutoPilotEnabled {
+                get {
+                    if (_block != null) {
                         var enabled = _block.GetValueBool(_block is IMyFlightMovementBlock ? "ActivateBehavior" : "AutoPilot");
                         if (!enabled) _block = null;
                         return enabled;
@@ -107,18 +93,14 @@ namespace IngameScript
                     return _block != null;
                 }
             }
-            public void SetAutoPilotEnabled(bool enabled)
-            {
+            public void SetAutoPilotEnabled(bool enabled) {
                 _block?.SetValueBool(_block is IMyFlightMovementBlock ? "ActivateBehavior" : "AutoPilot", enabled);
                 if (!enabled) _block = null;
             }
 
-            public IEnumerable<MyWaypointInfo> Waypoints
-            {
-                get
-                {
-                    if (_block is IMyRemoteControl)
-                    {
+            public IEnumerable<MyWaypointInfo> Waypoints {
+                get {
+                    if (_block is IMyRemoteControl) {
                         var waypoints = new List<MyWaypointInfo>();
                         (_block as IMyRemoteControl).GetWaypointInfo(waypoints);
                         return waypoints;
@@ -128,10 +110,8 @@ namespace IngameScript
                     return aiWaypoints.Select(w => new MyWaypointInfo(w.Name, w.Matrix.Translation));
                 }
             }
-            public MyWaypointInfo CurrentWaypoint
-            {
-                get
-                {
+            public MyWaypointInfo CurrentWaypoint {
+                get {
                     if (_block is IMyRemoteControl) return (_block as IMyRemoteControl).CurrentWaypoint;
                     var autopilot = _block as IMyFlightMovementBlock;
                     if (autopilot.CurrentWaypoint == null) return MyWaypointInfo.Empty;
@@ -147,8 +127,7 @@ namespace IngameScript
             public static Autopilot FromBlock(IMyTerminalBlock[] blocks) => new Autopilot(blocks);
         }
 
-        void SetupSensor()
-        {
+        void SetupSensor() {
             var halfHeight = Dimensions.Height / 2;
             var vertPos = (Sensor.Position.Y - Me.CubeGrid.Min.Y) * (Me.CubeGrid.GridSizeEnum == MyCubeSize.Large ? 2.5 : 0.5); // meters;
 
@@ -165,24 +144,19 @@ namespace IngameScript
         }
 
         TaskManager.ITask EmergencySteer;
-        bool CheckNoEmergencySteer()
-        {
-            if (LeftRight != 0)
-            {
+        bool CheckNoEmergencySteer() {
+            if (LeftRight != 0) {
                 TaskManager.ClearTask(EmergencySteer);
                 EmergencySteer = TaskManager.SetTimeout(() => EmergencySteer = null, 3);
             }
-            if (EmergencySteer != null)
-            {
+            if (EmergencySteer != null) {
                 AutopilotResult.Steer = -LeftRight;
             }
             return EmergencySteer == null;
         }
 
-        bool CheckEmergencyStop()
-        {
-            if (UpDown > 0)
-            {
+        bool CheckEmergencyStop() {
+            if (UpDown > 0) {
                 Pilot.SetAutoPilotEnabled(false);
                 return true;
             }
