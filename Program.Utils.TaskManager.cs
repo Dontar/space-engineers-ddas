@@ -18,37 +18,38 @@ namespace IngameScript
         }
         class Task : ITask
         {
-            public IEnumerator Enumerator;
-            public IEnumerable Ref;
-            public TimeSpan Interval;
-            public TimeSpan TimeSinceLastRun;
-            public object TaskResult;
-            public bool IsPaused;
-            public bool IsOnce;
+            IEnumerator Enumerator;
+            IEnumerable Ref;
+            TimeSpan Interval;
+            TimeSpan TimeSinceLastRun;
+            object TaskResult;
+            bool IsPaused;
+            bool IsOnce;
 
-            public bool Paused => IsPaused;
+            bool ITask.Paused => IsPaused;
 
-            public ITask Every(float seconds) {
+            ITask ITask.Every(float seconds) {
                 Interval = TimeSpan.FromSeconds(seconds);
                 return this;
             }
-            public ITask Pause(bool pause) {
+            ITask ITask.Pause(bool pause) {
                 IsPaused = pause;
                 return this;
             }
 
-            public ITask Once() {
+            ITask ITask.Once() {
                 IsOnce = true;
                 return this;
             }
 
-            public void Restart() {
+            void ITask.Restart() {
                 Enumerator = Ref.GetEnumerator();
                 TimeSinceLastRun = TimeSpan.Zero;
                 TaskResult = null;
             }
-            public T Result<T>() => (T)TaskResult;
-            static readonly List<Task> tasks = new List<Task>();
+            T ITask.Result<T>() => (T)TaskResult;
+
+            static List<Task> tasks = new List<Task>();
 
             public static ITask RunTask(IEnumerable task) {
                 var newTask = new Task {
