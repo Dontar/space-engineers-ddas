@@ -211,7 +211,7 @@ namespace IngameScript
         void SetCruiseControl() {
             var controller = Controllers.MainController;
             if (!Cruise && !controller.HandBrake) {
-                TaskManager.RunTask(CruiseTask(Pilot.SpeedLimit * 3.6f, () => Pilot.IsAutoPilotEnabled && !controller.HandBrake)).Once();
+                Task.RunTask(CruiseTask(Pilot.SpeedLimit * 3.6f, () => Pilot.IsAutoPilotEnabled && !controller.HandBrake)).Once();
             }
             else
                 CruiseSpeed = Pilot.SpeedLimit * 3.6f;
@@ -296,23 +296,19 @@ namespace IngameScript
             Remote.CustomData = routeList.ToString();
         }
 
-        bool ProcessAICommands(string args) {
-            var commandLine = args.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-            if (commandLine.Length < 1) return false;
-
-            var command = commandLine[0].ToLower();
-
+        bool ProcessAICommands(MyCommandLine cmd) {
+            var command = cmd.Argument(0).ToLower();
             switch (command) {
                 case "record":
                     if (!Recording)
-                        TaskManager.RunTask(RecordRouteTask()).Every(1.7f).Once();
+                        Task.RunTask(RecordRouteTask()).Every(1.7f).Once();
                     else
                         Recording = false;
                     return true;
                 case "load":
                 case "play":
-                    var route = commandLine.Last();
-                    var reverse = commandLine.Any(s => s.ToLower() == "reverse");
+                    var route = cmd.Argument(1);
+                    var reverse = cmd.Switch("reverse");
                     var play = command == "play";
                     PlayRoute(route, reverse, play);
                     return true;

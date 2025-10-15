@@ -143,11 +143,11 @@ namespace IngameScript
             Util.SetSensorDimensions(Sensor, values);
         }
 
-        TaskManager.ITask EmergencySteer;
+        ITask EmergencySteer;
         bool CheckNoEmergencySteer() {
             if (LeftRight != 0) {
-                TaskManager.ClearTask(EmergencySteer);
-                EmergencySteer = TaskManager.SetTimeout(() => EmergencySteer = null, 3);
+                Task.ClearTask(EmergencySteer);
+                EmergencySteer = Task.SetTimeout(() => EmergencySteer = null, 3);
             }
             if (EmergencySteer != null) {
                 AutopilotResult.Steer = -LeftRight;

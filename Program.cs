@@ -3,6 +3,8 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using VRage;
+using VRage.Game.ModAPI.Ingame.Utilities;
 using VRageMath;
 
 namespace IngameScript
@@ -53,23 +55,23 @@ namespace IngameScript
             Runtime.UpdateFrequency = UpdateFrequency.Update10;
             Util.Init(this);
             InitGridProps();
-            TaskManager.RunTask(Util.StatusMonitorTask(this));
-            _MainTask = TaskManager.RunTask(MainTask());
-            TaskManager.RunTask(ScreensTask()).Every(0.5f);
-            _StopLightsTask = TaskManager.RunTask(StopLightsTask()).Pause(!_stopLights);
-            TaskManager.RunTask(AutopilotTask()).Every(1 / 3);
-            _AutoLevelTask = TaskManager.RunTask(AutoLevelTask()).Pause(!_autoLevel);
-            _PowerTask = TaskManager.RunTask(PowerTask()).Pause(!_power);
-            _PowerConsumptionTask = TaskManager.RunTask(PowerConsumptionTask()).Every(3);
-            TaskManager.RunTask(GridOrientationsTask());
-            TaskManager.RunTask(Util.DisplayLogo("DDAS", Me.GetSurface(0))).Every(1.5f);
+            Task.RunTask(Util.StatusMonitorTask(this));
+            _MainTask = Task.RunTask(MainTask());
+            Task.RunTask(ScreensTask()).Every(0.5f);
+            _StopLightsTask = Task.RunTask(StopLightsTask()).Pause(!_stopLights);
+            Task.RunTask(AutopilotTask()).Every(1 / 3);
+            _AutoLevelTask = Task.RunTask(AutoLevelTask()).Pause(!_autoLevel);
+            _PowerTask = Task.RunTask(PowerTask()).Pause(!_power);
+            _PowerConsumptionTask = Task.RunTask(PowerConsumptionTask()).Every(3);
+            Task.RunTask(GridOrientationsTask());
+            Task.RunTask(Util.DisplayLogo("DDAS", Me.GetSurface(0))).Every(1.5f);
         }
 
-        TaskManager.ITask _AutoLevelTask;
-        TaskManager.ITask _MainTask;
-        TaskManager.ITask _PowerTask;
-        TaskManager.ITask _PowerConsumptionTask;
-        TaskManager.ITask _StopLightsTask;
+        ITask _AutoLevelTask;
+        ITask _MainTask;
+        ITask _PowerTask;
+        ITask _PowerConsumptionTask;
+        ITask _StopLightsTask;
 
         public void Main(string argument, UpdateType updateSource) {
             if (Controllers.MainController == null) {
@@ -96,35 +98,38 @@ namespace IngameScript
 
             Memo.Of("OnPhysicalMassChange", Mass.PhysicalMass, () => InitStrength());
 
-            TaskManager.Tick(Runtime.TimeSinceLastRun);
+            Task.Tick(Runtime.TimeSinceLastRun);
         }
 
         void ProcessCommands(string argument) {
-            switch (argument.ToLower()) {
-                case "low":
-                case "high":
-                case "toggle_hight":
-                    ToggleHightMode();
-                    break;
-                case "flip":
-                    TaskManager.RunTask(FlipGridTask()).Once();
-                    break;
-                case "cruise":
-                    TaskManager.RunTask(CruiseTask()).Once();
-                    break;
-                case "level":
-                    _autoLevel = !_autoLevel;
-                    _AutoLevelTask.Pause(!_autoLevel);
-                    break;
-                case "status":
-                    ChangeScreenType();
-                    break;
-                case "rest_turrets":
-                    RestTurrets();
-                    break;
-                default:
-                    ProcessAICommands(argument);
-                    break;
+            var cmd = new MyCommandLine();
+            if (cmd.TryParse(argument)) {
+                switch (cmd.Argument(0).ToLower()) {
+                    case "low":
+                    case "high":
+                    case "toggle_hight":
+                        ToggleHightMode();
+                        break;
+                    case "flip":
+                        Task.RunTask(FlipGridTask()).Once();
+                        break;
+                    case "cruise":
+                        Task.RunTask(CruiseTask()).Once();
+                        break;
+                    case "level":
+                        _autoLevel = !_autoLevel;
+                        _AutoLevelTask.Pause(!_autoLevel);
+                        break;
+                    case "status":
+                        ChangeScreenType();
+                        break;
+                    case "rest_turrets":
+                        RestTurrets();
+                        break;
+                    default:
+                        ProcessAICommands(cmd);
+                        break;
+                }
             }
         }
 

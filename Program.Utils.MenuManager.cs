@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using VRage.Game.GUI.TextPanel;
+using VRage.Game.ModAPI.Ingame.Utilities;
 
 namespace IngameScript
 {
@@ -102,7 +103,8 @@ namespace IngameScript
             public void Apply() => menuStack.Peek().Apply();
             public void Render(IMyTextSurface screen) => menuStack.Peek().Render(screen);
 
-            public bool ProcessMenuCommands(string command = "") {
+            public bool ProcessMenuCommands(MyCommandLine cmd) {
+                var command = cmd.Argument(0);
                 switch (command.ToLower()) {
                     case "up":
                         Up();

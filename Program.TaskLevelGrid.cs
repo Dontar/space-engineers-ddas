@@ -82,7 +82,7 @@ namespace IngameScript
             var isFastEnough = Speed * 3.6 > 20;
             if (!isFastEnough) {
                 if (Speed < 1 && Math.Abs(OrientationResult.Roll) >= 60) {
-                    TaskManager.RunTask(FlipGridTask()).Once();
+                    Task.RunTask(FlipGridTask()).Once();
                 }
                 yield break;
             }
@@ -97,7 +97,7 @@ namespace IngameScript
                 var currentElevation = orientation.Elevation;
                 if (currentElevation > 4) {
                     isFastEnough = Speed * 3.6 > 20;
-                    var dt = TaskManager.CurrentTaskLastRun.TotalSeconds;
+                    var dt = Task.CurrentTaskLastRun.TotalSeconds;
                     var rollSpeed = pidRoll.Signal(orientation.RadRoll, dt);
                     var pitchSpeed = pidPitch.Signal(orientation.RadPitch - MathHelper.ToRadians(5), dt);
 

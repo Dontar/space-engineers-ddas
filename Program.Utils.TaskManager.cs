@@ -7,50 +7,47 @@ namespace IngameScript
 {
     partial class Program
     {
-        static class TaskManager
+        public interface ITask
         {
-            public interface ITask
-            {
-                ITask Every(float seconds);
-                ITask Pause(bool pause = true);
-                bool Paused { get; }
-                ITask Once();
-                void Restart();
-                T Result<T>();
+            ITask Every(float seconds);
+            ITask Pause(bool pause = true);
+            bool Paused { get; }
+            ITask Once();
+            void Restart();
+            T Result<T>();
+        }
+        class Task : ITask
+        {
+            public IEnumerator Enumerator;
+            public IEnumerable Ref;
+            public TimeSpan Interval;
+            public TimeSpan TimeSinceLastRun;
+            public object TaskResult;
+            public bool IsPaused;
+            public bool IsOnce;
+
+            public bool Paused => IsPaused;
+
+            public ITask Every(float seconds) {
+                Interval = TimeSpan.FromSeconds(seconds);
+                return this;
             }
-            class Task : ITask
-            {
-                public IEnumerator Enumerator;
-                public IEnumerable Ref;
-                public TimeSpan Interval;
-                public TimeSpan TimeSinceLastRun;
-                public object TaskResult;
-                public bool IsPaused;
-                public bool IsOnce;
-
-                public bool Paused => IsPaused;
-
-                public ITask Every(float seconds) {
-                    Interval = TimeSpan.FromSeconds(seconds);
-                    return this;
-                }
-                public ITask Pause(bool pause) {
-                    IsPaused = pause;
-                    return this;
-                }
-
-                public ITask Once() {
-                    IsOnce = true;
-                    return this;
-                }
-
-                public void Restart() {
-                    Enumerator = Ref.GetEnumerator();
-                    TimeSinceLastRun = TimeSpan.Zero;
-                    TaskResult = null;
-                }
-                public T Result<T>() => (T)TaskResult;
+            public ITask Pause(bool pause) {
+                IsPaused = pause;
+                return this;
             }
+
+            public ITask Once() {
+                IsOnce = true;
+                return this;
+            }
+
+            public void Restart() {
+                Enumerator = Ref.GetEnumerator();
+                TimeSinceLastRun = TimeSpan.Zero;
+                TaskResult = null;
+            }
+            public T Result<T>() => (T)TaskResult;
             static readonly List<Task> tasks = new List<Task>();
 
             public static ITask RunTask(IEnumerable task) {
