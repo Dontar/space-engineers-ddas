@@ -47,8 +47,10 @@ namespace IngameScript
                 TimeSinceLastRun = TimeSpan.Zero;
                 TaskResult = null;
             }
-            T ITask.Result<T>() => (T)TaskResult;
-
+            T ITask.Result<T>() {
+                if (TaskResult == null) return default(T);
+                return (T)TaskResult;
+            }
             static List<Task> tasks = new List<Task>();
 
             public static ITask RunTask(IEnumerable task) {
@@ -84,6 +86,12 @@ namespace IngameScript
             public static void ClearTask(ITask task) => tasks.Remove((Task)task);
 
             public static T GetTaskResult<T>() => tasks.Select(t => t.TaskResult).OfType<T>().FirstOrDefault();
+
+            public static void OnResult<T>(ITask task, Action<T> callback) {
+                var result = task.Result<T>();
+                if (!result.Equals(default(T))) callback(result);
+            }
+
             public static TimeSpan CurrentTaskLastRun;
             public static void Tick(TimeSpan TimeSinceLastRun) {
                 for (int i = tasks.Count - 1; i >= 0; i--) {

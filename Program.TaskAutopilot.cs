@@ -242,6 +242,7 @@ namespace IngameScript
                 previous = current;
                 yield return null;
             }
+            wayPoints.Add(new MyWaypointInfo($"Waypoint-#{counter}", Remote.GetPosition()));
 
             var routeList = new MyIni();
             routeList.TryParse(Remote.CustomData);
