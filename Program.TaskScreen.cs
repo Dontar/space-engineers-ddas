@@ -23,7 +23,7 @@ namespace IngameScript
         }
 
         void ChangeScreenType() {
-            CurrentScreenType = (CurrentScreenType + 1) % 4;
+            CurrentScreenType = (CurrentScreenType + 1) % 3;
         }
 
         void DisplayStatus(InfoDisplay s) {
@@ -88,20 +88,6 @@ namespace IngameScript
                 list = list.Skip(2);
             }
         }
-        void DisplayDimensions(InfoDisplay s) {
-            var dimensions = Dimensions;
-            var scale = (Me.CubeGrid.GridSizeEnum == MyCubeSize.Large) ? 2.5f : 0.5f; // meters
-            var sensor = Sensor.Position * scale;
-            var offset = sensor - dimensions.Center;
-            s.Sb.Clear();
-            s.Label("Dimensions");
-            s.Row("Min", dimensions.Min);
-            s.Row("Max", dimensions.Max);
-            s.Row("Size", dimensions.Size);
-            s.Row("Center", dimensions.Center);
-            s.Row("Sensor", sensor);
-            s.Row("Offset", offset);
-        }
 
         // void DisplayWheelStrength(InfoDisplay s) {
         //     var frontWheels = MyWheels.Where(w => w.IsFront).OrderBy(w => w.ToCoM.Z);
@@ -158,9 +144,6 @@ namespace IngameScript
 
             while (true) {
                 switch (CurrentScreenType) {
-                    case 3:
-                        DisplayDimensions(screenText);
-                        break;
                     case 2:
                         DisplayRollPitchStatus(screenText);
                         break;
