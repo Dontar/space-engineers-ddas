@@ -128,16 +128,19 @@ namespace IngameScript
         }
 
         void SetupSensor() {
-            var halfHeight = Dimensions.Height / 2;
-            var vertPos = (Sensor.Position.Y - Me.CubeGrid.Min.Y) * (Me.CubeGrid.GridSizeEnum == MyCubeSize.Large ? 2.5 : 0.5); // meters;
+            var scale = Me.CubeGrid.GridSizeEnum == MyCubeSize.Large ? 2.5f : 0.5f;
+            var sensorPos = Sensor.Position * scale;
+
+            var offset = sensorPos - Dimensions.Center;
+            var half = Dimensions.HalfExtents;
 
             var values = new float[] {
-                /* Forward */ 50,
-                /* Backward */ Dimensions.Length,
-                /* Left */ 20,
-                /* Right */ 20,
-                /* Up */ (float)(Dimensions.Height - vertPos),
-                /* Down */ (float)vertPos,
+                /* Forward */ 50 + offset.Z,
+                /* Backward */ half.Z - offset.Z,
+                /* Left */ 20 + offset.X,
+                /* Right */ 20 - offset.X,
+                /* Up */ half.Y - offset.Y,
+                /* Down */ half.Y + offset.Y,
             };
 
             Util.SetSensorDimensions(Sensor, values);

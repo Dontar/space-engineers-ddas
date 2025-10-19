@@ -23,7 +23,7 @@ namespace IngameScript
         }
 
         void ChangeScreenType() {
-            CurrentScreenType = (CurrentScreenType + 1) % 5;
+            CurrentScreenType = (CurrentScreenType + 1) % 4;
         }
 
         void DisplayStatus(InfoDisplay s) {
@@ -88,74 +88,91 @@ namespace IngameScript
                 list = list.Skip(2);
             }
         }
-
-        void DisplayWheelStrength(InfoDisplay s) {
-            var frontWheels = MyWheels.Where(w => w.IsFront).OrderBy(w => w.ToCoM.Z);
-            var backWheels = MyWheels.Where(w => !w.IsFront).OrderBy(w => w.ToCoM.Z);
-            var subWheels = SubWheels.OrderBy(w => w.ToCoM.Z);
-
-            Action<IEnumerable<IEnumerable<WheelWrapper>>> PrintAxel = wheels => {
-                foreach (var g in wheels) {
-                    var axel = g.OrderBy(w => !w.IsLeft).ToArray();
-                    s.Row($"|{axel[0].Wheel.Strength,3:N0}%|", $"|{axel[1].Wheel.Strength,3:N0}%|", "");
-                    s.Label("", '-');
-                }
-            };
-
+        void DisplayDimensions(InfoDisplay s) {
+            var dimensions = Dimensions;
+            var scale = (Me.CubeGrid.GridSizeEnum == MyCubeSize.Large) ? 2.5f : 0.5f; // meters
+            var sensor = Sensor.Position * scale;
+            var offset = sensor - dimensions.Center;
             s.Sb.Clear();
-            s.Label("Suspension Strength");
-            s.Label("Front", '-');
-            PrintAxel(ZipPairs(frontWheels));
-            s.Label("Rear", '-');
-            PrintAxel(ZipPairs(backWheels));
-            if (subWheels.Count() == 0) return;
-            s.Label("Trailer", '-');
-            PrintAxel(ZipPairs(subWheels));
+            s.Label("Dimensions");
+            s.Row("Min", dimensions.Min);
+            s.Row("Max", dimensions.Max);
+            s.Row("Size", dimensions.Size);
+            s.Row("Center", dimensions.Center);
+            s.Row("Sensor", sensor);
+            s.Row("Offset", offset);
         }
 
-        void DisplayWheelHeight(InfoDisplay s) {
-            var frontWheels = MyWheels.Where(w => w.IsFront).OrderBy(w => w.ToCoM.Z);
-            var backWheels = MyWheels.Where(w => !w.IsFront).OrderBy(w => w.ToCoM.Z);
-            var subWheels = SubWheels.OrderBy(w => w.ToCoM.Z);
+        // void DisplayWheelStrength(InfoDisplay s) {
+        //     var frontWheels = MyWheels.Where(w => w.IsFront).OrderBy(w => w.ToCoM.Z);
+        //     var backWheels = MyWheels.Where(w => !w.IsFront).OrderBy(w => w.ToCoM.Z);
+        //     var subWheels = SubWheels.OrderBy(w => w.ToCoM.Z);
 
-            Action<IEnumerable<IEnumerable<WheelWrapper>>> PrintAxel = wheels => {
-                foreach (var g in wheels) {
-                    var axel = g.OrderBy(w => !w.IsLeft).ToArray();
-                    var right = -axel[0].Wheel.Height * 100;
-                    var left = -axel[1].Wheel.Height * 100;
-                    s.Row($"|{right,4:N1}cm|", $"|{left,4:N1}cm|");
-                    s.Label("", '-');
-                }
-            };
+        //     Action<IEnumerable<IEnumerable<WheelWrapper>>> PrintAxel = wheels => {
+        //         foreach (var g in wheels) {
+        //             var axel = g.OrderBy(w => !w.IsLeft).ToArray();
+        //             s.Row($"|{axel[0].Wheel.Strength,3:N0}%|", $"|{axel[1].Wheel.Strength,3:N0}%|", "");
+        //             s.Label("", '-');
+        //         }
+        //     };
 
-            s.Sb.Clear();
-            s.Label("Suspension Height");
-            s.Label("Front", '-');
-            PrintAxel(ZipPairs(frontWheels));
-            s.Label("Rear", '-');
-            PrintAxel(ZipPairs(backWheels));
-            if (subWheels.Count() == 0) return;
-            s.Label("Trailer", '-');
-            PrintAxel(ZipPairs(subWheels));
-        }
+        //     s.Sb.Clear();
+        //     s.Label("Suspension Strength");
+        //     s.Label("Front", '-');
+        //     PrintAxel(ZipPairs(frontWheels));
+        //     s.Label("Rear", '-');
+        //     PrintAxel(ZipPairs(backWheels));
+        //     if (subWheels.Count() == 0) return;
+        //     s.Label("Trailer", '-');
+        //     PrintAxel(ZipPairs(subWheels));
+        // }
+
+        // void DisplayWheelHeight(InfoDisplay s) {
+        //     var frontWheels = MyWheels.Where(w => w.IsFront).OrderBy(w => w.ToCoM.Z);
+        //     var backWheels = MyWheels.Where(w => !w.IsFront).OrderBy(w => w.ToCoM.Z);
+        //     var subWheels = SubWheels.OrderBy(w => w.ToCoM.Z);
+
+        //     Action<IEnumerable<IEnumerable<WheelWrapper>>> PrintAxel = wheels => {
+        //         foreach (var g in wheels) {
+        //             var axel = g.OrderBy(w => !w.IsLeft).ToArray();
+        //             var right = -axel[0].Wheel.Height * 100;
+        //             var left = -axel[1].Wheel.Height * 100;
+        //             s.Row($"|{right,4:N1}cm|", $"|{left,4:N1}cm|");
+        //             s.Label("", '-');
+        //         }
+        //     };
+
+        //     s.Sb.Clear();
+        //     s.Label("Suspension Height");
+        //     s.Label("Front", '-');
+        //     PrintAxel(ZipPairs(frontWheels));
+        //     s.Label("Rear", '-');
+        //     PrintAxel(ZipPairs(backWheels));
+        //     if (subWheels.Count() == 0) return;
+        //     s.Label("Trailer", '-');
+        //     PrintAxel(ZipPairs(subWheels));
+        // }
 
         IEnumerable ScreensTask() {
             var screenText = new InfoDisplay(new StringBuilder(), 22);
 
             while (true) {
                 switch (CurrentScreenType) {
-                    case 4:
-                        DisplayRollPitchStatus(screenText);
-                        break;
                     case 3:
-                        DisplayAutopilot(screenText);
+                        DisplayDimensions(screenText);
                         break;
                     case 2:
-                        DisplayWheelHeight(screenText);
+                        DisplayRollPitchStatus(screenText);
                         break;
                     case 1:
-                        DisplayWheelStrength(screenText);
+                        DisplayAutopilot(screenText);
                         break;
+                    // case 2:
+                    //     DisplayWheelHeight(screenText);
+                    //     break;
+                    // case 1:
+                    //     DisplayWheelStrength(screenText);
+                    //     break;
                     default:
                         DisplayStatus(screenText);
                         break;

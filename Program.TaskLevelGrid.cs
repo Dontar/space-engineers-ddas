@@ -13,26 +13,16 @@ namespace IngameScript
         bool Flipping = false;
 
         IEnumerable<IMyGyro> Gyros;
-        struct GridDimensions
-        {
-            public float Width;
-            public float Height;
-            public float Length;
-        }
 
-        GridDimensions Dimensions;
+        BoundingBox Dimensions;
 
         void InitAutoLevel() {
             Gyros = Util.GetBlocks<IMyGyro>(b => Util.IsNotIgnored(b, _ignoreTag));
 
-            double blockSize = (Me.CubeGrid.GridSizeEnum == MyCubeSize.Large) ? 2.5 : 0.5; // meters
-            var min = Me.CubeGrid.Min;
-            var max = Me.CubeGrid.Max;
-            var size = (max - min + Vector3I.One) * blockSize;
-
-            Dimensions.Width = (float)size.X;
-            Dimensions.Height = (float)size.Y;
-            Dimensions.Length = (float)size.Z;
+            var scale = (Me.CubeGrid.GridSizeEnum == MyCubeSize.Large) ? 2.5f : 0.5f; // meters
+            var min = (Me.CubeGrid.Min - Vector3.Half) * scale;
+            var max = (Me.CubeGrid.Max + Vector3.Half) * scale;
+            Dimensions = new BoundingBox(min, max);
         }
 
         float CalcRequiredGyroForce(float roll, int magnitude = 10) {
