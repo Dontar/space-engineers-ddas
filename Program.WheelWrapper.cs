@@ -14,6 +14,8 @@ namespace IngameScript
         IEnumerable<WheelWrapper> MyWheels;
         IEnumerable<WheelWrapper> SubWheels;
         double GridUnsprungMass => Mass.PhysicalMass - AllWheels.Sum(w => w.Top?.Mass ?? 0);
+        double FrontAxelDist = 0;
+        double RearAxelDist = 0;
 
         void InitWheels() {
             AllWheels = Util.GetBlocks<IMyMotorSuspension>(b => Util.IsNotIgnored(b, _ignoreTag) && b.Enabled);
@@ -34,6 +36,10 @@ namespace IngameScript
             var radius = distance / Math.Tan(MathHelper.ToRadians(maxSteerAngle));
 
             MyWheels = wh.Select(w => {
+                if (w.IsFront)
+                    FrontAxelDist = Math.Max(FrontAxelDist, Math.Abs(w.ToCoM.Z));
+                else
+                    RearAxelDist = Math.Max(RearAxelDist, w.ToCoM.Z);
                 w.TargetHeight = hight;
                 var halfWidth = Math.Abs(w.ToFocalPoint.X);
                 w.SteerAngleLeft = Math.Atan(w.DistanceFocal / (radius + (w.IsLeft ? -halfWidth : halfWidth)));
@@ -59,7 +65,14 @@ namespace IngameScript
         class WheelWrapper
         {
             public IMyMotorSuspension Wheel;
-            public float SpeedLimit { get { return Wheel.GetValueFloat("Speed Limit"); } set { Wheel.SetValueFloat("Speed Limit", value); } }
+            public float SpeedLimit {
+                get {
+                    return Wheel.GetValueFloat("Speed Limit");
+                }
+                set {
+                    Wheel.SetValueFloat("Speed Limit", value);
+                }
+            }
             public Vector3D ToCoM = Vector3D.Zero;
             public Vector3D ToFocalPoint = Vector3D.Zero;
             public float HeightOffsetMin => Wheel.GetMinimum<float>("Height");
@@ -69,7 +82,14 @@ namespace IngameScript
             public double DistanceFocal => Math.Abs(ToFocalPoint.Z);
             public double TargetStrength = 5;
             public string Debug = "";
-            public float Friction { get { return Wheel.Friction; } set { Wheel.Friction = value; } }
+            public float Friction {
+                get {
+                    return Wheel.Friction;
+                }
+                set {
+                    Wheel.Friction = value;
+                }
+            }
             public bool IsLeft = false;
             public bool IsFront => ToCoM.Z < 0;
             public bool IsFrontFocal => ToFocalPoint.Z < 0;

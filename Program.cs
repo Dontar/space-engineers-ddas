@@ -12,38 +12,34 @@ namespace IngameScript
     partial class Program : MyGridProgram
     {
         #region mdk preserve
-        string _tag = "{DDAS}";
-        string _ignoreTag = "{Ignore}";
+        bool _addWheels = true,
+        _autoLevel = true,
+        _friction = true,
+        _power = true,
+        _stopLights = true,
+        _subWheelsStrength = true,
+        _suspensionHight = true,
+        _suspensionStrength = true;
 
-        bool _suspensionHight = true;
-        double _suspensionHightRoll = 30;
-        float _lowModeHight = 0;
-        string _highModeHight = "Max";
+        double _ackermanFocalPointOffset = 0,
+        _frictionMinSpeed = 5,
+        _maxSteeringAngle = 25,
+        _strengthFactor = 0.6,
+        _suspensionHightRoll = 30;
 
-        bool _suspensionStrength = true;
-        bool _subWheelsStrength = true;
-        double _strengthFactor = 0.6;
+        float _frictionInner = 80,
+        _frictionOuter = 60,
+        _lowModeHight = 0;
+
+        string _highModeHight = "Max",
+        _ignoreTag = "{Ignore}",
+        _pidCruise = "18/1/0/0",
+        _pidPitch = "10/0/0/0",
+        _pidPower = "18/0/0/0",
+        _pidRoll = "10/0/0/0",
+        _tag = "{DDAS}";
 
         FocalPoint _ackermanFocalPoint = FocalPoint.RC;
-        double _ackermanFocalPointOffset = 0;
-        double _maxSteeringAngle = 25;
-
-        bool _friction = true;
-        float _frictionInner = 80;
-        float _frictionOuter = 60;
-        double _frictionMinSpeed = 5;
-
-        bool _autoLevel = true;
-        string _pidRoll = "10/0/0/0";
-        string _pidPitch = "10/0/0/0";
-
-        string _pidCruise = "18/1/0/0";
-
-        bool _power = true;
-        string _pidPower = "18/0/0/0";
-
-        bool _addWheels = true;
-        bool _stopLights = true;
 
         enum FocalPoint
         {
@@ -82,10 +78,12 @@ namespace IngameScript
             if (!string.IsNullOrEmpty(argument))
                 ProcessCommands(argument);
 
-            if (!updateSource.HasFlag(UpdateType.Update10)) return;
+            if (!updateSource.HasFlag(UpdateType.Update10))
+                return;
 
             Memo.Of("OnBaseMassChange", Mass.BaseMass, (OldBaseMass) => {
-                if (OldBaseMass != 0) InitGridProps();
+                if (OldBaseMass != 0)
+                    InitGridProps();
                 InitWheels();
                 InitPower();
                 InitStopLights();
@@ -155,9 +153,10 @@ namespace IngameScript
 
                 var roll = orientation.Roll + (rollCompensating ? (orientation.Roll > 0 ? 6 : -6) : 0);
 
-                bool isTurning = leftRight != 0 || !Util.IsBetween(autopilot.Steer, -0.4, 0.4);
-                bool isTurningLeft = leftRight < 0 || autopilot.Steer > 0;
-                var isHalfBreaking = upDown > 0 && forwardBackward < 0;
+                var isTurning = leftRight != 0 || !Util.IsBetween(autopilot.Steer, -0.4, 0.4);
+                var isTurningLeft = leftRight < 0 || autopilot.Steer > 0;
+                var isBreaking = upDown > 0;
+                var isHalfBreaking = isBreaking && forwardBackward < 0;
 
                 if (Controllers.SubController != null)
                     Controllers.SubController.HandBrake = Controller.HandBrake || upDown > 0;
@@ -172,11 +171,15 @@ namespace IngameScript
                         wheel.Strength += (float)((w.TargetStrength - wheel.Strength) * 0.5);
                     }
 
-                    if (_friction)
-                        if (speed > _frictionMinSpeed && isTurning) {
+                    if (_friction) {
+                        w.Friction = 100;
+                        if (speed > _frictionMinSpeed && isTurning)
                             w.Friction = isTurningLeft ? (w.IsLeft ? _frictionInner : _frictionOuter) : (w.IsLeft ? _frictionOuter : _frictionInner);
+
+                        if (isBreaking && w.IsFront && FrontAxelDist < RearAxelDist) {
+                            w.Friction *= (float)Util.NormalizeValue(FrontAxelDist - Math.Abs(w.ToCoM.Z), FrontAxelDist + RearAxelDist, 1);
                         }
-                        else w.Friction = 100;
+                    }
 
                     if (_power)
                         wheel.Power = power.Power;
@@ -236,7 +239,8 @@ namespace IngameScript
                         if (speed > _frictionMinSpeed && isTurning) {
                             w.Friction = isTurningLeft ? (w.IsLeft ? _frictionInner : _frictionOuter) : (w.IsLeft ? _frictionOuter : _frictionInner);
                         }
-                        else w.Friction = 100;
+                        else
+                            w.Friction = 100;
 
                     if (_suspensionHight) {
                         if ((roll > _suspensionHightRoll && w.IsLeft) || (roll < -_suspensionHightRoll && !w.IsLeft)) {
@@ -306,9 +310,11 @@ namespace IngameScript
 
             var targetHeight = Math.Abs(closeHigh) < Math.Abs(closeLow) ? low : high;
 
-            foreach (var w in MyWheels) w.TargetHeight = targetHeight;
+            foreach (var w in MyWheels)
+                w.TargetHeight = targetHeight;
 
-            if (SubWheels.Count() == 0) return;
+            if (SubWheels.Count() == 0)
+                return;
             var controlSubWheel = SubWheels.FirstOrDefault();
             currentHeight = controlSubWheel.TargetHeight;
 
@@ -316,7 +322,8 @@ namespace IngameScript
             closeHigh = high - currentHeight;
             closeLow = currentHeight - low;
             targetHeight = Math.Abs(closeHigh) < Math.Abs(closeLow) ? low : high;
-            foreach (var w in SubWheels) w.TargetHeight = targetHeight;
+            foreach (var w in SubWheels)
+                w.TargetHeight = targetHeight;
         }
 
         void RestTurrets() {
