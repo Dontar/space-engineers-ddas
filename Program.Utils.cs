@@ -20,36 +20,36 @@ namespace IngameScript
                 Util.p = p;
             }
 
-            public static IEnumerable<T> GetBlocks<T>(Func<T, bool> collect = null) where T : class, IMyTerminalBlock {
+            public static List<T> GetBlocks<T>(Func<T, bool> collect = null) where T : class, IMyTerminalBlock {
                 List<T> blocks = new List<T>();
                 p.GridTerminalSystem.GetBlocksOfType(blocks, b => b.IsSameConstructAs(p.Me) && (collect?.Invoke(b) ?? true));
                 return blocks;
             }
 
-            public static IEnumerable<T> GetBlocks<T>(string blockTag) where T : class, IMyTerminalBlock {
+            public static List<T> GetBlocks<T>(string blockTag) where T : class, IMyTerminalBlock {
                 return GetBlocks<T>(b => IsTagged(b, blockTag));
             }
 
-            public static IEnumerable<T> GetGroup<T>(string name, Func<T, bool> collect = null) where T : class, IMyTerminalBlock {
+            public static List<T> GetGroup<T>(string name, Func<T, bool> collect = null) where T : class, IMyTerminalBlock {
                 var groupBlocks = new List<T>();
                 var group = p.GridTerminalSystem.GetBlockGroupWithName(name);
                 group?.GetBlocksOfType(groupBlocks, b => b.IsSameConstructAs(p.Me) && (collect?.Invoke(b) ?? true));
                 return groupBlocks;
             }
 
-            public static IEnumerable<T> GetGroupOrBlocks<T>(string name, Func<T, bool> collect = null) where T : class, IMyTerminalBlock {
-                IEnumerable<T> groupBlocks = GetGroup(name, collect);
+            public static List<T> GetGroupOrBlocks<T>(string name, Func<T, bool> collect = null) where T : class, IMyTerminalBlock {
+                List<T> groupBlocks = GetGroup(name, collect);
                 if (groupBlocks.Count() == 0) {
                     return GetBlocks<T>(b => b.CustomName == name && (collect?.Invoke(b) ?? true));
                 }
                 return groupBlocks;
             }
 
-            public static IEnumerable<IMyTextSurface> GetScreens(string screenTag = "") {
+            public static List<IMyTextSurface> GetScreens(string screenTag = "") {
                 return GetScreens(b => IsTagged(b, screenTag), screenTag);
             }
 
-            public static IEnumerable<IMyTextSurface> GetScreens(Func<IMyTerminalBlock, bool> collect = null, string screenTag = "") {
+            public static List<IMyTextSurface> GetScreens(Func<IMyTerminalBlock, bool> collect = null, string screenTag = "") {
                 var screens = GetBlocks<IMyTerminalBlock>(b => (b is IMyTextSurface || HasScreens(b)) && collect(b));
                 return screens.Select(s => {
                     if (s is IMyTextSurface)
@@ -62,60 +62,53 @@ namespace IngameScript
                         return provider.GetSurface(screenIndex);
                     }
                     return provider.GetSurface(0);
-                });
+                }).ToList();
             }
 
             public static int ScreenLines(IMyTextSurface screen, char symbol = 'S') {
                 var symbolSize = screen.MeasureStringInPixels(new StringBuilder(symbol.ToString()), screen.Font, screen.FontSize);
-                var paddingY = NormalizeValue(screen.TextPadding, 0, 100, 0, screen.SurfaceSize.Y);
+                var paddingY = NormalizeValue(screen.TextPadding, 100, screen.SurfaceSize.Y);
                 var screenY = screen.SurfaceSize.Y - paddingY;
                 return (int)Math.Floor(screenY / (symbolSize.Y + 2) * (512 / screen.TextureSize.Y)) + 1;
             }
 
             public static int ScreenColumns(IMyTextSurface screen, char symbol = 'S') {
                 var symbolSize = screen.MeasureStringInPixels(new StringBuilder(symbol.ToString()), screen.Font, screen.FontSize);
-                var paddingX = NormalizeValue(screen.TextPadding, 0, 100, 0, screen.SurfaceSize.X);
+                var paddingX = NormalizeValue(screen.TextPadding, 100, screen.SurfaceSize.X);
                 var screenX = screen.SurfaceSize.X - paddingX;
-                return (int)Math.Floor(screenX / symbolSize.X * (512 / screen.TextureSize.X));
+                return (int)Math.Floor(screenX / symbolSize.X * (512 / screen.TextureSize.X)) - 1;
             }
 
             public static double NormalizeValue(double value, double oldMin, double oldMax, double min, double max) {
                 double originalRange = oldMax - oldMin;
                 double newRange = max - min;
-                double normalizedValue = ((value - oldMin) * newRange / originalRange) + min;
+                double normalizedValue = (value - oldMin) * newRange / originalRange + min;
                 return normalizedValue;
             }
-
-            public static double NormalizeClamp(double value, double oldMin, double oldMax, double min, double max) {
-                return MathHelper.Clamp(NormalizeValue(value, oldMin, oldMax, min, max), min, max);
-            }
-
-            public static bool IsNotIgnored(IMyTerminalBlock block, string ignoreTag = "{Ignore}") {
-                return !(block.CustomName.Contains(ignoreTag) || block.CustomData.Contains(ignoreTag));
-            }
-
-            public static bool IsTagged(IMyTerminalBlock block, string tag = "{DDAS}") {
-                return block.CustomName.Contains(tag) || block.CustomData.Contains(tag);
-            }
-
-            public static bool IsBetween(double value, double min, double max) {
-                return value >= min && value <= max;
-            }
-
-            public static bool HasScreens(IMyTerminalBlock block) {
-                return block is IMyTextSurfaceProvider && (block as IMyTextSurfaceProvider).SurfaceCount > 0;
-            }
-
-            public static void ApplyGyroOverride(double pitchSpeed, double yawSpeed, double rollSpeed, float power, IMyGyro gyro, MatrixD worldMatrix) {
-                ApplyGyroOverride(pitchSpeed, yawSpeed, rollSpeed, power, new[] { gyro }, worldMatrix);
-            }
+            public static double NormalizeValue(double value, double oldMax, double max)
+                => NormalizeValue(value, 0, oldMax, 0, max);
+            public static double NormalizeClamp(double value, double oldMin, double oldMax, double min, double max)
+                => MathHelper.Clamp(NormalizeValue(value, oldMin, oldMax, min, max), min > max ? max : min, max < min ? min : max);
+            public static double NormalizeClamp(double value, double oldMax, double max)
+                => MathHelper.Clamp(NormalizeValue(value, 0, oldMax, 0, max), 0, max);
+            public static bool IsNotIgnored(IMyTerminalBlock block, string ignoreTag = "{Ignore}")
+                => !(block.CustomName.Contains(ignoreTag) || block.CustomData.Contains(ignoreTag));
+            public static bool IsTagged(IMyTerminalBlock block, string tag = "{DDAS}")
+                => block.CustomName.Contains(tag) || block.CustomData.Contains(tag);
+            public static bool IsBetween(double value, double min, double max)
+                => value >= min && value <= max;
+            public static bool HasScreens(IMyTerminalBlock block)
+                => block is IMyTextSurfaceProvider && (block as IMyTextSurfaceProvider).SurfaceCount > 0;
+            public static void ApplyGyroOverride(double pitchSpeed, double yawSpeed, double rollSpeed, float power, IMyGyro gyro, MatrixD worldMatrix)
+                => ApplyGyroOverride(pitchSpeed, yawSpeed, rollSpeed, power, new[] { gyro }, worldMatrix);
 
             public static void ApplyGyroOverride(double pitchSpeed, double yawSpeed, double rollSpeed, float power, IEnumerable<IMyGyro> gyros, MatrixD worldMatrix) {
                 var rotationVec = new Vector3D(pitchSpeed, yawSpeed, rollSpeed);
                 var relativeRotationVec = Vector3D.TransformNormal(rotationVec, worldMatrix);
 
                 foreach (var g in gyros) {
-                    if (g.GyroPower != power) g.GyroPower = power;
+                    if (g.GyroPower != power)
+                        g.GyroPower = power;
                     g.GyroOverride = true;
                     var transformedRotationVec = Vector3D.TransformNormal(relativeRotationVec, Matrix.Transpose(g.WorldMatrix));
                     g.Pitch = (float)transformedRotationVec.X;
@@ -146,7 +139,8 @@ namespace IngameScript
             }
             static readonly StringBuilder StatusText = new StringBuilder();
             public static void Echo(string text, bool keep = false) {
-                if (!keep) StatusText.Clear();
+                if (!keep)
+                    StatusText.Clear();
                 StatusText.AppendLine(text);
             }
             public static IEnumerable StatusMonitorTask(Program p) {
@@ -200,6 +194,16 @@ namespace IngameScript
                     }
                 }
             }
+            static Random Rand = new Random((int)DateTime.Now.Ticks & 0x0000FFFF);
+
+            public static string GenerateRandomStr() {
+                var suffix = "";
+                for (int i = 0; i < 3; i++) {
+                    suffix += (char)('A' + Rand.Next(0, 26));
+                }
+                return suffix;
+            }
+
         }
     }
 }
