@@ -73,6 +73,9 @@ namespace IngameScript
             if (Controllers.MainController == null) {
                 Util.Echo("No controller found");
                 return;
+            } else if (!Controllers.MainController.HasWheels) {
+                Util.Echo("No wheels found");
+                return;
             }
 
             if (!string.IsNullOrEmpty(argument))
@@ -159,7 +162,7 @@ namespace IngameScript
                 var isHalfBreaking = isBreaking && forwardBackward < 0;
 
                 if (Controllers.SubController != null)
-                    Controllers.SubController.HandBrake = Controller.HandBrake || upDown > 0;
+                    Controllers.SubController.HandBrake = Controllers.MainController.HandBrake || upDown > 0;
 
                 foreach (var w in MyWheels) {
                     IMyMotorSuspension wheel = w.Wheel;

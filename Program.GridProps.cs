@@ -1,4 +1,5 @@
 using Sandbox.ModAPI.Ingame;
+using SpaceEngineers.Game.ModAPI.Ingame;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -49,10 +50,14 @@ namespace IngameScript
         }
         TControllers Controllers;
 
+        List<IMyTurretControlBlock> Turrets;
+
+        IMyTurretControlBlock ActiveTurret => Turrets.FirstOrDefault(t => t.IsUnderControl);
+
         IMyShipController Controller => Controllers.Controllers.FirstOrDefault(c => c.IsUnderControl) ?? Controllers.MainController;
-        float ForwardBackward => Controller?.MoveIndicator.Z ?? 0;
-        float LeftRight => Controller?.MoveIndicator.X ?? 0;
-        float UpDown => Controller?.MoveIndicator.Y ?? 0;
+        float ForwardBackward => ActiveTurret?.MoveIndicator.Z ?? Controller?.MoveIndicator.Z ?? 0;
+        float LeftRight => ActiveTurret?.MoveIndicator.X ?? Controller?.MoveIndicator.X ?? 0;
+        float UpDown => ActiveTurret?.MoveIndicator.Y ?? Controller?.MoveIndicator.Y ?? 0;
         MyShipMass Mass => Controllers.MainController.CalculateShipMass();
         Vector3D Gravity => Controllers.MainController.GetTotalGravity();
         double GravityMagnitude => Gravity.Length();
@@ -71,6 +76,8 @@ namespace IngameScript
             var subController = subControllers
                 .FirstOrDefault(c => Util.IsTagged(c, _tag) && c is IMyRemoteControl)
                 ?? subControllers.FirstOrDefault();
+
+            Turrets = Util.GetBlocks<IMyTurretControlBlock>(b => Util.IsNotIgnored(b, _ignoreTag) && b.CubeGrid == Me.CubeGrid);
 
             Controllers = new TControllers { MainController = mainController, SubController = subController, Controllers = myControllers.ToArray() };
         }
