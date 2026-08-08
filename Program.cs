@@ -3,7 +3,6 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using VRage;
 using VRage.Game.ModAPI.Ingame.Utilities;
 using VRageMath;
 
@@ -19,7 +18,8 @@ namespace IngameScript
         _stopLights = true,
         _subWheelsStrength = true,
         _suspensionHight = true,
-        _suspensionStrength = true;
+        _suspensionStrength = true,
+        _breaking = true;
 
         double _ackermanFocalPointOffset = 0,
         _frictionMinSpeed = 5,
@@ -73,7 +73,8 @@ namespace IngameScript
             if (Controllers.MainController == null) {
                 Util.Echo("No controller found");
                 return;
-            } else if (!Controllers.MainController.HasWheels) {
+            }
+            else if (!Controllers.MainController.HasWheels) {
                 Util.Echo("No wheels found");
                 return;
             }
@@ -184,10 +185,9 @@ namespace IngameScript
                         }
                     }
 
-                    if (_power)
-                        wheel.Power = power.Power;
-                    else if (wheel.Power > power.MaxPowerPercent)
-                        wheel.Power = power.MaxPowerPercent;
+                    if (_power) {
+                        wheel.Power = Math.Min(power.Power, power.MaxPowerPercent);
+                    }
 
                     // update height
                     if (_suspensionHight) {
@@ -207,17 +207,18 @@ namespace IngameScript
                         wheel.MaxSteerAngle = (float)(isTurningLeft ? w.SteerAngleLeft : w.SteerAngleRight);
 
                     // half breaking
-                    wheel.Brake = true;
-                    if (isHalfBreaking && w.IsFront) {
-                        wheel.Brake = false;
-                        wheel.Power = 0;
+                    if (_breaking) {
+                        if (isHalfBreaking && w.IsFront) {
+                            wheel.Brake = false;
+                            wheel.Power = 0;
+                        }
                     }
 
                     if (_addWheels && !wheel.IsAttached)
                         wheel.ApplyAction("Add Top Part");
 
                 }
-                if (SubWheels.Count() > 0) {
+                if (SubWheels.Count > 0) {
                     yield return null;
                     if (!double.TryParse(_highModeHight, out high)) {
                         high = SubWheels.FirstOrDefault().HeightOffsetMin;

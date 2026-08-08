@@ -10,9 +10,9 @@ namespace IngameScript
 {
     partial class Program
     {
-        IEnumerable<IMyMotorSuspension> AllWheels;
-        IEnumerable<WheelWrapper> MyWheels;
-        IEnumerable<WheelWrapper> SubWheels;
+        List<IMyMotorSuspension> AllWheels;
+        List<WheelWrapper> MyWheels;
+        List<WheelWrapper> SubWheels;
         double GridUnsprungMass => Mass.PhysicalMass - AllWheels.Sum(w => w.Top?.Mass ?? 0);
         double FrontAxelDist = 0;
         double RearAxelDist = 0;
@@ -20,8 +20,8 @@ namespace IngameScript
         void InitWheels() {
             AllWheels = Util.GetBlocks<IMyMotorSuspension>(b => Util.IsNotIgnored(b, _ignoreTag) && b.Enabled);
             if (AllWheels.Count() == 0) {
-                MyWheels = new WheelWrapper[] { };
-                SubWheels = new WheelWrapper[] { };
+                MyWheels = new List<WheelWrapper>();
+                SubWheels = new List<WheelWrapper>();
                 return;
             }
 
@@ -45,7 +45,7 @@ namespace IngameScript
                 w.SteerAngleLeft = Math.Atan(w.DistanceFocal / (radius + (w.IsLeft ? -halfWidth : halfWidth)));
                 w.SteerAngleRight = Math.Atan(w.DistanceFocal / (radius + (w.IsLeft ? halfWidth : -halfWidth)));
                 return w;
-            }).ToArray();
+            }).ToList();
 
 
             var sw = AllWheels
@@ -59,7 +59,7 @@ namespace IngameScript
                     return w;
                 });
             }
-            SubWheels = sw.ToArray();
+            SubWheels = sw.ToList();
         }
 
         class WheelWrapper
