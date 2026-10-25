@@ -230,12 +230,12 @@ namespace IngameScript
                         wheel.Strength += (float)((w.TargetStrength - wheel.Strength) * 0.5);
                     }
 
-                    if (_friction)
+                    if (_friction) {
+                        w.Friction = 100;
                         if (speed > _frictionMinSpeed && isTurning) {
                             w.Friction = isTurningLeft ? (w.IsLeft ? _frictionInner : _frictionOuter) : (w.IsLeft ? _frictionOuter : _frictionInner);
                         }
-                        else
-                            w.Friction = 100;
+                    }
 
                     if (_suspensionHight) {
                         if ((roll > _suspensionHightRoll && w.IsLeft) || (roll < -_suspensionHightRoll && !w.IsLeft)) {
