@@ -18,8 +18,7 @@ namespace IngameScript
         _stopLights = true,
         _subWheelsStrength = true,
         _suspensionHight = true,
-        _suspensionStrength = true,
-        _breaking = true;
+        _suspensionStrength = true;
 
         double _ackermanFocalPointOffset = 0,
         _frictionMinSpeed = 5,
@@ -205,14 +204,6 @@ namespace IngameScript
                     // update steering
                     if (isTurning)
                         wheel.MaxSteerAngle = (float)(isTurningLeft ? w.SteerAngleLeft : w.SteerAngleRight);
-
-                    // half breaking
-                    if (_breaking) {
-                        if (isHalfBreaking && w.IsFront) {
-                            wheel.Brake = false;
-                            wheel.Power = 0;
-                        }
-                    }
 
                     if (_addWheels && !wheel.IsAttached)
                         wheel.ApplyAction("Add Top Part");
